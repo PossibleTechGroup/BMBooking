@@ -2,6 +2,8 @@
 # Required:  cp .env.example .env   (single root .env — see docs/DOCKER-NETWORKING.md)
 # Usage:     docker compose up -d --build   (.env in this folder is loaded automatically)
 
+name: bm-booking
+
 services:
   db:
     image: postgres:15-alpine
