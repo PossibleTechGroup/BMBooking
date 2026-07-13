@@ -1,0 +1,75 @@
+import { CSSProperties } from 'react';
+
+export const pageStyles: Record<string, CSSProperties> = {
+  headerContainer: { marginBottom: '24px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' },
+  headerTitle: { fontFamily: 'var(--font-heading)', fontSize: '24px', fontWeight: 600, marginBottom: '4px' },
+  headerSubtitle: { color: 'var(--text-secondary)', fontSize: '15px' },
+  actionsContainer: { display: 'flex', gap: 8, alignItems: 'center' },
+  viewToggleGroup: { display: 'flex', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' },
+  viewToggleButton: {
+    display: 'flex', alignItems: 'center', gap: '5px',
+    padding: '8px 14px', fontSize: '13px', fontWeight: 600,
+    border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+  },
+  newAppointmentBtn: {
+    display: 'flex', alignItems: 'center', gap: '6px',
+    padding: '10px 18px', fontSize: '14px', fontWeight: 600,
+    border: 'none', borderRadius: 'var(--radius-sm)',
+    background: 'var(--accent-primary)', color: '#fff', cursor: 'pointer',
+  },
+  statsRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '20px' },
+  statCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '14px 16px', boxShadow: 'var(--shadow-sm)' },
+  statLabel: { fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '4px' },
+  statValue: { fontSize: '26px', fontWeight: 700 },
+  filtersRow: { display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'flex-end', flexWrap: 'wrap' },
+  filterLabel: { display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '4px' },
+  filterSelect: { padding: '8px 12px', fontSize: '14px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--surface)', color: 'var(--text-primary)', minWidth: '140px' },
+  errorBanner: { background: '#FEF3F2', color: 'var(--status-error)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', fontSize: '14px', border: '1px solid #FECDCA', marginBottom: '16px' },
+};
+
+export const listStyles: Record<string, CSSProperties> = {
+  loading: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 0', color: 'var(--text-secondary)', gap: '8px' },
+  emptyState: { textAlign: 'center', padding: '60px 0', color: 'var(--text-secondary)' },
+  emptyTitle: { fontSize: '16px', fontWeight: 500, marginBottom: '4px' },
+  emptySubtitle: { fontSize: '14px' },
+  listContainer: { display: 'flex', flexDirection: 'column', gap: '10px' },
+  card: {
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-md)', padding: '16px 20px',
+    boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: '8px',
+    transition: 'box-shadow 0.15s',
+  },
+  cardHeader: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' },
+  cardTitleRow: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' },
+  patientName: { fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' },
+  doctorName: { fontSize: '13px', color: 'var(--text-secondary)' },
+  specialization: { fontSize: '11px', color: 'var(--text-secondary)', background: '#F1F5F9', padding: '2px 8px', borderRadius: '4px', fontWeight: 500 },
+  cardDetailsRow: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)', flexWrap: 'wrap', lineHeight: 1.6 },
+  paymentBadge: { fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px' },
+  paidText: { color: 'var(--status-success)', fontSize: '11px', fontWeight: 600 },
+  declineReason: { marginTop: '6px', fontSize: '13px', color: 'var(--status-error)', background: '#FEF3F2', padding: '6px 10px', borderRadius: '6px', display: 'inline-block' },
+  statusBadgeContainer: { display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 },
+  statusBadge: { fontSize: '12px', fontWeight: 600, padding: '4px 12px', borderRadius: '20px', whiteSpace: 'nowrap' },
+  actionButtonsRow: { display: 'flex', gap: '8px', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '10px', marginTop: '2px', flexWrap: 'wrap' },
+  btnBase: { display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'opacity 0.15s' },
+};
+
+export const calendarStyles: Record<string, CSSProperties> = {
+  navContainer: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 16 },
+  navBtn: { padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'background 0.15s' },
+  navLabel: { fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' },
+  todayBtn: { padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontWeight: 500, fontSize: 13, color: 'var(--accent-primary)' },
+  calendarContainer: { overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' },
+  headerRow: { display: 'grid', gridTemplateColumns: '56px repeat(7, 1fr)', minWidth: 700, borderBottom: '2px solid var(--border)', background: '#FAFBFC' },
+  headerCell: { padding: '10px 4px', textAlign: 'center', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' },
+  headerDate: { fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' },
+  timeRow: { display: 'grid', gridTemplateColumns: '56px repeat(7, 1fr)', borderBottom: '1px solid #F1F5F9', minHeight: 52 },
+  timeLabelCell: { padding: '6px 4px', fontSize: 11, color: '#94A3B8', textAlign: 'center', borderRight: '1px solid #F1F5F9', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', fontWeight: 500 },
+  dayCell: { padding: '2px 3px', minHeight: 52 },
+  eventCard: {
+    padding: '3px 6px', marginBottom: 2, borderRadius: 4, cursor: 'pointer',
+    fontSize: 11, fontWeight: 600, lineHeight: 1.4, overflow: 'hidden',
+    whiteSpace: 'nowrap', textOverflow: 'ellipsis', transition: 'opacity 0.15s',
+  },
+  emptyMessage: { textAlign: 'center', color: '#94A3B8', padding: 24, fontSize: 14 },
+};

@@ -1,0 +1,160 @@
+# Full BM Booking stack — run from repo root
+# Required:  cp .env.example .env   (single root .env — see docs/DOCKER-NETWORKING.md)
+# Usage:     docker compose up -d --build   (.env in this folder is loaded automatically)
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: bm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-bm_booking_db}
+    ports:
+      - "${DB_EXTERNAL_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-bm_booking_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bm-network
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: bm-backend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-52400}:5000"
+    volumes:
+      - ./apps/backend:/usr/src/app
+      - ./apps/backend/uploads:/usr/src/app/uploads
+      - backend_node_modules:/usr/src/app/node_modules
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 5000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-bm_booking_db}
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-bm_booking_db}?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      BASE_URL: ${PUBLIC_API_URL:-http://localhost:5000}
+      CHAPA_SECRET_KEY: ${CHAPA_SECRET_KEY:-}
+      OTP_EXPIRY_MINUTES: ${OTP_EXPIRY_MINUTES:-5}
+      AFROMESSAGE_FROM: ${AFROMESSAGE_FROM:-}
+      AFROMESSAGE_SENDER: ${AFROMESSAGE_SENDER:-}
+      AFROMESSAGE_API_KEY: ${AFROMESSAGE_API_KEY:-}
+      TELEBIRR_SERVER_IP: ${TELEBIRR_SERVER_IP:-}
+      BOT_TOKEN: ${BOT_TOKEN:-}
+      CLOUDINARY_URL: ${CLOUDINARY_URL:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - bm-network
+
+  telebirr-h5:
+    build:
+      context: ./apps/backend/telebirr-h5-integration
+      dockerfile: Dockerfile
+    container_name: bm-telebirr-h5
+    restart: unless-stopped
+    ports:
+      - "${TELEBIRR_H5_PORT:-53402}:8080"
+    volumes:
+      - ./apps/backend/telebirr-h5-integration:/app
+      - telebirr_h5_modules:/app/node_modules
+    environment:
+      PORT: "8080"
+      HOST: "0.0.0.0"
+      SERVER_IP: ${TELEBIRR_SERVER_IP:-}
+      SHEGA_BACKEND_URL: ${SHEGA_BACKEND_URL:-http://backend:5000}
+      BM_BACKEND_URL: ${BM_BACKEND_URL:-http://backend:5000}
+    depends_on:
+      - backend
+    networks:
+      - bm-network
+
+  admin-dashboard:
+    build:
+      context: ./apps/admin-dashboard
+      dockerfile: Dockerfile
+    container_name: bm-admin-dashboard
+    restart: unless-stopped
+    ports:
+      - "${ADMIN_PORT:-53400}:3000"
+    environment:
+      VITE_BACKEND_URL: ${PUBLIC_API_URL:-http://localhost:5000}
+      VITE_API_URL: ${VITE_API_URL:-/api}
+      VITE_API_PROXY_TARGET: http://backend:5000
+    depends_on:
+      - backend
+    networks:
+      - bm-network
+
+  reception:
+    build:
+      context: ./apps/reception
+      dockerfile: Dockerfile
+    container_name: bm-reception
+    restart: unless-stopped
+    ports:
+      - "${RECEPTION_PORT:-53401}:3001"
+    environment:
+      VITE_BACKEND_URL: ${PUBLIC_API_URL:-http://localhost:5000}
+      VITE_API_URL: ${VITE_API_URL:-/api}
+      VITE_API_PROXY_TARGET: http://backend:5000
+    depends_on:
+      - backend
+    networks:
+      - bm-network
+
+  tg-mini-app:
+    build:
+      context: ./apps/tg-mini-app
+      dockerfile: Dockerfile
+    container_name: bm-tg-mini-app
+    restart: unless-stopped
+    ports:
+      - "${TG_MINI_APP_PORT:-53403}:8081"
+    volumes:
+      - ./apps/tg-mini-app:/app
+    environment:
+      PORT: "8081"
+      HOST: "0.0.0.0"
+    depends_on:
+      - backend
+    networks:
+      - bm-network
+
+  landing:
+    build:
+      context: ./apps/landing
+      dockerfile: Dockerfile
+    container_name: bm-landing
+    restart: unless-stopped
+    ports:
+      - "${LANDING_PORT:-53404}:3002"
+    environment:
+      NODE_ENV: production
+    networks:
+      - bm-network
+
+networks:
+  bm-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  backend_node_modules:
+  telebirr_h5_modules:
+  admin_node_modules:
+  reception_node_modules:
+

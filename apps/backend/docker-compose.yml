@@ -1,0 +1,84 @@
+# Backend-only stack (db + API + Telebirr H5).
+# For the full platform (admin + reception), use the root compose:
+#   cd .. && docker compose up --build
+
+services:
+  app:
+    build: .
+    container_name: bm-backend
+    ports:
+      - "${PORT:-5000}:5000"
+    volumes:
+      - .:/usr/src/app
+      - ./uploads:/usr/src/app/uploads
+      - /usr/src/app/node_modules
+    env_file:
+      - ./../../.env
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=public
+      - JWT_SECRET=${JWT_SECRET}
+      - BASE_URL=${BASE_URL}
+      - CHAPA_SECRET_KEY=${CHAPA_SECRET_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - bm-network
+
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    env_file:
+      - ./../../.env
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bm-network
+
+  telebirr-h5:
+    build:
+      context: ./telebirr-h5-integration
+      dockerfile: Dockerfile
+    container_name: telebirr-h5
+    restart: unless-stopped
+    ports:
+      - "${TELEBIRR_H5_PORT:-53402}:8080"
+    volumes:
+      - ./telebirr-h5-integration:/app
+      - telebirr_h5_modules:/app/node_modules
+    environment:
+      PORT: "8080"
+      HOST: "0.0.0.0"
+      SERVER_IP: ${TELEBIRR_SERVER_IP:-}
+      SHEGA_BACKEND_URL: ${SHEGA_BACKEND_URL:-http://app:5000}
+      BM_BACKEND_URL: ${BM_BACKEND_URL:-http://app:5000}
+    depends_on:
+      - app
+    networks:
+      - bm-network
+
+networks:
+  bm-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  telebirr_h5_modules:

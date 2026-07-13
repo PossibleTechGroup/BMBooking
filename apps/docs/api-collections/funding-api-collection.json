@@ -1,0 +1,107 @@
+{
+	"info": {
+		"_postman_id": "funding-system-api",
+		"name": "BM Booking Funding System",
+		"description": "Collection for testing Doctor Wallets, Appointments, and Admin Payouts.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Doctor Wallet",
+			"item": [
+				{
+					"name": "Get Wallet Balance",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{doctor_token}}", "type": "text" }
+						],
+						"url": { "raw": "{{base_url}}/api/wallet", "host": ["{{base_url}}"], "path": ["api", "wallet"] }
+					}
+				},
+				{
+					"name": "Update Bank Details (Payment Method)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{doctor_token}}", "type": "text" }
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{ "key": "paymentDetails", "value": "{\"bankName\": \"Commercial Bank of Ethiopia\", \"accountNumber\": \"100012345678\", \"accountName\": \"Dr. Abel Tesfaye\"}", "type": "text" }
+							]
+						},
+						"url": { "raw": "{{base_url}}/api/doctors/profile", "host": ["{{base_url}}"], "path": ["api", "doctors", "profile"] }
+					}
+				},
+				{
+					"name": "Request Withdrawal",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{doctor_token}}", "type": "text" }
+						],
+						"body": {
+							"mode": "json",
+							"json": {
+								"amount": 500,
+								"bankName": "CBE",
+								"accountNumber": "100012345678",
+								"accountName": "Abel Tesfaye"
+							}
+						},
+						"url": { "raw": "{{base_url}}/api/wallet/withdraw", "host": ["{{base_url}}"], "path": ["api", "wallet", "withdraw"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin Payouts",
+			"item": [
+				{
+					"name": "List Withdrawal Requests",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+						],
+						"url": { "raw": "{{base_url}}/api/admin/withdrawals", "host": ["{{base_url}}"], "path": ["api", "admin", "withdrawals"] }
+					}
+				},
+				{
+					"name": "Complete Payout (Upload Receipt)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "receipt", "type": "file", "src": "/path/to/receipt.jpg" },
+								{ "key": "referenceId", "value": "CBE-TXN-998877", "type": "text" }
+							]
+						},
+						"url": { "raw": "{{base_url}}/api/admin/withdrawals/1/complete", "host": ["{{base_url}}"], "path": ["api", "admin", "withdrawals", "1", "complete"] }
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": { "type": "text/javascript", "exec": [""] }
+		},
+		{
+			"listen": "test",
+			"script": { "type": "text/javascript", "exec": [""] }
+		}
+	],
+	"variable": [
+		{ "key": "base_url", "value": "http://localhost:5000" },
+		{ "key": "doctor_token", "value": "" },
+		{ "key": "admin_token", "value": "" }
+	]
+}

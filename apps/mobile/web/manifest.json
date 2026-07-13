@@ -1,0 +1,25 @@
+{
+  "name": "BM Booking",
+  "short_name": "BM Booking",
+  "description": "BM Booking Healthcare App — Book appointments, manage health cards, and access care",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#F9F7F2",
+  "background_color": "#F9F7F2",
+  "categories": ["health", "medical"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "expo": {
+    "name": "BM Booking",
+    "slug": "bm-booking",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "bm-booking",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.bmbooking",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png",
+      "name": "BM Booking",
+      "shortName": "BM Booking",
+      "description": "BM Booking Healthcare App — Book appointments, manage health cards, and access care",
+      "startUrl": "/",
+      "scope": "/",
+      "display": "standalone",
+      "orientation": "portrait",
+      "themeColor": "#F9F7F2",
+      "backgroundColor": "#F9F7F2",
+      "lang": "en",
+      "barStyle": "default",
+      "preferRelatedApplications": false
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      "expo-localization",
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c978ff5c-73e7-4900-9301-bf29287e8e5c"
+      }
+    },
+    "owner": "abelashine"
+  }
+}

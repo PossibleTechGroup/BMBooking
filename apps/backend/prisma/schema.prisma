@@ -1,0 +1,453 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  patient
+  doctor
+  receptionist
+  admin
+}
+
+enum DoctorStatus {
+  Approved
+  PendingReview @map("Pending Review")
+  Rejected
+}
+
+model User {
+  id          Int       @id @default(autoincrement())
+  phone       String?   @unique
+  email       String?   @unique
+  username    String?   @unique
+  password    String?
+  role        Role
+  isLocked    Boolean   @default(false) @map("is_locked")
+  lockedUntil    DateTime? @map("locked_until")
+  expoPushToken  String?   @map("expo_push_token")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  doctorProfile DoctorProfile?
+  patientProfile PatientProfile?
+  receptionistProfile ReceptionistProfile?
+  patientAppointments Appointment[] @relation("PatientAppointments")
+  bookedByAppointments Appointment[] @relation("BookedByAppointments")
+  equipmentBookings   EquipmentBooking[] @relation("EquipmentBookings")
+  notifications       Notification[]
+  reviews             Review[]
+  cards               Card[]
+
+  @@map("users")
+}
+
+model PatientProfile {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique @map("user_id")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName        String?  @map("full_name")
+  dateOfBirth     DateTime? @map("date_of_birth")
+  gender          String?
+  bloodType       String?  @map("blood_type")
+  emergencyContact String? @map("emergency_contact")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("patient_profiles")
+}
+
+model OTP {
+  id        Int      @id @default(autoincrement())
+  phone     String
+  code      String
+  expiresAt DateTime @map("expires_at")
+  verified  Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("otps")
+}
+
+model Hospital {
+  id            Int                 @id @default(autoincrement())
+  name          String              @map("name") @unique
+  address       String?             @map("address")
+  phone         String?             @map("phone")
+  email         String?             @map("email")
+  latitude      Float?
+  longitude     Float?
+  image         String?             @map("image")
+  cardPrice     Decimal             @map("card_price") @db.Decimal(10, 2)
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  doctors       DoctorProfile[]
+  receptionists ReceptionistProfile[]
+  schedules     DoctorSchedule[]
+  equipment     MedicalEquipment[]
+  equipmentBookings EquipmentBooking[]
+  equipmentAnnouncements EquipmentAnnouncement[]
+  cards         Card[]
+  cardTemplates CardTemplate[]
+  serviceFee    ServiceFee?
+
+  @@map("hospitals")
+}
+
+model ReceptionistProfile {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @unique @map("user_id")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hospitalId Int      @map("hospital_id")
+  hospital   Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  reviewedAppointments Appointment[] @relation("ReviewedAppointments")
+  reviewedBookings     EquipmentBooking[] @relation("ReviewedBookings")
+  createdSchedules     DoctorSchedule[] @relation("CreatedSchedules")
+
+  @@map("receptionist_profiles")
+}
+
+model DoctorProfile {
+  id              Int          @id @default(autoincrement())
+  userId          Int          @unique @map("user_id")
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName        String?      @map("full_name")
+  profilePicture  String?      @map("profile_picture")
+  introVideo      String?      @map("intro_video")
+  specialization  String?
+  licenseNumber   String?      @map("license_number")
+  experienceYears Int?         @map("experience_years")
+  bio             String?
+  hospitalId      Int?         @map("hospital_id")
+  hospital        Hospital?    @relation(fields: [hospitalId], references: [id])
+  clinicName      String?      @map("clinic_name")
+  clinicAddress   String?      @map("clinic_address")
+  languages       Json?
+  baseHourlyRate  Decimal?     @map("base_hourly_rate") @db.Decimal(10, 2)
+  specializations Json?        @map("specializations")
+  rating          Float        @default(0.0)
+  totalReviews    Int          @default(0) @map("total_reviews")
+  status          DoctorStatus @default(PendingReview)
+  rejectionReason String?      @map("rejection_reason")
+  
+  paymentMethods  PaymentMethod[]
+  createdAt       DateTime     @default(now()) @map("created_at")
+  
+  wallet          Wallet?
+  appointments    Appointment[]
+  reviews         Review[]
+  schedules       DoctorSchedule[]
+
+  @@map("doctor_profiles")
+}
+
+model DoctorSchedule {
+  id                Int           @id @default(autoincrement())
+  doctorId          Int           @map("doctor_id")
+  doctor            DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  hospitalId        Int?          @map("hospital_id")
+  hospital          Hospital?     @relation(fields: [hospitalId], references: [id])
+  createdById       Int?          @map("created_by_id")
+  createdBy         ReceptionistProfile? @relation("CreatedSchedules", fields: [createdById], references: [id])
+  date              DateTime      @map("date")
+  startTime         DateTime      @map("start_time")
+  endTime           DateTime      @map("end_time")
+  slotDuration      Int           @default(30) @map("slot_duration")
+  maxPatientsPerSlot Int          @default(1) @map("max_patients_per_slot")
+  isActive          Boolean       @default(true) @map("is_active")
+  clinicRoom        String?       @map("clinic_room")
+  notes             String?
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  slots             ScheduleSlot[]
+
+  @@map("doctor_schedules")
+}
+
+model ScheduleSlot {
+  id          Int           @id @default(autoincrement())
+  scheduleId  Int           @map("schedule_id")
+  schedule    DoctorSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  startTime   DateTime      @map("start_time")
+  endTime     DateTime      @map("end_time")
+  maxPatients Int           @default(1) @map("max_patients")
+
+  bookings    Appointment[]
+
+  @@unique([scheduleId, startTime])
+  @@map("schedule_slots")
+}
+
+model PaymentMethod {
+  id              Int           @id @default(autoincrement())
+  doctorId        Int           @map("doctor_id")
+  doctor          DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  type            String        @default("BANK") // BANK, MOBILE_MONEY
+  provider        String        // e.g. CBE, Telebirr
+  accountNumber   String        @map("account_number")
+  accountName     String        @map("account_name")
+  isPrimary       Boolean       @default(false) @map("is_primary")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@map("payment_methods")
+}
+
+enum AppointmentStatus {
+  pending
+  accepted
+  declined
+  completed
+  cancelled
+}
+
+model Appointment {
+  id              Int               @id @default(autoincrement())
+  patientId       Int               @map("patient_id")
+  patient         User              @relation("PatientAppointments", fields: [patientId], references: [id])
+  bookedById      Int?              @map("booked_by_id")
+  bookedBy        User?             @relation("BookedByAppointments", fields: [bookedById], references: [id])
+  doctorId        Int               @map("doctor_id")
+  doctor          DoctorProfile     @relation(fields: [doctorId], references: [id])
+  review          Review?           @relation("AppointmentReview")
+  dateTime        DateTime          @map("appointment_date")
+  status          AppointmentStatus @default(pending)
+  fee             Decimal           @db.Decimal(10, 2)
+  isPaid          Boolean           @default(false) @map("is_paid")
+  reason          String?
+  issueCategory   String?           @map("issue_category")
+  notes           String?
+  attachments     Json?
+  declineReason   String?           @map("decline_reason")
+  reviewedByReceptionistId Int?     @map("reviewed_by_receptionist_id")
+  reviewedByReceptionist ReceptionistProfile? @relation("ReviewedAppointments", fields: [reviewedByReceptionistId], references: [id])
+  reviewedAt      DateTime?         @map("reviewed_at")
+  slotId          Int?              @map("slot_id")
+  slot            ScheduleSlot?     @relation(fields: [slotId], references: [id])
+  paymentMethod   String?           @map("payment_method") // "service_fee" | "full" | "card"
+  confirmationCode String?          @unique @map("confirmation_code")
+  cardId          Int?              @map("card_id")
+  card            Card?             @relation(fields: [cardId], references: [id])
+  duration        Int               @default(30)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  parentAppointment   Appointment?  @relation("FollowUpAppointments", fields: [parentAppointmentId], references: [id])
+  parentAppointmentId Int?          @map("parent_appointment_id")
+  followUps           Appointment[] @relation("FollowUpAppointments")
+  reminderSentAt  DateTime?         @map("reminder_sent_at")
+
+  @@map("appointments")
+}
+
+model Card {
+  id            Int           @id @default(autoincrement())
+  code          String        @unique
+  name          String?
+  hospitalId    Int           @map("hospital_id")
+  hospital      Hospital      @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  patientId     Int           @map("patient_id")
+  patient       User          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  price         Decimal       @db.Decimal(10, 2)
+  isPaid        Boolean       @default(false) @map("is_paid")
+  issuedAt      DateTime      @default(now()) @map("issued_at")
+  expiresAt     DateTime      @map("expires_at")
+  isActive      Boolean       @default(true) @map("is_active")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  appointments  Appointment[]
+
+  @@map("cards")
+}
+
+model CardTemplate {
+  id            Int           @id @default(autoincrement())
+  name          String
+  price         Decimal       @db.Decimal(10, 2)
+  hospitalId    Int           @map("hospital_id")
+  hospital      Hospital      @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  isActive      Boolean       @default(true) @map("is_active")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@map("card_templates")
+}
+
+model ServiceFee {
+  id         Int      @id @default(autoincrement())
+  hospitalId Int      @unique @map("hospital_id")
+  hospital   Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  amount     Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("service_fees")
+}
+
+model Wallet {
+  id              Int           @id @default(autoincrement())
+  doctorId        Int           @unique @map("doctor_id")
+  doctor          DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  balance         Decimal       @default(0.00) @db.Decimal(10, 2)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  
+  transactions    Transaction[]
+  withdrawals     WithdrawalRequest[]
+
+  @@map("wallets")
+}
+
+model Transaction {
+  id              Int      @id @default(autoincrement())
+  walletId        Int      @map("wallet_id")
+  wallet          Wallet   @relation(fields: [walletId], references: [id])
+  amount          Decimal  @db.Decimal(10, 2)
+  type            String   // CREDIT (earnings), DEBIT (withdrawal)
+  description     String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("transactions")
+}
+
+model WithdrawalRequest {
+  id              Int      @id @default(autoincrement())
+  walletId        Int      @map("wallet_id")
+  wallet          Wallet   @relation(fields: [walletId], references: [id])
+  amount          Decimal  @db.Decimal(10, 2)
+  status          String   @default("pending") // pending, approved, completed, rejected
+  bankName        String?  @map("bank_name")
+  accountNumber   String?  @map("account_number")
+  accountName     String?  @map("account_name")
+  receiptImage    String?  @map("receipt_image")
+  referenceId     String?  @map("reference_id")
+  processedAt     DateTime? @map("processed_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("withdrawal_requests")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // APPOINTMENT_BOOKED, APPOINTMENT_ACCEPTED, APPOINTMENT_DECLINED, APPOINTMENT_COMPLETED, SYSTEM
+  title     String
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  metadata  Json?    // Extra data like { appointmentId: 123 }
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("notifications")
+}
+
+model Announcement {
+  id          Int       @id @default(autoincrement())
+  title       String
+  message     String
+  audience    String    // "doctor", "patient", "all"
+  isPublished Boolean   @default(false) @map("is_published")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  publishedAt DateTime? @map("published_at")
+
+  @@map("announcements")
+}
+
+enum EquipmentCategory {
+  MRI
+  CT_SCAN
+  DIALYSIS
+  ULTRASOUND
+  XRAY
+  VENTILATOR
+  ECG
+  MAMMOGRAPHY
+  DEFIBRILLATOR
+  OTHER
+}
+
+enum EquipmentBookingStatus {
+  pending
+  confirmed
+  declined
+  completed
+  cancelled
+}
+
+model MedicalEquipment {
+  id            Int               @id @default(autoincrement())
+  name          String
+  category      EquipmentCategory
+  price  Decimal?          @db.Decimal(10, 2) @map("price")
+  hospitalId    Int               @map("hospital_id")
+  hospital      Hospital          @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  operatingHours Json?            @map("operating_hours")
+  duration      Int               @default(30)
+  isOperational Boolean           @default(true) @map("is_operational")
+  description   String?
+  photo         String?
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  bookings      EquipmentBooking[]
+  announcements EquipmentAnnouncement[]
+
+  @@map("medical_equipment")
+}
+
+model EquipmentAnnouncement {
+  id            Int             @id @default(autoincrement())
+  title         String
+  message       String
+  category      EquipmentCategory
+  hospitalId    Int?            @map("hospital_id")
+  hospital      Hospital?       @relation(fields: [hospitalId], references: [id])
+  equipmentId   Int?            @map("equipment_id")
+  equipment     MedicalEquipment? @relation(fields: [equipmentId], references: [id])
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  @@map("equipment_announcements")
+}
+
+model EquipmentBooking {
+  id              Int               @id @default(autoincrement())
+  patientId       Int               @map("patient_id")
+  patient         User              @relation("EquipmentBookings", fields: [patientId], references: [id])
+  equipmentId     Int               @map("equipment_id")
+  equipment       MedicalEquipment  @relation(fields: [equipmentId], references: [id])
+  hospitalId      Int               @map("hospital_id")
+  hospital        Hospital          @relation(fields: [hospitalId], references: [id])
+  dateTime        DateTime          @map("booking_date")
+  status          EquipmentBookingStatus @default(pending)
+  fee             Decimal?          @db.Decimal(10, 2)
+  notes           String?
+  confirmationCode String?          @unique @map("confirmation_code")
+  declineReason   String?           @map("decline_reason")
+  reviewedByReceptionistId Int?     @map("reviewed_by_receptionist_id")
+  reviewedByReceptionist ReceptionistProfile? @relation("ReviewedBookings", fields: [reviewedByReceptionistId], references: [id])
+  reviewedAt      DateTime?         @map("reviewed_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  @@map("equipment_bookings")
+}
+
+model Review {
+  id              Int           @id @default(autoincrement())
+  patientId       Int           @map("patient_id")
+  patient         User          @relation(fields: [patientId], references: [id])
+  doctorId        Int           @map("doctor_id")
+  doctor          DoctorProfile @relation(fields: [doctorId], references: [id])
+  appointmentId   Int           @unique @map("appointment_id")
+  appointment     Appointment   @relation("AppointmentReview", fields: [appointmentId], references: [id], onDelete: Cascade)
+  rating          Int           // 1 to 5
+  comment         String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@map("reviews")
+}

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking wallet — Telebirr prefund</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a5f8a 0%, #134a6e 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: 50px auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: #1a5f8a;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 { font-size: 24px; margin-bottom: 5px; }
+        .header p { opacity: 0.9; font-size: 14px; }
+        .content { padding: 30px; }
+        .parking-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .parking-info p { margin: 5px 0; font-size: 14px; }
+        .form-group { margin-bottom: 20px; }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        input[type="number"],
+        input[type="password"],
+        input.jwt-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        input:focus { outline: none; border-color: #1a5f8a; }
+        .btn-pay {
+            width: 100%;
+            background: #1a5f8a;
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .btn-pay:hover { background: #154a6e; }
+        .btn-pay:disabled { background: #ccc; cursor: not-allowed; }
+        .message {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        .message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .message.info { background: #cce7ff; color: #004085; border: 1px solid #99d3ff; }
+        .quick-amounts {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .quick-amount {
+            padding: 12px;
+            background: #f8f9fa;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .quick-amount:hover { background: #e9ecef; border-color: #1a5f8a; }
+        .quick-amount.selected { background: #1a5f8a; color: white; border-color: #1a5f8a; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Wallet prefund</h1>
+            <p>Add balance to this parking wallet via Telebirr</p>
+            <p id="openHint" style="font-size:12px;margin-top:10px;opacity:0.95;"></p>
+        </div>
+
+        <div class="content">
+            <div class="parking-info" id="parkingInfo">
+                <p><strong>Parking ID:</strong> <span id="parkingIdDisplay">Loading...</span></p>
+                <p><strong>Status:</strong> <span id="statusDisplay">Checking...</span></p>
+            </div>
+
+            <div class="form-group">
+                <label>Quick select</label>
+                <div class="quick-amounts">
+                    <div class="quick-amount" onclick="selectAmount(50, this)">50 ETB</div>
+                    <div class="quick-amount" onclick="selectAmount(100, this)">100 ETB</div>
+                    <div class="quick-amount" onclick="selectAmount(200, this)">200 ETB</div>
+                    <div class="quick-amount" onclick="selectAmount(500, this)">500 ETB</div>
+                    <div class="quick-amount" onclick="selectAmount(1000, this)">1000 ETB</div>
+                    <div class="quick-amount" onclick="selectAmount(2000, this)">2000 ETB</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="amount">Or enter amount (ETB)</label>
+                <input type="number" id="amount" placeholder="Enter amount" value="50" min="1" step="1">
+            </div>
+
+            <div class="form-group">
+                <label for="jwtInput">Parking API token (JWT)</label>
+                <input type="password" id="jwtInput" class="jwt-input" placeholder="Paste Bearer token (not sent to Telebirr — only to gelaglepark.com)" autocomplete="off">
+                <small style="color:#555;display:block;margin-top:6px;">Or open this page with <code>?token=…</code> in the URL. Same token as your parking app / Swagger Authorize.</small>
+            </div>
+
+            <button class="btn-pay" id="payBtn" type="button" onclick="initiatePayment()">Pay with Telebirr</button>
+
+            <div class="message" id="message"></div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Public host (matches telebirr-h5-integration SERVER_IP default): http://157.180.114.86
+         * Use port 80 (http://157.180.114.86/) if you reverse-proxy, or :8080 if Node listens there.
+         * Default API path: /api/parking/... (proxy). Override: ?api_base=...
+         * Parking prefund API requires JWT (JwtAuthGuard). Telebirr never sees this token.
+         * Optional ?token= — also paste into the field below; value is kept in sessionStorage for this browser.
+         */
+        var GATEWAY_HOST = 'http://157.180.114.86';
+        var JWT_STORAGE_KEY = 'parking_prefund_jwt';
+        const urlParams = new URLSearchParams(window.location.search);
+        const parkingId = urlParams.get('parkingId');
+        const token = urlParams.get('token');
+        const DEFAULT_TEST_PARKING_ID = '885b4cb6-f2aa-4d51-8a2c-fd558c547c5b';
+        const effectiveParkingId = parkingId || DEFAULT_TEST_PARKING_ID;
+        const isFileProtocol = window.location.protocol === 'file:';
+
+        function prefundUrl() {
+            const root = (urlParams.get('api_base') || '/api/parking').replace(/\/$/, '');
+            const path = '/wallets/parking/' + encodeURIComponent(DEFAULT_TEST_PARKING_ID) + '/prefund';
+            return root + path;
+        }
+
+        document.getElementById('parkingIdDisplay').textContent =
+            effectiveParkingId.length > 12 ? effectiveParkingId.substring(0, 8) + '…' : effectiveParkingId;
+
+        (function initJwtField() {
+            var input = document.getElementById('jwtInput');
+            var fromUrl = token ? String(token).trim() : '';
+            var fromStore = '';
+            try {
+                fromStore = sessionStorage.getItem(JWT_STORAGE_KEY) || '';
+            } catch (e) {}
+            input.value = fromUrl || fromStore;
+        })();
+
+        function getJwt() {
+            var raw = (document.getElementById('jwtInput').value || '').trim();
+            if (!raw && token) raw = String(token).trim();
+            if (/^bearer\s+/i.test(raw)) raw = raw.replace(/^bearer\s+/i, '');
+            return raw;
+        }
+
+        (function hint() {
+            var el = document.getElementById('openHint');
+            if (isFileProtocol) {
+                el.innerHTML =
+                    'Do not double-click this file. Open in the browser: <strong><a href="' +
+                    GATEWAY_HOST +
+                    '/" style="color:#fff;">' +
+                    GATEWAY_HOST +
+                    '/</a></strong> or <strong><a href="' +
+                    GATEWAY_HOST +
+                    ':8080/" style="color:#fff;">' +
+                    GATEWAY_HOST +
+                    ':8080/</a></strong> → click <strong>Parking wallet prefund</strong>, or open <a href="' +
+                    GATEWAY_HOST +
+                    '/parking-wallet-prefund" style="color:#fff;">prefund (port 80)</a> · <a href="' +
+                    GATEWAY_HOST +
+                    ':8080/parking-wallet-prefund" style="color:#fff;">prefund (port 8080)</a>.';
+            } else {
+                el.innerHTML =
+                    '<a href="/" style="color:#fff;text-decoration:underline;">Home</a> · served from ' +
+                    window.location.origin +
+                    ' (prefund uses <code style="background:rgba(0,0,0,0.2);padding:2px 6px;border-radius:4px;">/api/parking</code> proxy).';
+            }
+        })();
+
+        if (isFileProtocol) {
+            document.getElementById('statusDisplay').textContent = 'Use http(s), not file';
+            document.getElementById('payBtn').disabled = true;
+            showMessage(
+                'error',
+                'You opened this as a local file (file://). Open the gateway in the browser instead: ' +
+                    GATEWAY_HOST +
+                    '/ or ' +
+                    GATEWAY_HOST +
+                    ':8080/ then click "Parking wallet prefund".'
+            );
+        } else {
+            document.getElementById('statusDisplay').textContent = getJwt()
+                ? 'Ready (JWT set)'
+                : 'Set JWT below or ?token=';
+        }
+
+        function selectAmount(amount, el) {
+            document.querySelectorAll('.quick-amount').forEach(function (node) {
+                node.classList.remove('selected');
+            });
+            if (el) el.classList.add('selected');
+            document.getElementById('amount').value = amount;
+        }
+
+        async function initiatePayment() {
+            if (isFileProtocol) {
+                showMessage('error', 'Cannot call the API from a file:// page. Open this URL from your gateway over http(s).');
+                return;
+            }
+
+            const amount = parseFloat(document.getElementById('amount').value, 10);
+            const payBtn = document.getElementById('payBtn');
+
+            if (!amount || amount < 1) {
+                showMessage('error', 'Enter an amount of at least 1 ETB');
+                return;
+            }
+
+            var jwt = getJwt();
+            if (!jwt) {
+                showMessage(
+                    'error',
+                    '401 = parking API needs a JWT (Telebirr does not). Paste your Bearer token in the field above, or open this page with ?token=YOUR_JWT'
+                );
+                return;
+            }
+
+            try {
+                try {
+                    sessionStorage.setItem(JWT_STORAGE_KEY, jwt);
+                } catch (e) {}
+
+                payBtn.disabled = true;
+                payBtn.textContent = 'Creating payment…';
+                showMessage('info', 'Creating Telebirr order…');
+
+                const headers = {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + jwt,
+                };
+
+                const response = await fetch(prefundUrl(), {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ amount: amount }),
+                });
+
+                const payload = await response.json().catch(function () { return null; });
+
+                if (!response.ok) {
+                    var msg =
+                        (payload && (payload.message || payload.error)) ||
+                        'Failed to start prefund';
+                    if (response.status === 401) {
+                        msg =
+                            (payload && payload.message) ||
+                            'Unauthorized — JWT expired or wrong role. Paste a fresh token from Swagger (Authorize) or your app.';
+                    }
+                    throw new Error(msg);
+                }
+
+                const paymentUrl =
+                    payload &&
+                    payload.data &&
+                    payload.data.paymentUrl;
+
+                if (!paymentUrl) {
+                    throw new Error('No paymentUrl in response');
+                }
+
+                showMessage('success', 'Opening Telebirr…');
+                setTimeout(function () {
+                    window.location.href = paymentUrl;
+                }, 600);
+            } catch (error) {
+                console.error(error);
+                var msg = String(error.message || error);
+                if (msg.indexOf('Failed to fetch') !== -1) {
+                    msg +=
+                        ' Often CORS or network: open this page from the same host as the API, or use ?api_base=/api/parking on the gateway.';
+                }
+                showMessage('error', msg);
+                payBtn.disabled = false;
+                payBtn.textContent = 'Pay with Telebirr';
+            }
+        }
+
+        function showMessage(type, text) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = 'message ' + type;
+            messageDiv.textContent = text;
+            messageDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

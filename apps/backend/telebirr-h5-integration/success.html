@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Successful — BM Booking</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F9F7F2;
+      --surface: #FFFFFF;
+      --accent: #1A1A1A;
+      --text-primary: #101828;
+      --text-secondary: #667085;
+      --success: #027A48;
+      --border: #E4E7EC;
+      --font: 'Inter', system-ui, sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      max-width: 400px;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px 28px;
+      text-align: center;
+    }
+    .icon {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 24px;
+      border-radius: 50%;
+      background: rgba(2, 122, 72, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon svg {
+      width: 36px;
+      height: 36px;
+      stroke: var(--success);
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+    .btn {
+      display: inline-block;
+      padding: 14px 28px;
+      font-family: var(--font);
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .meta {
+      margin-top: 20px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">
+      <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h1>Payment Successful</h1>
+    <p>Your Telebirr payment was completed. You can return to BM Booking App.</p>
+    <a href="bmbooking://payment-success" class="btn" id="returnBtn">Return to BM Booking App</a>
+    <p class="meta" id="orderMeta"></p>
+  </div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const order = params.get('out_trade_no') || params.get('merch_order_id') || params.get('trade_no');
+    const status = params.get('trade_status') || params.get('trade_status_desc');
+    if (order || status) {
+      document.getElementById('orderMeta').textContent =
+        [order && 'Order: ' + order, status && 'Status: ' + status].filter(Boolean).join(' · ');
+    }
+    setTimeout(() => {
+      window.location.href = 'bmbooking://payment-success' +
+        (window.location.search ? window.location.search.replace('?', '&') : '');
+    }, 2500);
+  </script>
+</body>
+</html>

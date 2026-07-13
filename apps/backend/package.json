@@ -1,0 +1,44 @@
+{
+  "name": "bm-backend",
+  "version": "1.0.0",
+  "description": "Backend for BM Booking",
+  "main": "src/server.js",
+  "scripts": {
+    "docker:up": "docker compose -f ../docker-compose.yml up -d --build backend db telebirr-h5",
+    "docker:down": "docker compose -f ../docker-compose.yml stop backend telebirr-h5",
+    "docker:logs": "docker compose -f ../docker-compose.yml logs -f backend",
+    "docker:restart": "docker compose -f ../docker-compose.yml restart backend",
+    "docker:ps": "docker compose -f ../docker-compose.yml ps backend db telebirr-h5",
+    "docker:push": "docker compose -f ../docker-compose.yml exec backend npx prisma db push",
+    "docker:seed": "docker compose -f ../docker-compose.yml exec backend npx prisma db seed",
+    "docker:up:local": "docker compose up -d --build",
+    "docker:down:local": "docker compose down",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.13.0",
+    "axios": "^1.16.1",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.10.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "marked": "^18.0.5",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "node-cron": "^4.2.1",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0",
+    "prisma": "^5.22.0"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  }
+}

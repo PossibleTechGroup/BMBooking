@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Endpoint Payment URL</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .section {
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .url-box {
+            background: white;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        button {
+            padding: 12px 24px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            border: none;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Endpoint Payment URL</h1>
+    
+    <div class="section">
+        <h2>Step 1: Get Payment URL from Endpoint</h2>
+        <input type="number" id="amount" placeholder="Enter amount" value="50" style="padding: 8px; font-size: 16px;">
+        <button onclick="getPaymentUrl()" class="btn-primary">Get Payment URL from API</button>
+        <div id="apiResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 2: Payment URL</h2>
+        <div class="url-box" id="paymentUrlDisplay">No URL yet. Click above to get URL from API.</div>
+    </div>
+
+    <div class="section">
+        <h2>Step 3: Test Opening Methods</h2>
+        <p><strong>❌ WRONG WAY (Will FAIL):</strong></p>
+        <button onclick="openDirectly()" class="btn-danger">Direct Navigate (FAILS)</button>
+        
+        <p style="margin-top: 20px;"><strong>✅ CORRECT WAY (Will WORK):</strong></p>
+        <button onclick="openWithWindowOpen()" class="btn-success">window.open() (WORKS)</button>
+        <button onclick="openWithAnchorTag()" class="btn-success">Anchor Tag (WORKS)</button>
+        
+        <div id="testResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>📱 Flutter Code (Use This)</h2>
+        <pre style="background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 4px; overflow-x: auto;">
+// ✅ CORRECT - Same as window.open()
+await launchUrl(
+  Uri.parse(paymentUrl),
+  mode: LaunchMode.externalApplication,
+);
+
+// ❌ WRONG - Same as direct navigate
+WebView(initialUrl: paymentUrl) // FAILS
+        </pre>
+    </div>
+
+    <script>
+        let currentPaymentUrl = null;
+
+        async function getPaymentUrl() {
+            const apiResult = document.getElementById('apiResult');
+            const paymentUrlDisplay = document.getElementById('paymentUrlDisplay');
+            const amount = document.getElementById('amount').value;
+            
+            try {
+                apiResult.innerHTML = '<div class="result">⏳ Calling API...</div>';
+                
+                // Step 1: Login
+                const loginResp = await fetch('http://157.180.114.86:3000/api/v1/auth/driver/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phoneNumber: '+251920058520' })
+                });
+                const loginData = await loginResp.json();
+                
+                // Step 2: Verify OTP
+                const verifyResp = await fetch('http://157.180.114.86:3000/api/v1/auth/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phoneNumber: '+251920058520',
+                        otp: loginData.testOtp,
+                        userType: 'driver'
+                    })
+                });
+                const verifyData = await verifyResp.json();
+                const token = verifyData.access_token;
+                
+                // Step 3: Create top-up
+                const topupResp = await fetch('http://157.180.114.86:3000/api/v1/drivers/topup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ amount: parseFloat(amount) })
+                });
+                const topupData = await topupResp.json();
+                
+                currentPaymentUrl = topupData.paymentUrl;
+                paymentUrlDisplay.textContent = currentPaymentUrl;
+                
+                apiResult.innerHTML = `
+                    <div class="result success">
+                        ✅ Payment URL received!<br>
+                        Order: ${topupData.orderReference}
+                    </div>
+                `;
+                
+            } catch (error) {
+                apiResult.innerHTML = `<div class="result error">❌ Error: ${error.message}</div>`;
+                console.error(error);
+            }
+        }
+
+        function openDirectly() {
+            if (!currentPaymentUrl) {
+                alert('Get payment URL first!');
+                return;
+            }
+            document.getElementById('testResult').innerHTML = '<div class="result error">❌ Attempting direct navigate... (This will FAIL)</div>';
+            setTimeout(() => {
+                window.location.href = currentPaymentUrl;
+            }, 1000);
+        }
+
+        function openWithWindowOpen() {
+            if (!currentPaymentUrl) {
+                alert('Get payment URL first!');
+                return;
+            }
+            document.getElementById('testResult').innerHTML = '<div class="result success">✅ Opening with window.open() ... (This WORKS!)</div>';
+            setTimeout(() => {
+                window.open(currentPaymentUrl, '_blank');
+            }, 1000);
+        }
+
+        function openWithAnchorTag() {
+            if (!currentPaymentUrl) {
+                alert('Get payment URL first!');
+                return;
+            }
+            document.getElementById('testResult').innerHTML = '<div class="result success">✅ Opening with anchor tag... (This WORKS!)</div>';
+            setTimeout(() => {
+                const a = document.createElement('a');
+                a.href = currentPaymentUrl;
+                a.target = '_blank';
+                a.click();
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
+

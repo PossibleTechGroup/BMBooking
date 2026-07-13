@@ -1,0 +1,66 @@
+.vscode
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+web-build/
+
+# Expo
+.expo/
+expo-env.d.ts
+app-example
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# Environment Variables
+.env
+.env.local
+.env*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.pem
+
+# TypeScript
+*.tsbuildinfo
+
+# Prisma migrations
+backend/prisma/migrations/
+
+# Uploads
+backend/uploads/receipts/*
+!backend/uploads/receipts/.gitkeep
+
+# Generated native folders
+/ios
+/android
+
+# Telebirr
+backend/telebirr-h5-integration/.env
+backend/telebirr-h5-integration/secrets.env
+backend/telebirr-h5-integration/telebirr.credentials
+backend/telebirr-h5-integration/.env.docker
+backend/telebirr-h5-integration.tar.gz
+
+package-lock.json
+
+.env.docker.bak

@@ -1,0 +1,26 @@
+{
+  "name": "bm-booking-monorepo",
+  "private": true,
+  "scripts": {
+    "compose": "docker compose -f docker-compose.yml",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:stop": "docker compose stop",
+    "docker:logs": "docker compose logs -f",
+    "docker:ps": "docker compose ps",
+    "docker:restart": "docker compose restart",
+    "docker:push": "docker compose exec backend npx prisma db push",
+    "docker:seed": "docker compose exec backend npx prisma db seed",
+    "docker:bootstrap": "bash scripts/dev.sh",
+    "dev:mobile": "cd apps/mobile && npm run dev",
+    "build:android": "cd apps/mobile && npm run build:android",
+    "build:ios": "cd apps/mobile && npm run build:ios",
+    "build:all": "cd apps/mobile && npm run build:all",
+    "setup": "cp -n .env.example .env 2>/dev/null || true; bash scripts/setup.sh",
+    "install:all": "npm run install:backend && npm run install:admin && npm run install:reception && npm run install:mobile",
+    "install:admin": "cd apps/admin-dashboard && npm install",
+    "install:reception": "cd apps/reception && npm install",
+    "install:mobile": "cd apps/mobile && npm install",
+    "install:backend": "cd apps/backend && npm install"
+  }
+}

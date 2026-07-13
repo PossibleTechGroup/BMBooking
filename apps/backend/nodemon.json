@@ -1,0 +1,7 @@
+{
+  "watch": ["src", ".env", "node_modules/.prisma/client"],
+  "ext": "js,json",
+  "ignore": ["docs", "uploads"],
+  "legacyWatch": true,
+  "interval": 1000
+}

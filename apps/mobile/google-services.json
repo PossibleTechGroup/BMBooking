@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1030108054995",
+    "project_id": "bm-booking-mobile",
+    "storage_bucket": "bm-booking-mobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1030108054995:android:e4f6639f63bdfba7d51b26",
+        "android_client_info": {
+          "package_name": "com.bmbooking"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB0QIswSs-P-969OH9FY6bFttPvNYgOKQk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
