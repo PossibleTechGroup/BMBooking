@@ -1,6 +1,7 @@
 (function () {
   TG.init();
 
+  Router.register('onboarding', (el) => OnboardingView.render(el));
   Router.register('login', (el) => LoginView.render(el));
   Router.register('setup', (el) => SetupView.render(el));
   Router.register('home', (el) => HomeView.render(el));
@@ -11,7 +12,7 @@
   Router.register('profile', (el) => ProfileView.render(el));
 
   Router.addBeforeHook((name) => {
-    if (name === 'login') return true;
+    if (name === 'login' || name === 'onboarding') return true;
     if (!Store.getToken() && name !== 'login') {
       Router.navigate('login');
       return false;
@@ -21,6 +22,7 @@
 
   const token = Store.getToken();
   const user = Store.getUser();
+  const onboarded = localStorage.getItem('bm_onboarded');
 
   if (token && user) {
     if (user.patientProfile) {
@@ -37,6 +39,8 @@
         })
         .catch(() => Router.navigate('setup'));
     }
+  } else if (!onboarded) {
+    Router.navigate('onboarding');
   } else {
     Router.navigate('login');
   }

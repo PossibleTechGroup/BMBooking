@@ -5,6 +5,11 @@ const SetupView = (() => {
     return div.innerHTML;
   }
 
+  const ICON = {
+    arrowLeft: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>',
+    calendar: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>',
+  };
+
   let state = {
     fullName: '',
     dateOfBirth: '',
@@ -13,14 +18,59 @@ const SetupView = (() => {
     emergencyPhone: '',
     loading: false,
     error: null,
+    isEdit: false,
   };
 
-  function render(container) {
+  function resetState() {
+    state = {
+      fullName: '',
+      dateOfBirth: '',
+      gender: 'Male',
+      bloodType: '',
+      emergencyPhone: '',
+      loading: false,
+      error: null,
+      isEdit: false,
+    };
+  }
+
+  async function render(container, params) {
     TG.hideMainButton();
 
+    const isEdit = params?.isEdit || false;
+
+    if (isEdit && !state.isEdit) {
+      resetState();
+      state.isEdit = true;
+      try {
+        const profile = await API.getPatientProfile();
+        if (profile) {
+          state.fullName = profile.fullName || '';
+          state.dateOfBirth = profile.dateOfBirth || '';
+          state.gender = profile.gender || 'Male';
+          state.bloodType = profile.bloodType || '';
+          if (profile.emergencyContact) {
+            state.emergencyPhone = profile.emergencyContact.replace('+251', '');
+          }
+        }
+      } catch (e) {}
+    } else if (!isEdit) {
+      resetState();
+    }
+
+    const title = state.isEdit ? 'Edit Profile' : 'Complete Profile';
+    const subtitle = state.isEdit ? 'Update your information' : 'Tell us a bit about yourself';
+
     container.innerHTML = `
-      <div class="header"><h1>Complete Profile</h1></div>
-      <p class="text-hint mb-16">Tell us a bit about yourself</p>
+      <div class="view-header">
+        <button class="view-header-back" id="setup-back">
+          ${ICON.arrowLeft}
+          <span>Back</span>
+        </button>
+        <h1 class="view-header-title">${title}</h1>
+        <div class="view-header-spacer"></div>
+      </div>
+      <p class="text-hint mb-16">${subtitle}</p>
       <div id="setup-error"></div>
 
       <div class="input-group">
@@ -35,11 +85,7 @@ const SetupView = (() => {
         <div class="input-field ${state.error && !state.dateOfBirth ? 'error' : ''}">
           <input type="date" id="setup-dob" value="${state.dateOfBirth}" max="${new Date().toISOString().split('T')[0]}" />
         </div>
-        ${state.dateOfBirth && TimeUtils.getCalendarFormat() === 'ethiopian' ? `
-        <div style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:12px;color:var(--hint-color,#888);">
-          <span>📅</span>
-          <span>${TimeUtils.formatEthiopianCalendarDate(new Date(state.dateOfBirth + 'T12:00:00'), 'medium')}</span>
-        </div>` : ''}
+        <div id="eth-calendar-display" style="display:none"></div>
       </div>
 
       <div class="input-group">
@@ -69,13 +115,19 @@ const SetupView = (() => {
       </div>
 
       <button class="btn btn-primary mt-8" id="setup-save-btn">
-        ${state.loading ? 'Saving...' : 'Save & Continue'}
+        ${state.loading ? 'Saving...' : (state.isEdit ? 'Save Changes' : 'Save & Continue')}
       </button>
     `;
 
     if (state.error) {
       container.querySelector('#setup-error').innerHTML =
         `<div class="alert alert-error">${state.error}</div>`;
+    }
+
+    container.querySelector('#setup-back').addEventListener('click', () => Router.goBack());
+
+    if (state.dateOfBirth && TimeUtils.getCalendarFormat() === 'ethiopian') {
+      updateEthDisplay(container);
     }
 
     container.querySelector('#setup-name').addEventListener('input', (e) => {
@@ -86,7 +138,7 @@ const SetupView = (() => {
     container.querySelector('#setup-dob').addEventListener('change', (e) => {
       state.dateOfBirth = e.target.value;
       state.error = null;
-      render(container);
+      updateEthDisplay(container);
     });
 
     container.querySelectorAll('[data-gender]').forEach(el => {
@@ -114,18 +166,33 @@ const SetupView = (() => {
     container.querySelector('#setup-save-btn').addEventListener('click', handleSave);
   }
 
+  function updateEthDisplay(container) {
+    const ethDisplay = container.querySelector('#eth-calendar-display');
+    if (!ethDisplay) return;
+    if (state.dateOfBirth && TimeUtils.getCalendarFormat() === 'ethiopian') {
+      ethDisplay.innerHTML = `
+        <div style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:12px;color:var(--hint-color,#888);">
+          ${ICON.calendar}
+          <span>${TimeUtils.formatEthiopianCalendarDate(new Date(state.dateOfBirth + 'T12:00:00'), 'medium')}</span>
+        </div>`;
+      ethDisplay.style.display = 'block';
+    } else {
+      ethDisplay.style.display = 'none';
+    }
+  }
+
   async function handleSave() {
     if (!state.fullName.trim() || !state.dateOfBirth) {
       state.error = 'Full name and date of birth are required';
       const container = document.getElementById('screen-setup');
-      render(container);
+      render(container, { isEdit: state.isEdit });
       return;
     }
 
     state.loading = true;
     state.error = null;
     const container = document.getElementById('screen-setup');
-    render(container);
+    render(container, { isEdit: state.isEdit });
 
     try {
       const data = {
@@ -143,16 +210,12 @@ const SetupView = (() => {
         Store.setUser(user);
       }
       state.loading = false;
-      try {
-        await Router.navigate('home');
-      } catch (e) {
-        state.error = e.message;
-        render(container);
-      }
+      state.isEdit = false;
+      Router.goBack();
     } catch (err) {
       state.error = err.message;
       state.loading = false;
-      render(container);
+      render(container, { isEdit: state.isEdit });
     }
   }
 

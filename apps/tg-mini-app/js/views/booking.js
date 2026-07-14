@@ -137,7 +137,7 @@ const BookingView = (() => {
           </div>
           ${state.otherPatient.dateOfBirth && TimeUtils.getCalendarFormat() === 'ethiopian' ? `
           <div id="other-dob-eth-hint" style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:12px;color:var(--hint-color,#888);">
-            <span>📅</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
             <span>${TimeUtils.formatEthiopianCalendarDate(new Date(state.otherPatient.dateOfBirth + 'T12:00:00'), 'medium')}</span>
           </div>` : '<div id="other-dob-eth-hint"></div>'}
         </div>
@@ -170,7 +170,7 @@ const BookingView = (() => {
         const hintEl = container.querySelector('#other-dob-eth-hint');
         if (hintEl && state.otherPatient.dateOfBirth && TimeUtils.getCalendarFormat() === 'ethiopian') {
           const ethStr = TimeUtils.formatEthiopianCalendarDate(new Date(state.otherPatient.dateOfBirth + 'T12:00:00'), 'medium');
-          hintEl.innerHTML = `<span>📅</span><span>${ethStr}</span>`;
+          hintEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg><span>${ethStr}</span>`;
           hintEl.style.display = 'flex';
         } else if (hintEl) {
           hintEl.innerHTML = '';
@@ -281,7 +281,7 @@ const BookingView = (() => {
                   <span><strong>${s.date ? TimeUtils.formatDate(new Date(s.date)) : ''}</strong></span>
                   <span class="text-hint">${s.startTime?.slice(0,5) || ''} - ${s.endTime?.slice(0,5) || ''}</span>
                 </div>
-                ${s.clinicRoom ? `<div class="text-hint mt-8">📍 Room ${s.clinicRoom}</div>` : ''}
+                ${s.clinicRoom ? `<div class="text-hint mt-8" style="display:flex;align-items:center;gap:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Room ${s.clinicRoom}</div>` : ''}
               </div>
             `).join('')}
           <button class="btn btn-primary mt-16" id="datetime-next" ${!state.selectedSchedule ? 'disabled' : ''}>
@@ -461,7 +461,7 @@ const BookingView = (() => {
         </div>
         <div class="card-row">
           <span class="text-hint">Payment</span>
-          <span>${state.paymentDone ? '✅ Paid' : '❌ Not paid'}</span>
+          <span>${state.paymentDone ? '<span style="display:inline-flex;align-items:center;gap:4px;color:#027A48"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#027A48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Paid</span>' : '<span style="display:inline-flex;align-items:center;gap:4px;color:#E53935"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E53935" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Not paid</span>'}</span>
         </div>
         <div class="card-row">
           <span class="text-hint">Amount</span>

@@ -65,7 +65,8 @@ const API = (() => {
 
     // ─── Patient ───
     async getPatientProfile() {
-      return request('GET', '/api/patients/profile');
+      const res = await request('GET', '/api/patients/profile');
+      return res.data;
     },
 
     async submitPatientProfile(data) {

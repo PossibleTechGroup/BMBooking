@@ -2,6 +2,7 @@ const Router = (() => {
   let currentRoute = null;
   let routes = {};
   let beforeHooks = [];
+  let history = [];
 
   function register(name, renderFn) {
     routes[name] = renderFn;
@@ -18,6 +19,10 @@ const Router = (() => {
     }
 
     TG.hideMainButton();
+
+    if (currentRoute && currentRoute !== name) {
+      history.push(currentRoute);
+    }
 
     const app = document.getElementById('app');
     document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
@@ -55,7 +60,12 @@ const Router = (() => {
   }
 
   function goBack() {
-    window.history.back();
+    if (history.length > 0) {
+      const prev = history.pop();
+      navigate(prev);
+    } else {
+      navigate('home');
+    }
   }
 
   return {

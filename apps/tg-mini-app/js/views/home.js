@@ -2,39 +2,53 @@ const HomeView = (() => {
   let doctors = [];
   let loading = true;
 
+  const ICON = {
+    user: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    stethoscope: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>',
+    calendar: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>',
+    plus: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    star: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
+    clock: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    card: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
+    chevronRight: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
+  };
+
   function render(container) {
     const user = Store.getUser();
     TG.hideMainButton();
 
+    const firstName = user?.fullName ? user.fullName.split(' ')[0] : 'there';
+
     container.innerHTML = `
-      <div class="header">
-        <h1>BM Booking</h1>
-        <div style="font-size:14px;color:var(--hint);cursor:pointer" id="home-profile-btn">👤</div>
+      <div class="view-header">
+        <div></div>
+        <h1 class="view-header-title">BM Booking</h1>
+        <button class="view-header-icon" id="home-profile-btn">
+          ${ICON.user}
+        </button>
       </div>
-      <p style="font-size:18px;font-weight:600;margin-bottom:16px">
-        Welcome${user?.fullName ? ', ' + user.fullName.split(' ')[0] : ''} 👋
-      </p>
+      <p class="home-greeting">Welcome back, <strong>${firstName}</strong></p>
 
       <div class="quick-actions">
         <div class="quick-action" id="action-doctors">
-          <div class="icon">👨‍⚕️</div>
+          <div class="quick-action-icon">${ICON.stethoscope}</div>
           <div class="label">Find Doctors</div>
         </div>
         <div class="quick-action" id="action-appointments">
-          <div class="icon">📅</div>
+          <div class="quick-action-icon">${ICON.calendar}</div>
           <div class="label">Appointments</div>
         </div>
         <div class="quick-action" id="action-profile">
-          <div class="icon">👤</div>
+          <div class="quick-action-icon">${ICON.user}</div>
           <div class="label">My Profile</div>
         </div>
         <div class="quick-action" id="action-new-booking">
-          <div class="icon">➕</div>
+          <div class="quick-action-icon">${ICON.plus}</div>
           <div class="label">New Booking</div>
         </div>
       </div>
 
-      <h3 style="font-size:16px;font-weight:600;margin:16px 0 12px">Featured Doctors</h3>
+      <h3 class="section-title">Featured Doctors</h3>
       <div id="featured-doctors">
         <div class="loading"><div class="spinner"></div></div>
       </div>
@@ -56,26 +70,35 @@ const HomeView = (() => {
       const el = container.querySelector('#featured-doctors');
 
       if (featured.length === 0) {
-        el.innerHTML = '<div class="empty-state"><div class="icon">👨‍⚕️</div><h3>No doctors yet</h3><p>Check back later</p></div>';
+        el.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">${ICON.stethoscope}</div>
+            <h3>No doctors available</h3>
+            <p>Check back later</p>
+          </div>`;
         return;
       }
 
-      el.innerHTML = featured.map(d => `
-        <div class="doctor-card" data-id="${d.id}">
-          <div class="doctor-avatar">
-            ${d.profilePicture ? `<img src="${d.profilePicture}" alt="${d.fullName}" />` : '👨‍⚕️'}
-          </div>
-          <div class="doctor-info">
-            <h3>${d.fullName}</h3>
-            <div class="specialty">${d.specialization || ''}</div>
-            <div class="meta">
-              <span>⭐ ${d.rating || '0'}</span>
-              <span>${d.experienceYears || 0} yrs</span>
-              <span>💰 ${d.hospital?.cardPrice || 0} ETB</span>
+      el.innerHTML = featured.map(d => {
+        const initials = d.fullName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+        return `
+          <div class="doctor-card" data-id="${d.id}">
+            <div class="doctor-avatar">
+              ${d.profilePicture ? `<img src="${d.profilePicture}" alt="${d.fullName}" />` : `<span class="doctor-initials">${initials}</span>`}
             </div>
+            <div class="doctor-info">
+              <h3>${d.fullName}</h3>
+              <div class="specialty">${d.specialization || ''}</div>
+              <div class="meta">
+                <span class="meta-item">${ICON.star} ${d.rating || '0'}</span>
+                <span class="meta-item">${ICON.clock} ${d.experienceYears || 0} yrs</span>
+                <span class="meta-item">${ICON.card} ${d.hospital?.cardPrice || 0} ETB</span>
+              </div>
+            </div>
+            <div class="doctor-chevron">${ICON.chevronRight}</div>
           </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
 
       el.querySelectorAll('.doctor-card').forEach(card => {
         card.addEventListener('click', () => {

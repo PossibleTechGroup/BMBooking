@@ -233,7 +233,7 @@ export default function ProfilesScreen() {
                 if (!profileName.trim()) return;
                 await dispatch(submitPatientProfile({
                   fullName: profileName.trim(),
-                  dateOfBirth: profileDob ? formatDate(profileDob) : '',
+                  dateOfBirth: profileDob ? toISODateString(profileDob) : '',
                   gender: profileGender,
                   bloodType: profileBloodType || undefined,
                   emergencyContact: profileEmergency || undefined,
