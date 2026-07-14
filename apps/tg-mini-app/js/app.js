@@ -18,6 +18,7 @@
   Router.register('doctor-detail', (el, params) => DoctorDetailView.render(el, params));
   Router.register('booking', (el, params) => BookingView.render(el, params));
   Router.register('appointments', (el) => AppointmentsView.render(el));
+  Router.register('equipment', (el) => EquipmentView.render(el));
   Router.register('profile', (el) => ProfileView.render(el));
 
   Router.addBeforeHook((name) => {

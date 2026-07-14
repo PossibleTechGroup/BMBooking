@@ -39,24 +39,21 @@ const SetupView = (() => {
 
     const isEdit = params?.isEdit || false;
 
-    if (isEdit && !state.isEdit) {
-      resetState();
-      state.isEdit = true;
-      try {
-        const profile = await API.getPatientProfile();
-        if (profile) {
-          state.fullName = profile.fullName || '';
-          state.dateOfBirth = profile.dateOfBirth || '';
-          state.gender = profile.gender || 'Male';
-          state.bloodType = profile.bloodType || '';
-          if (profile.emergencyContact) {
-            state.emergencyPhone = profile.emergencyContact.replace('+251', '');
-          }
+    resetState();
+    state.isEdit = isEdit;
+
+    try {
+      const profile = await API.getPatientProfile();
+      if (profile) {
+        state.fullName = profile.fullName || '';
+        state.dateOfBirth = profile.dateOfBirth ? profile.dateOfBirth.split('T')[0] : '';
+        state.gender = profile.gender ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1).toLowerCase() : 'Male';
+        state.bloodType = profile.bloodType || '';
+        if (profile.emergencyContact) {
+          state.emergencyPhone = profile.emergencyContact.replace('+251', '');
         }
-      } catch (e) {}
-    } else if (!isEdit) {
-      resetState();
-    }
+      }
+    } catch (e) {}
 
     const title = state.isEdit ? 'Edit Profile' : 'Complete Profile';
     const subtitle = state.isEdit ? 'Update your information' : 'Tell us a bit about yourself';

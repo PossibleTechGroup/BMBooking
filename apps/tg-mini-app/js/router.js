@@ -12,6 +12,8 @@ const Router = (() => {
     beforeHooks.push(fn);
   }
 
+  const HIDE_BACK = ['home', 'login', 'onboarding'];
+
   async function navigate(name, params = {}) {
     for (const hook of beforeHooks) {
       const result = hook(name, params);
@@ -19,6 +21,12 @@ const Router = (() => {
     }
 
     TG.hideMainButton();
+
+    if (HIDE_BACK.includes(name)) {
+      TG.hideBackButton();
+    } else {
+      TG.showBackButton();
+    }
 
     if (currentRoute && currentRoute !== name) {
       history.push(currentRoute);

@@ -26,8 +26,14 @@ const TG = (() => {
       document.dispatchEvent(event);
     });
 
+    if (webapp.BackButton) {
+      webapp.BackButton.onClick(() => {
+        Router.goBack();
+      });
+    }
+
     if (webapp.disableVerticalSwipes) {
-      webapp.disableVerticalSwipes();
+      try { webapp.disableVerticalSwipes(); } catch {}
     }
   }
 
@@ -51,6 +57,14 @@ const TG = (() => {
 
   function hideMainButton() {
     webapp?.MainButton.hide();
+  }
+
+  function showBackButton() {
+    webapp?.BackButton?.show();
+  }
+
+  function hideBackButton() {
+    webapp?.BackButton?.hide();
   }
 
   function showAlert(msg) {
@@ -78,6 +92,8 @@ const TG = (() => {
     close,
     showMainButton,
     hideMainButton,
+    showBackButton,
+    hideBackButton,
     showAlert,
     showConfirm,
     openLink,

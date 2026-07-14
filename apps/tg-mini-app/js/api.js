@@ -126,6 +126,50 @@ const API = (() => {
       return data;
     },
 
+    // ─── Equipment ───
+    async searchEquipment(params = {}) {
+      const q = new URLSearchParams();
+      if (params.query) q.set('query', params.query);
+      if (params.category) q.set('category', params.category);
+      if (params.city) q.set('city', params.city);
+      if (params.hospitalId) q.set('hospitalId', String(params.hospitalId));
+      const res = await request('GET', `/api/equipment/search?${q}`);
+      return res.data;
+    },
+
+    async getEquipmentCategories() {
+      const res = await request('GET', '/api/equipment/categories');
+      return res.data;
+    },
+
+    async getEquipmentDetail(id) {
+      const res = await request('GET', `/api/equipment/detail/${id}`);
+      return res.data;
+    },
+
+    async getEquipmentAvailability(equipmentId, date) {
+      const res = await request('GET', `/api/equipment/${equipmentId}/availability?date=${date}`);
+      return res.data;
+    },
+
+    async createEquipmentBooking(data) {
+      const res = await request('POST', '/api/equipment/book', data);
+      return res.data;
+    },
+
+    async getMyEquipmentBookings(filters = {}) {
+      const q = new URLSearchParams();
+      if (filters.status) q.set('status', filters.status);
+      if (filters.date) q.set('date', filters.date);
+      const res = await request('GET', `/api/equipment/bookings?${q}`);
+      return res.data;
+    },
+
+    async cancelEquipmentBooking(bookingId) {
+      const res = await request('PATCH', `/api/equipment/bookings/${bookingId}/cancel`);
+      return res.data;
+    },
+
     // ─── Payments ───
     async verifyTelebirr(amount) {
       const res = await request('POST', '/api/payments/verify-telebirr', { amount });

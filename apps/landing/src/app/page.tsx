@@ -18,6 +18,7 @@ import {
   Info,
   Stethoscope
 } from "lucide-react";
+import KineticGrid from "@/components/KineticGrid";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState(2);
@@ -25,6 +26,7 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [fadeSplash, setFadeSplash] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   
   // Intersection Observer for How It Works
   const [howItWorksInView, setHowItWorksInView] = useState(false);
@@ -133,6 +135,14 @@ export default function Home() {
       clearTimeout(fadeTimer);
       clearTimeout(removeTimer);
     };
+  }, []);
+
+  // Mobile detection
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
   // Escape key handler to close modals
@@ -540,6 +550,15 @@ export default function Home() {
 
       {/* Global Responsive Overrides */}
       <style jsx global>{`
+        @keyframes heroGlow {
+          0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.6; }
+          25% { transform: scale(1.05) translate(10px, -8px); opacity: 0.9; }
+          50% { transform: scale(1.1) translate(-5px, 5px); opacity: 1; }
+          75% { transform: scale(1.03) translate(8px, 3px); opacity: 0.7; }
+        }
+        .hero-text-glow {
+          animation: heroGlow 8s ease-in-out infinite;
+        }
         @media (max-width: 768px) {
           .desktop-only {
             display: none !important;
@@ -592,26 +611,61 @@ export default function Home() {
           margin: "0 auto",
           padding: "7rem 2rem 6rem",
           textAlign: "center",
-          overflow: "hidden"
         }}
       >
-        {/* Antigravity Cursor Spotlight Orb */}
-        <div 
-          className="antigravity-orb" 
-          style={{
-            position: 'absolute',
-            width: '450px',
-            height: '450px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(26,26,26,0.06) 0%, rgba(26,26,26,0) 70%)',
-            pointerEvents: 'none',
-            zIndex: 0,
-            transform: `translate3d(${orbPos.x - 225}px, ${orbPos.y - 225}px, 0)`,
-            transition: 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-          }}
-        />
+        {/* Kinetic Grid — desktop only */}
+        {!isMobile && (
+          <>
+            <KineticGrid
+              background="transparent"
+              dotColor="#1A1A1A"
+              lineColor="#3E5C76"
+              trailColor="#3E5C76"
+              spacing={36}
+              radius={300}
+              strength={3}
+              trail={false}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "100vw",
+                height: "100%",
+                pointerEvents: "auto",
+              }}
+            />
+            {/* Antigravity Cursor Spotlight Orb */}
+            <div 
+              className="antigravity-orb" 
+              style={{
+                position: 'absolute',
+                width: '450px',
+                height: '450px',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(26,26,26,0.06) 0%, rgba(26,26,26,0) 70%)',
+                pointerEvents: 'none',
+                zIndex: 0,
+                transform: `translate3d(${orbPos.x - 225}px, ${orbPos.y - 225}px, 0)`,
+                transition: 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+              }}
+            />
+          </>
+        )}
 
         <div style={{ position: "relative", zIndex: 1, maxWidth: "800px", margin: "0 auto" }}>
+          {/* Animated text background glow */}
+          <div
+            className="hero-text-glow"
+            style={{
+              position: "absolute",
+              inset: "-60px",
+              borderRadius: "50%",
+              background: "radial-gradient(ellipse at center, rgba(62,92,118,0.08) 0%, rgba(62,92,118,0) 70%)",
+              pointerEvents: "none",
+              zIndex: -1,
+            }}
+          />
           {/* Eyebrow badge */}
           <button
             onClick={() => setIsBotModalOpen(true)}

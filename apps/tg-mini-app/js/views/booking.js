@@ -23,6 +23,8 @@ const BookingView = (() => {
 
   const STEPS = ['sponsor', 'category', 'datetime', 'payment', 'confirm', 'success'];
 
+  function t(key) { return I18n.t(key); }
+
   function reset() {
     state = {
       step: 0,
@@ -71,8 +73,8 @@ const BookingView = (() => {
 
     container.innerHTML = `
       <div class="header">
-        <div class="header-back" id="booking-back">← Cancel</div>
-        <h1>Book Appointment</h1>
+        <div class="header-back" id="booking-back">&larr; ${t('cancel')}</div>
+        <h1>${t('bookAppointment')}</h1>
         <div></div>
       </div>
       <div id="step-dots" class="step-indicator"></div>
@@ -91,7 +93,7 @@ const BookingView = (() => {
         state.step--;
         showStep(container);
       } else {
-        Router.navigate('home');
+        Router.goBack();
       }
     });
 
@@ -103,35 +105,35 @@ const BookingView = (() => {
   function renderSponsor(container) {
     const el = container.querySelector('#step-sponsor');
     el.innerHTML = `
-      <h3 style="margin-bottom:16px">Who is this for?</h3>
+      <h3 style="margin-bottom:16px">${t('whoIsThisFor')}</h3>
       <div class="chip-group-stretch mb-16">
-        <div class="chip ${state.bookingFor === 'myself' ? 'selected' : ''}" data-booking="myself">Myself</div>
-        <div class="chip ${state.bookingFor === 'someone_else' ? 'selected' : ''}" data-booking="someone_else">Someone Else</div>
+        <div class="chip ${state.bookingFor === 'myself' ? 'selected' : ''}" data-booking="myself">${t('myself')}</div>
+        <div class="chip ${state.bookingFor === 'someone_else' ? 'selected' : ''}" data-booking="someone_else">${t('someoneElse')}</div>
       </div>
       <div id="other-patient-fields" class="${state.bookingFor === 'someone_else' ? '' : 'hidden'}">
         <div class="input-group">
-          <label>Full Name *</label>
+          <label>${t('fullName')} *</label>
           <div class="input-field">
-            <input type="text" id="other-name" placeholder="Full name" value="${state.otherPatient.fullName}" />
+            <input type="text" id="other-name" placeholder="${t('fullName')}" value="${state.otherPatient.fullName}" />
           </div>
         </div>
         <div class="input-group">
-          <label>Phone *</label>
+          <label>${t('phone')} *</label>
           <div class="input-field">
             <span class="prefix">+251</span>
             <input type="tel" id="other-phone" placeholder="912 345 678" maxlength="9" value="${state.otherPatient.phone}" />
           </div>
         </div>
         <div class="input-group">
-          <label>Gender</label>
+          <label>${t('gender')}</label>
           <div class="chip-group-stretch">
             ${['male', 'female'].map(g =>
-              `<div class="chip ${state.otherPatient.gender === g ? 'selected' : ''}" data-ogender="${g}">${g}</div>`
+              `<div class="chip ${state.otherPatient.gender === g ? 'selected' : ''}" data-ogender="${g}">${t(g)}</div>`
             ).join('')}
           </div>
         </div>
         <div class="input-group">
-          <label>Date of Birth</label>
+          <label>${t('dateOfBirth')}</label>
           <div class="input-field">
             <input type="date" id="other-dob" value="${state.otherPatient.dateOfBirth}" />
           </div>
@@ -142,7 +144,7 @@ const BookingView = (() => {
           </div>` : '<div id="other-dob-eth-hint"></div>'}
         </div>
       </div>
-      <button class="btn btn-primary mt-16" id="sponsor-next">Continue</button>
+      <button class="btn btn-primary mt-16" id="sponsor-next">${t('continue')}</button>
     `;
 
     container.querySelectorAll('[data-booking]').forEach(el => {
@@ -180,7 +182,7 @@ const BookingView = (() => {
 
     container.querySelector('#sponsor-next').addEventListener('click', () => {
       if (state.bookingFor === 'someone_else' && !state.otherPatient.fullName) {
-        state.error = 'Please fill in the patient name';
+        state.error = t('pleaseFillName');
         showError(container);
         return;
       }
@@ -210,14 +212,14 @@ const BookingView = (() => {
   function renderCategories(container) {
     const el = container.querySelector('#step-category');
     el.innerHTML = `
-      <h3 style="margin-bottom:16px">Select Issue Category</h3>
+      <h3 style="margin-bottom:16px">${t('selectIssueCategory')}</h3>
       <div class="chip-group" id="category-chips">
         ${state.categories.map(c =>
           `<div class="chip ${state.selectedCategory === c.key ? 'selected' : ''}" data-cat="${c.key}">${c.label}</div>`
         ).join('')}
       </div>
       <div id="recommendations-box"></div>
-      <button class="btn btn-primary mt-16" id="category-next">Continue</button>
+      <button class="btn btn-primary mt-16" id="category-next">${t('continue')}</button>
     `;
 
     el.querySelector('#category-chips').addEventListener('click', (e) => {
@@ -231,7 +233,7 @@ const BookingView = (() => {
 
     el.querySelector('#category-next').addEventListener('click', () => {
       if (!state.selectedCategory) {
-        state.error = 'Please select an issue category';
+        state.error = t('selectIssueCategory');
         showError(container);
         return;
       }
@@ -272,20 +274,20 @@ const BookingView = (() => {
         state.loading = false;
         const activeSchedules = schedules.filter(s => s.isActive !== false);
         el.innerHTML = `
-          <h3 style="margin-bottom:16px">Select Date & Time</h3>
+          <h3 style="margin-bottom:16px">${t('selectDateTime')}</h3>
           ${activeSchedules.length === 0
-            ? '<p class="text-hint">No available schedules for this doctor</p>'
+            ? `<p class="text-hint">${t('noSchedules')}</p>`
             : activeSchedules.map(s => `
               <div class="card" data-schedule-id="${s.id}" style="cursor:pointer;${state.selectedSchedule?.id === s.id ? 'border-color:var(--link)' : ''}">
                 <div class="flex-between">
                   <span><strong>${s.date ? TimeUtils.formatDate(new Date(s.date)) : ''}</strong></span>
                   <span class="text-hint">${s.startTime?.slice(0,5) || ''} - ${s.endTime?.slice(0,5) || ''}</span>
                 </div>
-                ${s.clinicRoom ? `<div class="text-hint mt-8" style="display:flex;align-items:center;gap:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Room ${s.clinicRoom}</div>` : ''}
+                ${s.clinicRoom ? `<div class="text-hint mt-8" style="display:flex;align-items:center;gap:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${t('room')} ${s.clinicRoom}</div>` : ''}
               </div>
             `).join('')}
           <button class="btn btn-primary mt-16" id="datetime-next" ${!state.selectedSchedule ? 'disabled' : ''}>
-            Continue
+            ${t('continue')}
           </button>
         `;
 
@@ -320,30 +322,30 @@ const BookingView = (() => {
     state.totalPayable = consultationFee + (state.includeCardFee ? state.cardFee : 0);
 
     el.innerHTML = `
-      <h3 style="margin-bottom:16px">Payment</h3>
+      <h3 style="margin-bottom:16px">${t('payment')}</h3>
       <div class="card">
         <div class="payment-row">
-          <span>Consultation Fee</span>
-          <span>${consultationFee} ETB</span>
+          <span>${t('consultationFee')}</span>
+          <span>${consultationFee} ${t('etb')}</span>
         </div>
         ${state.cardFee > 0 ? `
         <div class="payment-row">
-          <span>Hospital Card Fee</span>
+          <span>${t('hospitalCardFee')}</span>
           <span>
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
               <input type="checkbox" id="card-fee-toggle" ${state.includeCardFee ? 'checked' : ''} />
-              ${state.cardFee} ETB
+              ${state.cardFee} ${t('etb')}
             </label>
           </span>
         </div>` : ''}
         <div class="payment-row total">
-          <span>Total</span>
-          <span id="total-amount">${state.totalPayable} ETB</span>
+          <span>${t('total')}</span>
+          <span id="total-amount">${state.totalPayable} ${t('etb')}</span>
         </div>
       </div>
-      <p class="text-hint mt-8" style="font-size:13px">You will be redirected to Telebirr to complete payment</p>
+      <p class="text-hint mt-8" style="font-size:13px">${t('youWillBeRedirected')}</p>
       <button class="btn btn-primary mt-16" id="payment-pay-btn">
-        Pay ${state.totalPayable} ETB
+        Pay ${state.totalPayable} ${t('etb')}
       </button>
     `;
 
@@ -353,8 +355,8 @@ const BookingView = (() => {
         state.includeCardFee = toggle.checked;
         const consultFee = state.doctor?.baseHourlyRate ? parseFloat(state.doctor.baseHourlyRate) : 0;
         state.totalPayable = consultFee + (state.includeCardFee ? state.cardFee : 0);
-        el.querySelector('#total-amount').textContent = `${state.totalPayable} ETB`;
-        el.querySelector('#payment-pay-btn').textContent = `Pay ${state.totalPayable} ETB`;
+        el.querySelector('#total-amount').textContent = `${state.totalPayable} ${t('etb')}`;
+        el.querySelector('#payment-pay-btn').textContent = `Pay ${state.totalPayable} ${t('etb')}`;
       });
     }
 
@@ -372,7 +374,7 @@ const BookingView = (() => {
 
     state.loading = true;
     const payBtn = container.querySelector('#payment-pay-btn');
-    if (payBtn) payBtn.textContent = 'Opening Telebirr...';
+    if (payBtn) payBtn.textContent = t('openingTelebirr');
 
     try {
       const checkoutUrl = `${API.TELEBIRR}/?amount=${encodeURIComponent(String(state.totalPayable))}`;
@@ -389,18 +391,18 @@ const BookingView = (() => {
         showStep(container);
       } else {
         state.loading = false;
-        if (payBtn) payBtn.textContent = `Pay ${state.totalPayable} ETB`;
+        if (payBtn) payBtn.textContent = `Pay ${state.totalPayable} ${t('etb')}`;
         const el = container.querySelector('#step-payment');
         const alert = document.createElement('div');
         alert.className = 'alert alert-info mt-8';
-        alert.textContent = 'Waiting for payment confirmation. Try verifying again.';
+        alert.textContent = t('waitingPayment');
         el.insertBefore(alert, payBtn);
 
         const verifyAgain = document.createElement('button');
         verifyAgain.className = 'btn btn-outline mt-8';
-        verifyAgain.textContent = 'Verify Payment Again';
+        verifyAgain.textContent = t('verifyPaymentAgain');
         verifyAgain.addEventListener('click', async () => {
-          verifyAgain.textContent = 'Checking...';
+          verifyAgain.textContent = '...';
           verifyAgain.disabled = true;
           try {
             const r = await API.verifyTelebirr(state.totalPayable);
@@ -411,7 +413,7 @@ const BookingView = (() => {
               showStep(container);
             }
           } catch {} finally {
-            verifyAgain.textContent = 'Verify Payment Again';
+            verifyAgain.textContent = t('verifyPaymentAgain');
             verifyAgain.disabled = false;
           }
         });
@@ -419,7 +421,7 @@ const BookingView = (() => {
       }
     } catch (err) {
       state.loading = false;
-      if (payBtn) payBtn.textContent = `Pay ${state.totalPayable} ETB`;
+      if (payBtn) payBtn.textContent = `Pay ${state.totalPayable} ${t('etb')}`;
       state.error = err.message;
       showError(container);
     }
@@ -438,41 +440,41 @@ const BookingView = (() => {
       : '';
 
     el.innerHTML = `
-      <h3 style="margin-bottom:16px">Confirm Appointment</h3>
+      <h3 style="margin-bottom:16px">${t('confirmAppointment')}</h3>
       <div class="card">
         <div class="card-row">
-          <span class="text-hint">Doctor</span>
+          <span class="text-hint">${t('doctor')}</span>
           <span><strong>${state.doctor?.fullName || ''}</strong></span>
         </div>
         <div class="card-row">
-          <span class="text-hint">Date</span>
+          <span class="text-hint">${t('date')}</span>
           <span>${dateStr}</span>
         </div>
         <div class="card-row">
-          <span class="text-hint">Time</span>
+          <span class="text-hint">${t('time')}</span>
           <span>${timeStr}</span>
         </div>
         ${state.selectedCategory ? `
         <div class="card-row">
-          <span class="text-hint">Category</span>
+          <span class="text-hint">${t('category')}</span>
           <span>${state.categories.find(c => c.key === state.selectedCategory)?.label || state.selectedCategory}</span>
         </div>` : ''}
         <div class="card-row">
-          <span class="text-hint">Booking for</span>
-          <span>${state.bookingFor === 'myself' ? 'Myself' : state.otherPatient.fullName}</span>
+          <span class="text-hint">${t('bookingFor')}</span>
+          <span>${state.bookingFor === 'myself' ? t('myself') : state.otherPatient.fullName}</span>
         </div>
         <div class="card-row">
-          <span class="text-hint">Payment</span>
-          <span>${state.paymentDone ? `<span style="display:inline-flex;align-items:center;gap:4px;color:#027A48">✓ Paid (${state.totalPayable} ETB)</span>` : `<span style="display:inline-flex;align-items:center;gap:4px;color:#E53935">✗ Not paid</span>`}</span>
+          <span class="text-hint">${t('payment')}</span>
+          <span>${state.paymentDone ? `<span style="display:inline-flex;align-items:center;gap:4px;color:#027A48">&check; ${t('paid')} (${state.totalPayable} ${t('etb')})</span>` : `<span style="display:inline-flex;align-items:center;gap:4px;color:#E53935">&cross; ${t('notPaid')}</span>`}</span>
         </div>
         <div class="card-row">
-          <span class="text-hint">Amount</span>
-          <span><strong>${state.totalPayable} ETB</strong></span>
+          <span class="text-hint">${t('amount')}</span>
+          <span><strong>${state.totalPayable} ${t('etb')}</strong></span>
         </div>
       </div>
 
       <button class="btn btn-primary mt-8" id="confirm-submit-btn" ${state.loading ? 'disabled' : ''}>
-        ${state.loading ? 'Booking...' : 'Confirm & Book'}
+        ${state.loading ? t('booking') : t('confirmAndBook')}
       </button>
     `;
 
@@ -483,24 +485,31 @@ const BookingView = (() => {
   async function submitBooking(container) {
     state.loading = true;
     const btn = container.querySelector('#confirm-submit-btn');
-    if (btn) btn.textContent = 'Booking...';
+    if (btn) btn.textContent = t('booking');
 
     try {
+      const scheduleDate = state.selectedSchedule?.date || new Date().toISOString().split('T')[0];
+      const startTime = state.selectedSchedule?.startTime || '00:00';
+      const timePart = startTime.includes('T') ? startTime.split('T')[1] : `${startTime}:00.000Z`;
+      const dateTime = startTime.includes('T') ? startTime : `${scheduleDate}T${timePart}`;
+
       const payload = {
         doctorId: state.doctorId,
-        scheduleId: state.selectedSchedule?.id,
-        dateTime: state.selectedSchedule?.startTime
-          ? (state.selectedSchedule.startTime.includes('T') ? state.selectedSchedule.startTime : `${state.selectedSchedule.date || new Date().toISOString().split('T')[0]}T${state.selectedSchedule.startTime}:00.000Z`)
-          : new Date().toISOString(),
+        dateTime,
         issueCategory: state.selectedCategory,
         fee: state.totalPayable,
-        isPaid: state.paymentDone,
-        bookingFor: state.bookingFor,
+        slotId: state.selectedSchedule?.id || undefined,
+        paymentMethod: 'service_fee',
       };
 
-      if (state.bookingFor === 'someone_else') {
-        payload.otherPatientName = state.otherPatient.fullName;
-        payload.otherPatientPhone = state.otherPatient.phone ? `+251${state.otherPatient.phone}` : undefined;
+      if (state.bookingFor === 'someone_else' && state.otherPatient.fullName) {
+        payload.otherPatientDetails = {
+          fullName: state.otherPatient.fullName,
+          phone: state.otherPatient.phone ? `+251${state.otherPatient.phone}` : '',
+          gender: state.otherPatient.gender || 'male',
+          dateOfBirth: state.otherPatient.dateOfBirth || undefined,
+          bloodType: state.otherPatient.bloodType || undefined,
+        };
       }
 
       const appointment = await API.createAppointment(payload);
@@ -512,7 +521,7 @@ const BookingView = (() => {
     } catch (err) {
       state.loading = false;
       state.error = err.message;
-      if (btn) btn.textContent = 'Confirm & Book';
+      if (btn) btn.textContent = t('confirmAndBook');
       showError(container);
     }
   }
@@ -522,18 +531,18 @@ const BookingView = (() => {
     const el = container.querySelector('#step-success');
     el.innerHTML = `
       <div class="success-screen">
-        <div class="check-icon">✓</div>
-        <h2>Appointment Booked!</h2>
-        <p>Your appointment has been submitted successfully.</p>
+        <div class="check-icon">&check;</div>
+        <h2>${t('appointmentBooked')}</h2>
+        <p>${t('appointmentSubmitted')}</p>
         <div class="card text-center">
           ${state.createdAppointment ? `
-            <p>Appointment ID: <strong>#${state.createdAppointment.id}</strong></p>
+            <p>${t('appointmentId')}: <strong>#${state.createdAppointment.id}</strong></p>
             <p class="text-hint mt-8">${state.doctor?.fullName || ''}</p>
             ${state.selectedSchedule?.date ? `<p class="text-hint">${new Date(state.selectedSchedule.date).toLocaleDateString('en-US')} at ${state.selectedSchedule.startTime?.slice(0,5) || ''}</p>` : ''}
           ` : ''}
         </div>
-        <button class="btn btn-primary mt-16" id="success-home-btn">Back to Home</button>
-        <button class="btn btn-secondary mt-8" id="success-appts-btn">View Appointments</button>
+        <button class="btn btn-primary mt-16" id="success-home-btn">${t('backToHome')}</button>
+        <button class="btn btn-secondary mt-8" id="success-appts-btn">${t('viewAppointments')}</button>
       </div>
     `;
 
