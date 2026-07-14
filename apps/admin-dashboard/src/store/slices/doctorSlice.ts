@@ -76,6 +76,21 @@ export const deleteDoctor = createAsyncThunk(
   }
 );
 
+export const createDoctor = createAsyncThunk(
+  'adminDoctor/create',
+  async (formData: FormData, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(`${API_URL}/admin/doctors`, formData, {
+        ...getAuthHeader(),
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create doctor');
+    }
+  }
+);
+
 export const assignHospitalToDoctor = createAsyncThunk(
   'adminDoctor/assignHospital',
   async ({ doctorId, hospitalId }: { doctorId: number; hospitalId: number | null }, { rejectWithValue }) => {
@@ -132,6 +147,16 @@ const adminDoctorSlice = createSlice({
         } else {
           state.doctors.push(action.payload);
         }
+      })
+      .addCase(createDoctor.pending, (state) => {
+        state.loading = true;
+        state.success = false;
+        state.error = null;
+      })
+      .addCase(createDoctor.fulfilled, (state, action) => {
+        state.loading = false;
+        state.success = true;
+        state.doctors.unshift(action.payload);
       })
       .addCase(deleteDoctor.fulfilled, (state, action) => {
         state.doctors = state.doctors.filter(d => d.id !== action.payload);

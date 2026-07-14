@@ -463,6 +463,71 @@ const AdminController = {
     }
   },
 
+  createDoctor: async (req, res) => {
+    try {
+      const { fullName, phone, email, specialization, specializations, licenseNumber, experienceYears, bio, clinicName, clinicAddress, languages, baseHourlyRate, hospitalId } = req.body;
+      if (!fullName || !phone) {
+        return res.status(400).json({ status: 'fail', message: 'Full name and phone are required' });
+      }
+
+      const bcrypt = require('bcryptjs');
+
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { phone },
+            ...(email ? [{ email }] : []),
+          ],
+        },
+      });
+      if (existingUser) {
+        return res.status(400).json({ status: 'fail', message: 'Phone or email already in use' });
+      }
+
+      const tempPassword = Math.random().toString(36).slice(2, 10) + 'A1!';
+
+      const result = await prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            phone,
+            email: email || null,
+            role: 'doctor',
+            password: await bcrypt.hash(tempPassword, 10),
+          },
+        });
+
+        const profile = await tx.doctorProfile.create({
+          data: {
+            userId: user.id,
+            fullName,
+            specialization: specialization || null,
+            specializations: specializations || null,
+            licenseNumber: licenseNumber || null,
+            experienceYears: experienceYears || null,
+            bio: bio || null,
+            clinicName: clinicName || null,
+            clinicAddress: clinicAddress || null,
+            languages: languages || null,
+            baseHourlyRate: baseHourlyRate || null,
+            hospitalId: hospitalId || null,
+            profilePicture: req.file ? req.file.path || null : null,
+            status: 'Approved',
+          },
+        });
+
+        return {
+          ...profile,
+          user: { id: user.id, phone: user.phone, email: user.email },
+          tempPassword,
+        };
+      });
+
+      res.status(201).json({ status: 'success', data: result });
+    } catch (err) {
+      res.status(400).json({ status: 'fail', message: err.message });
+    }
+  },
+
   updateDoctorFee: async (req, res) => {
     try {
       const { id } = req.params;

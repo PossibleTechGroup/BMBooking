@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchPendingDoctors, fetchAllDoctors, reviewDoctor, deleteDoctor, assignHospitalToDoctor } from '../store/slices/doctorSlice';
+import { fetchPendingDoctors, fetchAllDoctors, reviewDoctor, deleteDoctor, assignHospitalToDoctor, createDoctor } from '../store/slices/doctorSlice';
 import { fetchHospitals } from '../store/slices/hospitalSlice';
 import { logout } from '../store/slices/authSlice';
 import type { AppDispatch, RootState } from '../store';
@@ -39,6 +39,17 @@ import {
   Package,
   BarChart3,
   Clock,
+  PlusCircle,
+  Briefcase,
+  MapPin,
+  Globe,
+  DollarSign,
+  Shield,
+  FileBadge,
+  CalendarDays,
+  Building2,
+  Languages,
+  BadgeCheck,
 } from 'lucide-react';
 
 type TabView = 'dashboard' | 'patients' | 'analysis' | 'reports' | 'hospitals' | 'applied-hospitals' | 'items' | 'announcements' | 'reviews' | 'profile';
@@ -90,6 +101,13 @@ const DashboardPage = () => {
   const { isEthiopian, isEthiopianCalendar } = useTimeFormat();
   const [showSettingsPopover, setShowSettingsPopover] = useState(false);
   const [pendingAppsCount, setPendingAppsCount] = useState(0);
+  const [showCreateDoctor, setShowCreateDoctor] = useState(false);
+  const [createDoctorForm, setCreateDoctorForm] = useState({
+    fullName: '', phone: '', email: '', specialization: '', licenseNumber: '',
+    experienceYears: '', bio: '', clinicName: '', clinicAddress: '',
+    languages: '', baseHourlyRate: '', hospitalId: '',
+  });
+  const [createDoctorError, setCreateDoctorError] = useState('');
 
   useEffect(() => {
     const fetchApplicationsCount = async () => {
@@ -173,6 +191,37 @@ const DashboardPage = () => {
     setSelectedDoctor(null);
     navigateToTab('dashboard');
     setDeleteModal(false);
+  };
+
+  const handleCreateDoctor = async () => {
+    setCreateDoctorError('');
+    if (!createDoctorForm.fullName || !createDoctorForm.phone) {
+      setCreateDoctorError('Full name and phone are required');
+      return;
+    }
+    try {
+      const fd = new FormData();
+      fd.append('fullName', createDoctorForm.fullName);
+      fd.append('phone', createDoctorForm.phone);
+      if (createDoctorForm.email) fd.append('email', createDoctorForm.email);
+      if (createDoctorForm.specialization) fd.append('specialization', createDoctorForm.specialization);
+      if (createDoctorForm.licenseNumber) fd.append('licenseNumber', createDoctorForm.licenseNumber);
+      if (createDoctorForm.experienceYears) fd.append('experienceYears', createDoctorForm.experienceYears);
+      if (createDoctorForm.bio) fd.append('bio', createDoctorForm.bio);
+      if (createDoctorForm.clinicName) fd.append('clinicName', createDoctorForm.clinicName);
+      if (createDoctorForm.clinicAddress) fd.append('clinicAddress', createDoctorForm.clinicAddress);
+      if (createDoctorForm.languages) fd.append('languages', JSON.stringify(createDoctorForm.languages.split(',').map((s: string) => s.trim()).filter(Boolean)));
+      if (createDoctorForm.baseHourlyRate) fd.append('baseHourlyRate', createDoctorForm.baseHourlyRate);
+      if (createDoctorForm.hospitalId) fd.append('hospitalId', createDoctorForm.hospitalId);
+      const result = await dispatch(createDoctor(fd)).unwrap();
+      setShowCreateDoctor(false);
+      setCreateDoctorForm({ fullName: '', phone: '', email: '', specialization: '', licenseNumber: '', experienceYears: '', bio: '', clinicName: '', clinicAddress: '', languages: '', baseHourlyRate: '', hospitalId: '' });
+      if (result?.tempPassword) {
+        alert(`Doctor created successfully!\n\nTemp password: ${result.tempPassword}\n\nShare this with the doctor — they'll need it to log in.`);
+      }
+    } catch (err: any) {
+      setCreateDoctorError(err || 'Failed to create doctor');
+    }
   };
 
   return (
@@ -364,9 +413,14 @@ const DashboardPage = () => {
                   All Doctors
                 </h3>
               </div>
-              <button onClick={() => listType === 'pending' ? dispatch(fetchPendingDoctors()) : dispatch(fetchAllDoctors())} style={styles.refreshBtn}>
-                <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} />
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button onClick={() => setShowCreateDoctor(true)} style={{ backgroundColor: 'var(--accent-primary)', color: '#FFF', padding: '8px 14px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer' }}>
+                  <PlusCircle size={16} /> Create Doctor
+                </button>
+                <button onClick={() => listType === 'pending' ? dispatch(fetchPendingDoctors()) : dispatch(fetchAllDoctors())} style={styles.refreshBtn}>
+                  <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} />
+                </button>
+              </div>
             </div>
 
             <div style={styles.searchBar}>
@@ -490,6 +544,11 @@ const DashboardPage = () => {
                         </button>
                       </div>
                     )}
+                    {selectedDoctor.status === 'Rejected' && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#FEE2E2', color: '#B91C1C', padding: '4px 12px', borderRadius: '100px', fontSize: '12px', fontWeight: '600' }}>
+                        <XCircle size={14} /> Rejected
+                      </span>
+                    )}
                   </div>
                   {selectedDoctor.status === 'PendingReview' && (
                     <div style={styles.actionButtons}>
@@ -503,19 +562,76 @@ const DashboardPage = () => {
                   )}
                 </div>
 
+                {selectedDoctor.status === 'Rejected' && selectedDoctor.rejectionReason && (
+                  <div style={{ backgroundColor: '#FEF3F2', border: '1px solid #FEE4E2', borderRadius: '12px', padding: '16px 20px', marginBottom: '24px' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: '#B42318', marginBottom: '4px' }}>Rejection Reason</p>
+                    <p style={{ fontSize: '14px', color: '#7A271A' }}>{selectedDoctor.rejectionReason}</p>
+                  </div>
+                )}
+
                 <div style={styles.detailGrid}>
+                  {/* Identity & Contact */}
                   <div className="paper-card" style={styles.infoCard}>
                     <h4 style={styles.infoTitle}><UserIcon size={16} /> Identity & Contact</h4>
                     <div style={styles.infoRow}>
                       <span style={styles.infoLabel}>Full Name</span>
-                      <span style={styles.infoValue}>{selectedDoctor.fullName}</span>
+                      <span style={styles.infoValue}>{selectedDoctor.fullName || 'N/A'}</span>
                     </div>
                     <div style={styles.infoRow}>
                       <span style={styles.infoLabel}><Phone size={14} /> Phone</span>
                       <span style={styles.infoValue}>{selectedDoctor.user?.phone || 'N/A'}</span>
                     </div>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}><Mail size={14} /> Email</span>
+                      <span style={styles.infoValue}>{selectedDoctor.user?.email || 'N/A'}</span>
+                    </div>
                   </div>
 
+                  {/* Professional Info */}
+                  <div className="paper-card" style={styles.infoCard}>
+                    <h4 style={styles.infoTitle}><Briefcase size={16} /> Professional Info</h4>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}>Specialization</span>
+                      <span style={styles.infoValue}>{selectedDoctor.specialization || 'N/A'}</span>
+                    </div>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}><BadgeCheck size={14} /> License Number</span>
+                      <span style={styles.infoValue}>{selectedDoctor.licenseNumber || 'N/A'}</span>
+                    </div>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}><CalendarDays size={14} /> Experience</span>
+                      <span style={styles.infoValue}>{selectedDoctor.experienceYears != null ? `${selectedDoctor.experienceYears} years` : 'N/A'}</span>
+                    </div>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}><DollarSign size={14} /> Hourly Rate</span>
+                      <span style={styles.infoValue}>{selectedDoctor.baseHourlyRate ? `${selectedDoctor.baseHourlyRate} ETB` : 'N/A'}</span>
+                    </div>
+                  </div>
+
+                  {/* Clinic & Practice */}
+                  <div className="paper-card" style={styles.infoCard}>
+                    <h4 style={styles.infoTitle}><Building2 size={16} /> Clinic & Practice</h4>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}>Clinic Name</span>
+                      <span style={styles.infoValue}>{selectedDoctor.clinicName || 'N/A'}</span>
+                    </div>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}><MapPin size={14} /> Clinic Address</span>
+                      <span style={styles.infoValue}>{selectedDoctor.clinicAddress || 'N/A'}</span>
+                    </div>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}><Globe size={14} /> Languages</span>
+                      <span style={styles.infoValue}>{Array.isArray(selectedDoctor.languages) && selectedDoctor.languages.length > 0 ? selectedDoctor.languages.join(', ') : 'N/A'}</span>
+                    </div>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}><Shield size={14} /> Status</span>
+                      <span style={{...styles.infoValue, color: selectedDoctor.status === 'Approved' ? '#027A48' : selectedDoctor.status === 'Rejected' ? '#B91C1C' : '#F79009', fontWeight: 600}}>
+                        {selectedDoctor.status === 'PendingReview' ? 'Pending Review' : selectedDoctor.status || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Performance */}
                   <div className="paper-card" style={styles.infoCard}>
                     <h4 style={styles.infoTitle}><Star size={16} /> Performance</h4>
                     <div style={styles.infoRow}>
@@ -525,14 +641,25 @@ const DashboardPage = () => {
                       </span>
                     </div>
                     <div style={styles.infoRow}>
-                      <span style={styles.infoLabel}>Reviews</span>
+                      <span style={styles.infoLabel}>Total Reviews</span>
                       <span style={styles.infoValue}>{selectedDoctor.totalReviews || 0}</span>
                     </div>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}>Specializations</span>
+                      <span style={styles.infoValue}>{Array.isArray(selectedDoctor.specializations) && selectedDoctor.specializations.length > 0 ? selectedDoctor.specializations.join(', ') : 'N/A'}</span>
+                    </div>
+                    {selectedDoctor.user?.createdAt && (
+                      <div style={styles.infoRow}>
+                        <span style={styles.infoLabel}>Registered</span>
+                        <span style={styles.infoValue}>{formatDate(new Date(selectedDoctor.user.createdAt), 'medium')}</span>
+                      </div>
+                    )}
                   </div>
 
+                  {/* Feedback */}
                   {selectedDoctor.reviews?.length > 0 && (
                     <div className="paper-card" style={{...styles.infoCard, gridColumn: 'span 2'}}>
-                      <h4 style={styles.infoTitle}><MessageSquare size={16} /> Feedback</h4>
+                      <h4 style={styles.infoTitle}><MessageSquare size={16} /> Feedback ({selectedDoctor.reviews.length})</h4>
                       {selectedDoctor.reviews.map((rev: any) => (
                         <div key={rev.id} style={styles.reviewItem}>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -547,14 +674,16 @@ const DashboardPage = () => {
                     </div>
                   )}
 
+                  {/* Biography */}
                   <div className="paper-card" style={{...styles.infoCard, gridColumn: 'span 2'}}>
                     <h4 style={styles.infoTitle}>Biography</h4>
                     <p style={styles.bioText}>{selectedDoctor.bio || 'No biography provided.'}</p>
                   </div>
 
-                  {(selectedDoctor.profilePicture || selectedDoctor.introVideo) && (
-                    <div className="paper-card" style={{...styles.infoCard, gridColumn: 'span 2'}}>
-                      <h4 style={styles.infoTitle}><Video size={16} /> Media</h4>
+                  {/* Media */}
+                  <div className="paper-card" style={{...styles.infoCard, gridColumn: 'span 2'}}>
+                    <h4 style={styles.infoTitle}><Video size={16} /> Media</h4>
+                    {selectedDoctor.profilePicture || selectedDoctor.introVideo ? (
                       <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
                         {selectedDoctor.profilePicture && (
                           <div>
@@ -577,9 +706,12 @@ const DashboardPage = () => {
                           </div>
                         )}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>N/A</p>
+                    )}
+                  </div>
 
+                  {/* Hospital Assignment */}
                   <div className="paper-card" style={{...styles.infoCard, gridColumn: 'span 2'}}>
                     <h4 style={styles.infoTitle}><Building2Icon size={16} /> Hospital Assignment</h4>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -661,6 +793,78 @@ const DashboardPage = () => {
           </div>
         </div>
       )}
+
+      {showCreateDoctor && (
+        <div style={styles.modalOverlay}>
+          <div className="glass-card animate-fade" style={{...styles.modalContent, width: '560px', maxHeight: '85vh', overflowY: 'auto'}}>
+            <h3 style={{ marginBottom: '20px' }}>Create Doctor Account</h3>
+            {createDoctorError && (
+              <div style={{ backgroundColor: '#FEF3F2', border: '1px solid #FEE4E2', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: '#B42318', fontSize: '13px' }}>
+                {createDoctorError}
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={styles.formLabel}>Full Name *</label>
+                <input style={styles.formInput} value={createDoctorForm.fullName} onChange={e => setCreateDoctorForm(p => ({...p, fullName: e.target.value}))} placeholder="Dr. John Doe" />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Phone *</label>
+                <input style={styles.formInput} value={createDoctorForm.phone} onChange={e => setCreateDoctorForm(p => ({...p, phone: e.target.value}))} placeholder="+251911223344" />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Email</label>
+                <input style={styles.formInput} type="email" value={createDoctorForm.email} onChange={e => setCreateDoctorForm(p => ({...p, email: e.target.value}))} placeholder="doctor@email.com" />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Specialization</label>
+                <input style={styles.formInput} value={createDoctorForm.specialization} onChange={e => setCreateDoctorForm(p => ({...p, specialization: e.target.value}))} placeholder="Cardiology" />
+              </div>
+              <div>
+                <label style={styles.formLabel}>License Number</label>
+                <input style={styles.formInput} value={createDoctorForm.licenseNumber} onChange={e => setCreateDoctorForm(p => ({...p, licenseNumber: e.target.value}))} placeholder="MD-12345" />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Experience (years)</label>
+                <input style={styles.formInput} type="number" min="0" value={createDoctorForm.experienceYears} onChange={e => setCreateDoctorForm(p => ({...p, experienceYears: e.target.value}))} placeholder="5" />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Hourly Rate (ETB)</label>
+                <input style={styles.formInput} type="number" min="0" value={createDoctorForm.baseHourlyRate} onChange={e => setCreateDoctorForm(p => ({...p, baseHourlyRate: e.target.value}))} placeholder="500" />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Languages</label>
+                <input style={styles.formInput} value={createDoctorForm.languages} onChange={e => setCreateDoctorForm(p => ({...p, languages: e.target.value}))} placeholder="Amharic, English" />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Hospital</label>
+                <select style={styles.formInput} value={createDoctorForm.hospitalId} onChange={e => setCreateDoctorForm(p => ({...p, hospitalId: e.target.value}))}>
+                  <option value="">None</option>
+                  {hospitalsList.map((h: any) => <option key={h.id} value={h.id}>{h.name}</option>)}
+                </select>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={styles.formLabel}>Clinic Name</label>
+                <input style={styles.formInput} value={createDoctorForm.clinicName} onChange={e => setCreateDoctorForm(p => ({...p, clinicName: e.target.value}))} placeholder="City Clinic" />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={styles.formLabel}>Clinic Address</label>
+                <input style={styles.formInput} value={createDoctorForm.clinicAddress} onChange={e => setCreateDoctorForm(p => ({...p, clinicAddress: e.target.value}))} placeholder="Bole, Addis Ababa" />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={styles.formLabel}>Bio</label>
+                <textarea style={{...styles.formInput, height: '80px', resize: 'vertical'}} value={createDoctorForm.bio} onChange={e => setCreateDoctorForm(p => ({...p, bio: e.target.value}))} placeholder="A short bio about the doctor..." />
+              </div>
+            </div>
+            <div style={{...styles.modalActions, marginTop: '20px' }}>
+              <button style={styles.cancelBtn} onClick={() => { setShowCreateDoctor(false); setCreateDoctorError(''); }}>Cancel</button>
+              <button style={{...styles.approveBtn}} onClick={handleCreateDoctor}>
+                <PlusCircle size={16} /> Create Doctor
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -721,7 +925,9 @@ const styles: Record<string, React.CSSProperties> = {
   confirmRejectBtn: { backgroundColor: 'var(--status-error)', color: '#FFF', padding: '10px 20px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer' },
   deleteBtn: { backgroundColor: '#FEE2E2', color: '#B91C1C', border: '1px solid #FCA5A5', padding: '8px 14px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' },
   deleteConfirmBtn: { backgroundColor: '#B91C1C', color: '#FFF', padding: '10px 20px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer' },
-  emptyState: { textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }
+  emptyState: { textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' },
+  formLabel: { display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+  formInput: { width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' },
 };
 
 export default DashboardPage;
