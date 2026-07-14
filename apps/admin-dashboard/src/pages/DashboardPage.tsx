@@ -108,6 +108,7 @@ const DashboardPage = () => {
     languages: '', baseHourlyRate: '', hospitalId: '',
   });
   const [createDoctorError, setCreateDoctorError] = useState('');
+  const [doctorSuccess, setDoctorSuccess] = useState<{ name: string; tempPassword: string } | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({
     date: '', startTime: '', endTime: '', slotDuration: '30', maxPatientsPerSlot: '1', clinicRoom: '', notes: '',
@@ -222,7 +223,7 @@ const DashboardPage = () => {
       setShowCreateDoctor(false);
       setCreateDoctorForm({ fullName: '', phone: '', email: '', specialization: '', licenseNumber: '', experienceYears: '', bio: '', clinicName: '', clinicAddress: '', languages: '', baseHourlyRate: '', hospitalId: '' });
       if (result?.tempPassword) {
-        alert(`Doctor created successfully!\n\nTemp password: ${result.tempPassword}\n\nShare this with the doctor — they'll need it to log in.`);
+        setDoctorSuccess({ name: result.fullName || createDoctorForm.fullName, tempPassword: result.tempPassword });
       }
     } catch (err: any) {
       setCreateDoctorError(err || 'Failed to create doctor');
@@ -973,6 +974,31 @@ const DashboardPage = () => {
                 <PlusCircle size={16} /> Create Schedule
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {doctorSuccess && (
+        <div style={styles.modalOverlay}>
+          <div className="glass-card animate-fade" style={{...styles.modalContent, width: '460px', textAlign: 'center'}}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#ECFDF3', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <CheckCircle2 size={32} color="#027A48" />
+            </div>
+            <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>Doctor Created Successfully</h3>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '24px' }}>
+              <strong>{doctorSuccess.name}</strong> has been added as an approved doctor.
+            </p>
+            <div style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '12px', padding: '16px', marginBottom: '24px' }}>
+              <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Temporary Password</p>
+              <p style={{ fontSize: '20px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-primary)', letterSpacing: '1px' }}>{doctorSuccess.tempPassword}</p>
+              <p style={{ fontSize: '12px', color: '#F59E0B', marginTop: '8px' }}>Share this with the doctor — they'll need it to log in.</p>
+            </div>
+            <button
+              onClick={() => setDoctorSuccess(null)}
+              style={{ width: '100%', padding: '12px', backgroundColor: 'var(--accent-primary)', color: '#FFF', borderRadius: '8px', border: 'none', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Done
+            </button>
           </div>
         </div>
       )}
