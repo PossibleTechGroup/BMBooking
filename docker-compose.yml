@@ -153,6 +153,18 @@ services:
     networks:
       - bm-network
 
+  telegram-bot:
+    build:
+      context: ./apps/telegram-bot
+      dockerfile: Dockerfile
+    container_name: bm-telegram-bot
+    restart: unless-stopped
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      WEBAPP_URL: https://bmbookingtelegrambot.possibletechplc.com
+    networks:
+      - bm-network
+
 networks:
   bm-network:
     driver: bridge
