@@ -121,7 +121,7 @@ const DoctorService = {
 
   getAllDoctors: async () => {
     return await prisma.doctorProfile.findMany({
-      where: { status: 'Approved', hospitalId: { not: null } },
+      where: { status: 'Approved' },
       include: {
         hospital: {
           include: {
@@ -140,7 +140,7 @@ const DoctorService = {
 
   searchDoctors: async ({ specialty, minRating, name }) => {
     const amharicHelper = require('../lib/amharicHelper');
-    const where = { status: 'Approved', hospitalId: { not: null } };
+    const where = { status: 'Approved' };
     const andConditions = [];
 
     if (specialty) {

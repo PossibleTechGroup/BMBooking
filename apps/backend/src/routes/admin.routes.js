@@ -49,6 +49,9 @@ router.get('/doctors/:id', AdminController.getDoctorDetail);
 router.post('/doctors', generalUpload.single('profilePicture'), AdminController.createDoctor);
 router.post('/doctors/review', AdminController.reviewDoctor);
 router.post('/doctors/schedules', AdminController.createDoctorSchedule);
+router.get('/doctors/:id/schedules', AdminController.getDoctorSchedules);
+router.delete('/doctors/schedules/:id', AdminController.deleteDoctorSchedule);
+router.put('/doctors/:id', generalUpload.single('profilePicture'), AdminController.updateDoctor);
 router.delete('/doctors/:id', AdminController.deleteDoctor);
 
 // Withdrawal Management

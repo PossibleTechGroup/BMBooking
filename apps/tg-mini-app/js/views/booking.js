@@ -487,8 +487,8 @@ const BookingView = (() => {
       const payload = {
         doctorId: state.doctorId,
         scheduleId: state.selectedSchedule?.id,
-        dateTime: state.selectedSchedule?.date
-          ? `${state.selectedSchedule.date}T${state.selectedSchedule.startTime || '00:00'}:00.000Z`
+        dateTime: state.selectedSchedule?.startTime
+          ? (state.selectedSchedule.startTime.includes('T') ? state.selectedSchedule.startTime : `${state.selectedSchedule.date || new Date().toISOString().split('T')[0]}T${state.selectedSchedule.startTime}:00.000Z`)
           : new Date().toISOString(),
         issueCategory: state.selectedCategory,
         fee: state.totalPayable,

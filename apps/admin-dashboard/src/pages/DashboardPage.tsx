@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchPendingDoctors, fetchAllDoctors, reviewDoctor, deleteDoctor, assignHospitalToDoctor, createDoctor, createSchedule } from '../store/slices/doctorSlice';
+import { fetchPendingDoctors, fetchAllDoctors, reviewDoctor, deleteDoctor, assignHospitalToDoctor, createDoctor, createSchedule, updateDoctor, fetchDoctorSchedules, deleteDoctorSchedule } from '../store/slices/doctorSlice';
 import { fetchHospitals } from '../store/slices/hospitalSlice';
 import { logout } from '../store/slices/authSlice';
 import type { AppDispatch, RootState } from '../store';
@@ -40,6 +40,7 @@ import {
   BarChart3,
   Clock,
   PlusCircle,
+  Edit3,
   Briefcase,
   MapPin,
   Globe,
@@ -109,6 +110,11 @@ const DashboardPage = () => {
   });
   const [createDoctorError, setCreateDoctorError] = useState('');
   const [doctorSuccess, setDoctorSuccess] = useState<{ name: string; tempPassword: string; doctor: any } | null>(null);
+  const [showEditDoctor, setShowEditDoctor] = useState(false);
+  const [editDoctorForm, setEditDoctorForm] = useState<any>({});
+  const [editDoctorError, setEditDoctorError] = useState('');
+  const [doctorSchedules, setDoctorSchedules] = useState<any[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({
     date: '', startTime: '', endTime: '', slotDuration: '30', maxPatientsPerSlot: '1', clinicRoom: '', notes: '',
@@ -200,6 +206,58 @@ const DashboardPage = () => {
     setSelectedDoctor(null);
     navigateToTab('dashboard');
     setDeleteModal(false);
+  };
+
+  useEffect(() => {
+    if (selectedDoctor?.id) {
+      setSchedulesLoading(true);
+      const loadSchedules = async () => {
+        try {
+          const { default: apiClient } = await import('../api/client');
+          const { data } = await apiClient.get(`/admin/doctors/${selectedDoctor.id}/schedules`);
+          setDoctorSchedules(data.data || []);
+        } catch { setDoctorSchedules([]); }
+        setSchedulesLoading(false);
+      };
+      loadSchedules();
+    } else {
+      setDoctorSchedules([]);
+    }
+  }, [selectedDoctor?.id]);
+
+  const handleUpdateDoctor = async () => {
+    setEditDoctorError('');
+    if (!selectedDoctor || !editDoctorForm.fullName) {
+      setEditDoctorError('Full name is required');
+      return;
+    }
+    try {
+      const fd = new FormData();
+      fd.append('fullName', editDoctorForm.fullName);
+      if (editDoctorForm.specialization !== undefined) fd.append('specialization', editDoctorForm.specialization || '');
+      if (editDoctorForm.licenseNumber !== undefined) fd.append('licenseNumber', editDoctorForm.licenseNumber || '');
+      if (editDoctorForm.experienceYears !== undefined) fd.append('experienceYears', editDoctorForm.experienceYears || '');
+      if (editDoctorForm.bio !== undefined) fd.append('bio', editDoctorForm.bio || '');
+      if (editDoctorForm.clinicName !== undefined) fd.append('clinicName', editDoctorForm.clinicName || '');
+      if (editDoctorForm.clinicAddress !== undefined) fd.append('clinicAddress', editDoctorForm.clinicAddress || '');
+      if (editDoctorForm.languages !== undefined) fd.append('languages', editDoctorForm.languages || '');
+      if (editDoctorForm.baseHourlyRate !== undefined) fd.append('baseHourlyRate', editDoctorForm.baseHourlyRate || '');
+      if (editDoctorForm.hospitalId !== undefined) fd.append('hospitalId', editDoctorForm.hospitalId || '');
+      if (editDoctorForm.status !== undefined) fd.append('status', editDoctorForm.status);
+      const updated = await dispatch(updateDoctor({ id: selectedDoctor.id, data: fd })).unwrap();
+      setSelectedDoctor({ ...selectedDoctor, ...updated });
+      setShowEditDoctor(false);
+    } catch (err: any) {
+      setEditDoctorError(err || 'Failed to update doctor');
+    }
+  };
+
+  const handleDeleteSchedule = async (scheduleId: number) => {
+    if (!confirm('Delete this schedule?')) return;
+    try {
+      await dispatch(deleteDoctorSchedule(scheduleId)).unwrap();
+      setDoctorSchedules(prev => prev.filter(s => s.id !== scheduleId));
+    } catch { /* ignore */ }
   };
 
   const handleCreateDoctor = async () => {
@@ -804,27 +862,56 @@ const DashboardPage = () => {
                   {/* Schedule Management */}
                   <div className="paper-card" style={{...styles.infoCard, gridColumn: 'span 2'}}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <h4 style={{...styles.infoTitle, marginBottom: 0 }}><Clock size={16} /> Schedule</h4>
-                      <button
-                        onClick={() => { setShowScheduleModal(true); setScheduleError(''); setScheduleSuccess(''); }}
-                        style={{ backgroundColor: 'var(--accent-primary)', color: '#FFF', padding: '6px 14px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
-                      >
-                        <PlusCircle size={14} /> Create Schedule
-                      </button>
+                      <h4 style={{...styles.infoTitle, marginBottom: 0 }}><Clock size={16} /> Schedules</h4>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => { setEditDoctorForm({ ...selectedDoctor, languages: Array.isArray(selectedDoctor.languages) ? selectedDoctor.languages.join(', ') : '' }); setShowEditDoctor(true); setEditDoctorError(''); }}
+                          style={{ backgroundColor: '#FFF', color: 'var(--accent-primary)', padding: '6px 14px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, border: '1.5px solid var(--accent-primary)', cursor: 'pointer' }}
+                        >
+                          <Edit3 size={14} /> Edit
+                        </button>
+                        {selectedDoctor.status === 'Approved' && (
+                          <button
+                            onClick={() => { setShowScheduleModal(true); setScheduleError(''); setScheduleSuccess(''); }}
+                            style={{ backgroundColor: 'var(--accent-primary)', color: '#FFF', padding: '6px 14px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                          >
+                            <PlusCircle size={14} /> Create Schedule
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {scheduleSuccess && (
                       <div style={{ backgroundColor: '#ECFDF3', border: '1px solid #D1FAE5', borderRadius: '8px', padding: '8px 14px', marginBottom: '8px', color: '#027A48', fontSize: '13px' }}>
                         {scheduleSuccess}
                       </div>
                     )}
-                    {selectedDoctor.status === 'Approved' ? (
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                        Click "Create Schedule" to add available time slots for this doctor.
-                      </p>
+                    {schedulesLoading ? (
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Loading schedules...</p>
+                    ) : doctorSchedules.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {doctorSchedules.map((sched: any) => (
+                          <div key={sched.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', backgroundColor: 'var(--surface)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                            <div>
+                              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                {new Date(sched.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                              </div>
+                              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                {new Date(sched.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} — {new Date(sched.endTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                {sched.clinicRoom ? ` · ${sched.clinicRoom}` : ''}
+                                {sched.slots ? ` · ${sched.slots.length} slots` : ''}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteSchedule(sched.id)}
+                              style={{ backgroundColor: 'transparent', color: '#EF4444', border: 'none', cursor: 'pointer', padding: '4px 8px', fontSize: '12px', fontWeight: 600 }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     ) : (
-                      <p style={{ color: '#F79009', fontSize: '13px' }}>
-                        Doctor must be approved before schedules can be created.
-                      </p>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>No schedules yet. Click "Create Schedule" to add time slots.</p>
                     )}
                   </div>
                 </div>
@@ -941,6 +1028,81 @@ const DashboardPage = () => {
               <button style={styles.cancelBtn} onClick={() => { setShowCreateDoctor(false); setCreateDoctorError(''); }}>Cancel</button>
               <button style={{...styles.approveBtn}} onClick={handleCreateDoctor}>
                 <PlusCircle size={16} /> Create Doctor
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditDoctor && selectedDoctor && (
+        <div style={styles.modalOverlay}>
+          <div className="glass-card animate-fade" style={{...styles.modalContent, width: '560px', maxHeight: '85vh', overflowY: 'auto'}}>
+            <h3 style={{ marginBottom: '20px' }}>Edit Doctor — {selectedDoctor.fullName}</h3>
+            {editDoctorError && (
+              <div style={{ backgroundColor: '#FEF3F2', border: '1px solid #FEE4E2', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: '#B42318', fontSize: '13px' }}>
+                {editDoctorError}
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={styles.formLabel}>Full Name *</label>
+                <input style={styles.formInput} value={editDoctorForm.fullName || ''} onChange={e => setEditDoctorForm((p: any) => ({...p, fullName: e.target.value}))} />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Specialization</label>
+                <select style={styles.formInput} value={editDoctorForm.specialization || ''} onChange={e => setEditDoctorForm((p: any) => ({...p, specialization: e.target.value}))}>
+                  <option value="">Select specialization</option>
+                  {specializations.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={styles.formLabel}>License Number</label>
+                <input style={styles.formInput} value={editDoctorForm.licenseNumber || ''} onChange={e => setEditDoctorForm((p: any) => ({...p, licenseNumber: e.target.value}))} />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Experience (years)</label>
+                <input style={styles.formInput} type="number" min="0" value={editDoctorForm.experienceYears || ''} onChange={e => setEditDoctorForm((p: any) => ({...p, experienceYears: e.target.value}))} />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Hourly Rate (ETB)</label>
+                <input style={styles.formInput} type="number" min="0" value={editDoctorForm.baseHourlyRate || ''} onChange={e => setEditDoctorForm((p: any) => ({...p, baseHourlyRate: e.target.value}))} />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Languages</label>
+                <input style={styles.formInput} value={editDoctorForm.languages || ''} onChange={e => setEditDoctorForm((p: any) => ({...p, languages: e.target.value}))} placeholder="Amharic, English" />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Status</label>
+                <select style={styles.formInput} value={editDoctorForm.status || 'Approved'} onChange={e => setEditDoctorForm((p: any) => ({...p, status: e.target.value}))}>
+                  <option value="Approved">Approved</option>
+                  <option value="Pending Review">Pending Review</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
+              <div>
+                <label style={styles.formLabel}>Hospital</label>
+                <select style={styles.formInput} value={editDoctorForm.hospitalId || ''} onChange={e => setEditDoctorForm((p: any) => ({...p, hospitalId: e.target.value}))}>
+                  <option value="">None</option>
+                  {hospitalsList.map((h: any) => <option key={h.id} value={h.id}>{h.name}</option>)}
+                </select>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={styles.formLabel}>Clinic Name</label>
+                <input style={styles.formInput} value={editDoctorForm.clinicName || ''} onChange={e => setEditDoctorForm((p: any) => ({...p, clinicName: e.target.value}))} />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={styles.formLabel}>Clinic Address</label>
+                <input style={styles.formInput} value={editDoctorForm.clinicAddress || ''} onChange={e => setEditDoctorForm((p: any) => ({...p, clinicAddress: e.target.value}))} />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={styles.formLabel}>Bio</label>
+                <textarea style={{...styles.formInput, height: '80px', resize: 'vertical'}} value={editDoctorForm.bio || ''} onChange={e => setEditDoctorForm((p: any) => ({...p, bio: e.target.value}))} />
+              </div>
+            </div>
+            <div style={{...styles.modalActions, marginTop: '20px' }}>
+              <button style={styles.cancelBtn} onClick={() => { setShowEditDoctor(false); setEditDoctorError(''); }}>Cancel</button>
+              <button style={styles.approveBtn} onClick={handleUpdateDoctor}>
+                <CheckCircle2 size={16} /> Save Changes
               </button>
             </div>
           </div>

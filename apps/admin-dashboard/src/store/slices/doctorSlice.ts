@@ -100,12 +100,50 @@ export const assignHospitalToDoctor = createAsyncThunk(
 
 export const createSchedule = createAsyncThunk(
   'adminDoctor/createSchedule',
-  async (data: { doctorId: number; date: string; startTime: string; endTime: string; slotDuration?: number; maxPatientsPerSlot?: number; clinicRoom?: string; notes?: string; hospitalId?: number | null }, { rejectWithValue }) => {
+  async (data: { doctorId: number; date: string; startTime: string; endTime: string; slotDuration?: number; maxPatientsPerSlot?: number; clinicRoom?: string; notes?: string; hospitalId?: number | null; repeatEndDate?: string; daysOfWeek?: number[] }, { rejectWithValue }) => {
     try {
       const response = await client.post('/admin/doctors/schedules', data);
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to create schedule');
+    }
+  }
+);
+
+export const updateDoctor = createAsyncThunk(
+  'adminDoctor/update',
+  async ({ id, data }: { id: number; data: FormData }, { rejectWithValue }) => {
+    try {
+      const response = await client.put(`/admin/doctors/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update doctor');
+    }
+  }
+);
+
+export const fetchDoctorSchedules = createAsyncThunk(
+  'adminDoctor/fetchSchedules',
+  async (doctorId: number, { rejectWithValue }) => {
+    try {
+      const response = await client.get(`/admin/doctors/${doctorId}/schedules`);
+      return { doctorId, schedules: response.data.data };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch schedules');
+    }
+  }
+);
+
+export const deleteDoctorSchedule = createAsyncThunk(
+  'adminDoctor/deleteSchedule',
+  async (scheduleId: number, { rejectWithValue }) => {
+    try {
+      await client.delete(`/admin/doctors/schedules/${scheduleId}`);
+      return scheduleId;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete schedule');
     }
   }
 );
@@ -164,9 +202,18 @@ const adminDoctorSlice = createSlice({
       .addCase(createSchedule.fulfilled, (state) => {
         state.success = true;
       })
+      .addCase(updateDoctor.fulfilled, (state, action) => {
+        state.success = true;
+        const update = (list: any[]) => list.map(d => d.id === action.payload.id ? { ...d, ...action.payload } : d);
+        state.doctors = update(state.doctors);
+        state.pendingDoctors = update(state.pendingDoctors);
+      })
       .addCase(deleteDoctor.fulfilled, (state, action) => {
         state.doctors = state.doctors.filter(d => d.id !== action.payload);
         state.pendingDoctors = state.pendingDoctors.filter(d => d.id !== action.payload);
+      })
+      .addCase(deleteDoctorSchedule.fulfilled, (state) => {
+        state.success = true;
       })
       .addCase(assignHospitalToDoctor.fulfilled, (state, action) => {
         const update = (list: any[]) => list.map((d) =>

@@ -559,10 +559,73 @@ const AdminController = {
       const { fee } = req.body;
       const doctor = await prisma.doctorProfile.update({
         where: { id: parseInt(id) },
-        data: { fee: Number(fee) },
-        select: { id: true, fullName: true, fee: true },
+        data: { baseHourlyRate: Number(fee) },
+        select: { id: true, fullName: true, baseHourlyRate: true },
       });
       res.status(200).json({ status: 'success', data: doctor });
+    } catch (err) {
+      res.status(400).json({ status: 'fail', message: err.message });
+    }
+  },
+
+  updateDoctor: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const allowed = ['fullName', 'specialization', 'specializations', 'licenseNumber', 'experienceYears', 'bio', 'clinicName', 'clinicAddress', 'languages', 'baseHourlyRate', 'hospitalId', 'status'];
+      const data = {};
+      for (const key of allowed) {
+        if (req.body[key] !== undefined) {
+          if (key === 'experienceYears' || key === 'hospitalId') {
+            data[key] = req.body[key] !== null && req.body[key] !== '' ? parseInt(req.body[key]) : null;
+          } else if (key === 'baseHourlyRate') {
+            data[key] = req.body[key] !== null && req.body[key] !== '' ? parseFloat(req.body[key]) : null;
+          } else {
+            data[key] = req.body[key];
+          }
+        }
+      }
+      if (req.file) {
+        data.profilePicture = req.file.path || req.file.location || null;
+      }
+      const doctor = await prisma.doctorProfile.update({
+        where: { id: parseInt(id) },
+        data,
+        include: {
+          user: { select: { id: true, phone: true, email: true, createdAt: true } },
+          hospital: { select: { id: true, name: true } },
+        },
+      });
+      res.status(200).json({ status: 'success', data: doctor });
+    } catch (err) {
+      res.status(400).json({ status: 'fail', message: err.message });
+    }
+  },
+
+  getDoctorSchedules: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const schedules = await prisma.doctorSchedule.findMany({
+        where: { doctorId: parseInt(id) },
+        include: {
+          slots: {
+            include: { _count: { select: { bookings: true } } },
+            orderBy: { startTime: 'asc' },
+          },
+        },
+        orderBy: { date: 'desc' },
+      });
+      res.status(200).json({ status: 'success', data: schedules });
+    } catch (err) {
+      res.status(400).json({ status: 'fail', message: err.message });
+    }
+  },
+
+  deleteDoctorSchedule: async (req, res) => {
+    try {
+      const { id } = req.params;
+      await prisma.scheduleSlot.deleteMany({ where: { scheduleId: parseInt(id) } });
+      await prisma.doctorSchedule.delete({ where: { id: parseInt(id) } });
+      res.status(200).json({ status: 'success', message: 'Schedule deleted' });
     } catch (err) {
       res.status(400).json({ status: 'fail', message: err.message });
     }
