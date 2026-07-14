@@ -1,6 +1,6 @@
 const API = (() => {
   const BASE = (() => {
-    return 'https://bmapi.possibletechplc.com';
+    return 'https://bmbookingapi.possibletechplc.com';
   })();
 
   const TELEBIRR = (() => {
