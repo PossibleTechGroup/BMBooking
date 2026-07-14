@@ -316,18 +316,19 @@ const BookingView = (() => {
     const el = container.querySelector('#step-payment');
     state.step = 3;
     state.cardFee = state.doctor?.hospital?.cardPrice ? parseFloat(state.doctor.hospital.cardPrice) : 0;
-    state.totalPayable = state.cardFee;
+    const consultationFee = state.doctor?.baseHourlyRate ? parseFloat(state.doctor.baseHourlyRate) : 0;
+    state.totalPayable = consultationFee + (state.includeCardFee ? state.cardFee : 0);
 
     el.innerHTML = `
       <h3 style="margin-bottom:16px">Payment</h3>
       <div class="card">
         <div class="payment-row">
-          <span>Hospital Card Fee</span>
-          <span>${state.cardFee} ETB</span>
+          <span>Consultation Fee</span>
+          <span>${consultationFee} ETB</span>
         </div>
         ${state.cardFee > 0 ? `
         <div class="payment-row">
-          <span>Hospital Card</span>
+          <span>Hospital Card Fee</span>
           <span>
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
               <input type="checkbox" id="card-fee-toggle" ${state.includeCardFee ? 'checked' : ''} />
@@ -350,7 +351,8 @@ const BookingView = (() => {
     if (toggle) {
       toggle.addEventListener('change', () => {
         state.includeCardFee = toggle.checked;
-        state.totalPayable = state.includeCardFee ? state.cardFee : 0;
+        const consultFee = state.doctor?.baseHourlyRate ? parseFloat(state.doctor.baseHourlyRate) : 0;
+        state.totalPayable = consultFee + (state.includeCardFee ? state.cardFee : 0);
         el.querySelector('#total-amount').textContent = `${state.totalPayable} ETB`;
         el.querySelector('#payment-pay-btn').textContent = `Pay ${state.totalPayable} ETB`;
       });
@@ -461,7 +463,7 @@ const BookingView = (() => {
         </div>
         <div class="card-row">
           <span class="text-hint">Payment</span>
-          <span>${state.paymentDone ? '<span style="display:inline-flex;align-items:center;gap:4px;color:#027A48"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#027A48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Paid</span>' : '<span style="display:inline-flex;align-items:center;gap:4px;color:#E53935"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E53935" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Not paid</span>'}</span>
+          <span>${state.paymentDone ? `<span style="display:inline-flex;align-items:center;gap:4px;color:#027A48">✓ Paid (${state.totalPayable} ETB)</span>` : `<span style="display:inline-flex;align-items:center;gap:4px;color:#E53935">✗ Not paid</span>`}</span>
         </div>
         <div class="card-row">
           <span class="text-hint">Amount</span>
