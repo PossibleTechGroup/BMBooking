@@ -175,9 +175,14 @@ const schemas = {
     notes: Joi.string().max(1000).allow('').optional(),
     attachments: Joi.array().items(Joi.string()),
     slotId: Joi.number().integer().optional(),
+    scheduleId: Joi.number().integer().optional(),
     paymentMethod: Joi.string().valid('service_fee', 'full', 'card').optional(),
     cardId: Joi.number().integer().optional(),
     paidCardFee: Joi.boolean().optional(),
+    isPaid: Joi.boolean().optional(),
+    bookingFor: Joi.string().valid('myself', 'someone_else').optional(),
+    otherPatientName: Joi.string().max(100).optional(),
+    otherPatientPhone: Joi.string().optional(),
     otherPatientDetails: Joi.object({
       fullName: Joi.string().min(2).max(100).required(),
       phone: Joi.string().regex(/^\+251[79]\d{8}$/).required().messages({
@@ -193,7 +198,7 @@ const schemas = {
       dateOfBirth: Joi.date().iso().optional(),
       bloodType: Joi.string().valid("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-").optional(),
     }).optional(),
-  }),
+  }).unknown(true),
 
   createAppointmentForPatient: Joi.object({
     patientId: Joi.number().required(),

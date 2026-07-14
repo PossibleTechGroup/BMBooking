@@ -112,6 +112,9 @@ const DashboardPage = () => {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({
     date: '', startTime: '', endTime: '', slotDuration: '30', maxPatientsPerSlot: '1', clinicRoom: '', notes: '',
+    repeatPattern: 'none' as 'none' | 'daily' | 'weekdays' | 'custom',
+    repeatEndDate: '',
+    daysOfWeek: [] as number[],
   });
   const [scheduleError, setScheduleError] = useState('');
   const [scheduleSuccess, setScheduleSuccess] = useState('');
@@ -237,8 +240,12 @@ const DashboardPage = () => {
       setScheduleError('Date, start time, and end time are required');
       return;
     }
+    if (scheduleForm.repeatPattern !== 'none' && !scheduleForm.repeatEndDate) {
+      setScheduleError('End date is required for recurring schedules');
+      return;
+    }
     try {
-      await dispatch(createSchedule({
+      const payload: any = {
         doctorId: selectedDoctor.id,
         date: scheduleForm.date,
         startTime: `${scheduleForm.date}T${scheduleForm.startTime}:00.000Z`,
@@ -248,9 +255,20 @@ const DashboardPage = () => {
         clinicRoom: scheduleForm.clinicRoom || undefined,
         notes: scheduleForm.notes || undefined,
         hospitalId: selectedDoctor.hospitalId || null,
-      })).unwrap();
+      };
+      if (scheduleForm.repeatPattern !== 'none') {
+        payload.repeatEndDate = scheduleForm.repeatEndDate;
+        if (scheduleForm.repeatPattern === 'daily') {
+          payload.daysOfWeek = [0, 1, 2, 3, 4, 5, 6];
+        } else if (scheduleForm.repeatPattern === 'weekdays') {
+          payload.daysOfWeek = [1, 2, 3, 4, 5];
+        } else if (scheduleForm.repeatPattern === 'custom') {
+          payload.daysOfWeek = scheduleForm.daysOfWeek;
+        }
+      }
+      await dispatch(createSchedule(payload)).unwrap();
       setScheduleSuccess('Schedule created successfully');
-      setScheduleForm({ date: '', startTime: '', endTime: '', slotDuration: '30', maxPatientsPerSlot: '1', clinicRoom: '', notes: '' });
+      setScheduleForm({ date: '', startTime: '', endTime: '', slotDuration: '30', maxPatientsPerSlot: '1', clinicRoom: '', notes: '', repeatPattern: 'none', repeatEndDate: '', daysOfWeek: [] });
       setTimeout(() => setScheduleSuccess(''), 3000);
     } catch (err: any) {
       setScheduleError(err || 'Failed to create schedule');
@@ -931,7 +949,7 @@ const DashboardPage = () => {
 
       {showScheduleModal && selectedDoctor && (
         <div style={styles.modalOverlay}>
-          <div className="glass-card animate-fade" style={{...styles.modalContent, width: '480px'}}>
+          <div className="glass-card animate-fade" style={{...styles.modalContent, width: '520px', maxHeight: '85vh', overflowY: 'auto'}}>
             <h3 style={{ marginBottom: '20px' }}>Create Schedule — {selectedDoctor.fullName}</h3>
             {scheduleError && (
               <div style={{ backgroundColor: '#FEF3F2', border: '1px solid #FEE4E2', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: '#B42318', fontSize: '13px' }}>
@@ -961,8 +979,50 @@ const DashboardPage = () => {
               </div>
               <div>
                 <label style={styles.formLabel}>Clinic Room</label>
-                <input style={styles.formInput} value={scheduleForm.clinicRoom} onChange={e => setScheduleForm(p => ({...p, clinicRoom: e.target.value}))} placeholder="Room 101" />
+                <input style={styles.formInput} value={scheduleForm.clinicRoom} onChange={e => setScheduleForm(p => ({...p, clinicRoom: e.target.value}))} placeholder="Optional" />
               </div>
+              <div>
+                <label style={styles.formLabel}>Repeat</label>
+                <select style={styles.formInput} value={scheduleForm.repeatPattern} onChange={e => setScheduleForm(p => ({...p, repeatPattern: e.target.value as any, daysOfWeek: e.target.value === 'custom' ? [] : p.daysOfWeek}))}>
+                  <option value="none">No repeat (single day)</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekdays">Weekdays (Mon–Fri)</option>
+                  <option value="custom">Custom days</option>
+                </select>
+              </div>
+              {scheduleForm.repeatPattern !== 'none' && (
+                <div>
+                  <label style={styles.formLabel}>Repeat Until *</label>
+                  <input style={styles.formInput} type="date" value={scheduleForm.repeatEndDate} onChange={e => setScheduleForm(p => ({...p, repeatEndDate: e.target.value}))} min={scheduleForm.date} />
+                </div>
+              )}
+              {scheduleForm.repeatPattern === 'custom' && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={styles.formLabel}>Select Days</label>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          setScheduleForm(p => ({
+                            ...p,
+                            daysOfWeek: p.daysOfWeek.includes(i) ? p.daysOfWeek.filter(d => d !== i) : [...p.daysOfWeek, i],
+                          }));
+                        }}
+                        style={{
+                          padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: '1.5px solid',
+                          borderColor: scheduleForm.daysOfWeek.includes(i) ? 'var(--accent-primary)' : 'var(--border)',
+                          backgroundColor: scheduleForm.daysOfWeek.includes(i) ? 'var(--accent-bg)' : 'var(--surface)',
+                          color: scheduleForm.daysOfWeek.includes(i) ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                        }}
+                      >
+                        {day}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={styles.formLabel}>Notes</label>
                 <textarea style={{...styles.formInput, height: '60px', resize: 'vertical'}} value={scheduleForm.notes} onChange={e => setScheduleForm(p => ({...p, notes: e.target.value}))} placeholder="Optional notes..." />
