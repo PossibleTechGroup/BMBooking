@@ -79,6 +79,10 @@ services:
       SERVER_IP: ${TELEBIRR_SERVER_IP:-bmtelebirr.possibletechplc.com}
       SHEGA_BACKEND_URL: ${SHEGA_BACKEND_URL:-http://backend:5000}
       BM_BACKEND_URL: ${BM_BACKEND_URL:-http://backend:5000}
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     depends_on:
       - backend
     networks:
