@@ -1,17 +1,21 @@
 #!/bin/bash
 set -e
 
-# Start the standard postgres entrypoint in the background
+# Start postgres normally first to let docker-entrypoint.sh do its initialization
 docker-entrypoint.sh postgres &
-PID=$!
+EPID=$!
 
-# Wait for postgres to be ready
-until pg_isready -U postgres 2>/dev/null; do
-  sleep 1
-done
+# Wait for the init to finish and postgres to start, then stop it
+sleep 5
+kill $EPID 2>/dev/null || true
+wait $EPID 2>/dev/null || true
 
-# Ensure LOGIN is always enabled
-psql -U postgres -d "${POSTGRES_DB:-bm_booking_db}" -c "ALTER ROLE postgres WITH LOGIN PASSWORD '${POSTGRES_PASSWORD:-postgres}';" 2>/dev/null || true
+# Fix LOGIN in single-user mode
+if command -v postgres &>/dev/null; then
+  su - postgres -c "postgres --single -D /var/lib/postgresql/data ${POSTGRES_DB:-bm_booking_db}" <<SQL || true
+ALTER ROLE postgres WITH LOGIN PASSWORD '${POSTGRES_PASSWORD:-postgres}';
+SQL
+fi
 
-# Keep the container running
-wait $PID
+# Start postgres for real (no entrypoint, just postgres directly)
+exec postgres -D /var/lib/postgresql/data

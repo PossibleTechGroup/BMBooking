@@ -15,8 +15,6 @@ services:
       POSTGRES_DB: ${DB_NAME:-bm_booking_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./apps/db/ensure-login.sh:/usr/local/bin/ensure-login.sh
-    entrypoint: ["/usr/local/bin/ensure-login.sh"]
     ports:
       - "${DB_EXTERNAL_PORT:-5433}:5432"
     healthcheck:
@@ -78,7 +76,7 @@ services:
     environment:
       PORT: "8080"
       HOST: "0.0.0.0"
-      SERVER_IP: ${TELEBIRR_SERVER_IP:-}
+      SERVER_IP: ${TELEBIRR_SERVER_IP:-bmtelebirr.possibletechplc.com}
       SHEGA_BACKEND_URL: ${SHEGA_BACKEND_URL:-http://backend:5000}
       BM_BACKEND_URL: ${BM_BACKEND_URL:-http://backend:5000}
     depends_on:

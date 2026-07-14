@@ -4,7 +4,7 @@ const API = (() => {
   })();
 
   const TELEBIRR = (() => {
-    return 'https://api.bm.possibletechplc.com:8443';
+    return 'https://bmtelebirr.possibletechplc.com';
   })();
 
   function getToken() {
