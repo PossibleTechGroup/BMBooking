@@ -60,23 +60,7 @@ app.get("/", async (req, res) => {
     }
   }
 
-  // Serve test HTML page
-  const env = process.env.NODE_ENV || 'development';
-  if (env !== 'production') {
-    // Mock: notify backend immediately so verify-telebirr succeeds
-    try {
-      const baseUrl = process.env.BM_BACKEND_URL || 'http://backend:5000';
-      await axios.post(`${baseUrl}/api/payments/telebirr-notify`, {
-        orderId: 'MOCK' + Date.now(),
-        status: 'Completed',
-        amount: req.query.amount || '0',
-        transactionId: 'MOCKTX' + Date.now(),
-      });
-    } catch (e) {
-      console.log('[MOCK] Notify error (non-fatal):', e.message);
-    }
-    return res.sendFile(path.join(__dirname, "success.html"));
-  }
+  // Show the payment form page — user confirms amount, creates order, gets redirected to Telebirr
   res.sendFile(path.join(__dirname, "test.html"));
 });
 
