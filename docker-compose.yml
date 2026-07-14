@@ -13,11 +13,12 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-bm_booking_db}
-      POSTGRES_HOST_AUTH_METHOD: trust
-    ports:
-      - "${DB_EXTERNAL_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./apps/db/ensure-login.sh:/usr/local/bin/ensure-login.sh
+    entrypoint: ["/usr/local/bin/ensure-login.sh"]
+    ports:
+      - "${DB_EXTERNAL_PORT:-5433}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-bm_booking_db}"]
       interval: 5s
