@@ -1,7 +1,8 @@
 FROM node:20-slim AS builder
 WORKDIR /app
+COPY package*.json ./
+RUN npm install
 COPY . .
-RUN ls -la && (ls -la node_modules || true) && (ls -la node_modules/.bin || true)
 RUN npm run build
 
 FROM node:20-slim AS runner
