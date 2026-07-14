@@ -250,7 +250,7 @@ export default function Home() {
       });
 
       if (response.ok) {
-        window.open('https://telegram.me/bm_booking_bot', '_blank');
+        window.open('https://t.me/bm_booking_bot', '_blank');
         setSubmitSuccess(true);
       } else {
         const errData = await response.json().catch(() => ({}));
@@ -332,7 +332,7 @@ export default function Home() {
           zIndex: 101,
         }}
       >
-        <span>Subscribe to <a href="https://telegram.me/bm_booking" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontWeight: 500, textDecoration: "none" }}>@bm_booking</a> on Telegram for the latest updates ↗</span>
+        <span>Subscribe to <a href="https://t.me/bm_booking_bot" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontWeight: 500, textDecoration: "none" }}>@bm_booking_bot</a> on Telegram for the latest updates ↗</span>
       </div>
 
       {/* Floating Navigation Header */}
@@ -623,7 +623,7 @@ export default function Home() {
               trailColor="#3E5C76"
               spacing={36}
               radius={300}
-              strength={3}
+              strength={2.5}
               trail={false}
               style={{
                 position: "absolute",
@@ -1001,7 +1001,7 @@ export default function Home() {
           {/* Right / Button Action */}
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem", alignItems: "center" }} className="telegram-icon-container">
             <a
-              href="https://t.me/BMBookingBot"
+              href="https://t.me/bm_booking_bot"
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-primary"
@@ -1016,7 +1016,7 @@ export default function Home() {
               Open BM Booking Bot
               <ArrowRight size={18} />
             </a>
-            <span style={{ fontSize: "0.8rem", color: "var(--ink-soft)", fontWeight: 500 }}>Direct link: <span style={{ fontFamily: "var(--font-mono)" }}>@BMBookingBot</span></span>
+            <span style={{ fontSize: "0.8rem", color: "var(--ink-soft)", fontWeight: 500 }}>Direct link: <span style={{ fontFamily: "var(--font-mono)" }}>@bm_booking_bot</span></span>
           </div>
         </div>
       </section>
@@ -1307,7 +1307,7 @@ export default function Home() {
               </div>
 
               <a 
-                href="https://t.me/BMBookingBot" 
+                href="https://t.me/bm_booking_bot" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="btn btn-primary"
@@ -1335,7 +1335,7 @@ export default function Home() {
               The mobile app is in the works. In the meantime, book instantly through our Telegram bot — no download needed.
             </p>
             <a 
-              href="https://t.me/BMBookingBot" 
+              href="https://t.me/bm_booking_bot" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="btn btn-primary"
