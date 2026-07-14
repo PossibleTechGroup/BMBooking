@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../config/env';
+import client from '../api/client';
 import { formatNum } from '../utils/ethiopianDate';
 import { 
   TrendingUp, 
@@ -35,10 +34,7 @@ const AnalysisPage: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('admin_token');
-      const response = await axios.get(`${API_URL}/admin/stats/summary`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await client.get('/admin/stats/summary');
       setStats(response.data.data);
     } catch (err) {
       console.error('Failed to fetch stats', err);

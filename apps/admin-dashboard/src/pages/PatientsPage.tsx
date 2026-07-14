@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../config/env';
+import client from '../api/client';
 import { 
   Users, 
   Search, 
@@ -61,12 +60,10 @@ const PatientsPage: React.FC<{ initialFilter?: 'all' | 'active' | 'inactive'; on
   const fetchPatients = async (p: number, statusFilter: string) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
       const params: Record<string, any> = { page: p, limit: 20 };
       if (statusFilter !== 'all') params.status = statusFilter;
-      const response = await axios.get(`${API_URL}/admin/patients`, {
+      const response = await client.get('/admin/patients', {
         params,
-        headers: { Authorization: `Bearer ${token}` }
       });
       setPatients(response.data.data);
       setTotalPages(response.data.pagination.totalPages);
@@ -82,10 +79,7 @@ const PatientsPage: React.FC<{ initialFilter?: 'all' | 'active' | 'inactive'; on
     setHistoryPatient(patient);
     setHistoryLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
-      const res = await axios.get(`${API_URL}/admin/patients/${patient.id}/history`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await client.get(`/admin/patients/${patient.id}/history`);
       setHistoryData(res.data.data);
     } catch {
       setHistoryData(null);

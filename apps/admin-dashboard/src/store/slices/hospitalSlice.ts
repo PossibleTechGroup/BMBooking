@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-import { API_URL } from '../../config/env';
+import client from '../../api/client';
 
 export interface Pagination {
   page: number;
@@ -63,17 +62,12 @@ const initialState: HospitalState = {
   error: null,
 };
 
-const getAuthHeader = () => {
-  const token = localStorage.getItem('admin_token');
-  return { headers: { Authorization: `Bearer ${token}` } };
-};
-
 export const fetchHospitals = createAsyncThunk(
   'hospitals/fetchAll',
   async (params: { page?: number; limit?: number } | undefined = {}, { rejectWithValue }) => {
     try {
       const { page = 1, limit = 12 } = params || {};
-      const response = await axios.get(`${API_URL}/admin/hospitals?page=${page}&limit=${limit}`, getAuthHeader());
+      const response = await client.get(`/admin/hospitals?page=${page}&limit=${limit}`);
       return {
         hospitals: response.data.data.map((h: Hospital) => ({
           ...h,
@@ -91,13 +85,10 @@ export const createHospital = createAsyncThunk(
   'hospitals/create',
   async (payload: FormData | Record<string, unknown>, { rejectWithValue }) => {
     try {
-      const config = getAuthHeader();
       const isFormData = payload instanceof FormData;
-      const response = await axios.post(
-        `${API_URL}/admin/hospitals`,
-        payload,
-        { ...config, headers: { ...config.headers, ...(isFormData ? { 'Content-Type': 'multipart/form-data' } : {}) } },
-      );
+      const response = await client.post('/admin/hospitals', payload, {
+        headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
+      });
       const h = response.data.data;
       return { ...h, cardPrice: Number(h.cardPrice) };
     } catch (error: any) {
@@ -110,13 +101,10 @@ export const updateHospital = createAsyncThunk(
   'hospitals/update',
   async ({ id, payload }: { id: number; payload: FormData | Record<string, unknown> }, { rejectWithValue }) => {
     try {
-      const config = getAuthHeader();
       const isFormData = payload instanceof FormData;
-      const response = await axios.put(
-        `${API_URL}/admin/hospitals/${id}`,
-        payload,
-        { ...config, headers: { ...config.headers, ...(isFormData ? { 'Content-Type': 'multipart/form-data' } : {}) } },
-      );
+      const response = await client.put(`/admin/hospitals/${id}`, payload, {
+        headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
+      });
       const h = response.data.data;
       return { ...h, cardPrice: Number(h.cardPrice) };
     } catch (error: any) {
@@ -129,7 +117,7 @@ export const deleteHospital = createAsyncThunk(
   'hospitals/delete',
   async (id: number, { rejectWithValue }) => {
     try {
-      await axios.delete(`${API_URL}/admin/hospitals/${id}`, getAuthHeader());
+      await client.delete(`/admin/hospitals/${id}`);
       return id;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete hospital');
@@ -141,7 +129,7 @@ export const fetchReceptionists = createAsyncThunk(
   'hospitals/fetchReceptionists',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/admin/receptionists`, getAuthHeader());
+      const response = await client.get('/admin/receptionists');
       return response.data.data.map((r: ReceptionistProfile) => ({
         ...r,
         hospital: {
@@ -159,7 +147,7 @@ export const updateReceptionist = createAsyncThunk(
   'hospitals/updateReceptionist',
   async ({ id, payload }: { id: number; payload: { username?: string; password?: string; hospitalId?: number; phone?: string; email?: string } }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(`${API_URL}/admin/receptionists/${id}`, payload, getAuthHeader());
+      const response = await client.put(`/admin/receptionists/${id}`, payload);
       const r = response.data.data;
       return {
         ...r,
@@ -175,7 +163,7 @@ export const deleteReceptionist = createAsyncThunk(
   'hospitals/deleteReceptionist',
   async (id: number, { rejectWithValue }) => {
     try {
-      await axios.delete(`${API_URL}/admin/receptionists/${id}`, getAuthHeader());
+      await client.delete(`/admin/receptionists/${id}`);
       return id;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete receptionist');
@@ -187,7 +175,7 @@ export const setServiceFee = createAsyncThunk(
   'hospitals/setServiceFee',
   async ({ hospitalId, amount }: { hospitalId: number; amount: number | null }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(`${API_URL}/admin/hospitals/${hospitalId}/service-fee`, { amount }, getAuthHeader());
+      const response = await client.put(`/admin/hospitals/${hospitalId}/service-fee`, { amount });
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to set service fee');
@@ -205,7 +193,7 @@ export const createReceptionist = createAsyncThunk(
     email?: string;
   }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/admin/receptionists`, payload, getAuthHeader());
+      const response = await client.post('/admin/receptionists', payload);
       const r = response.data.data;
       return {
         ...r,

@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-
-import { API_URL } from '../../config/env';
+import client from '../../api/client';
 
 interface DoctorState {
   doctors: any[];
@@ -19,16 +17,11 @@ const initialState: DoctorState = {
   error: null,
 };
 
-const getAuthHeader = () => {
-  const token = localStorage.getItem('admin_token');
-  return { headers: { Authorization: `Bearer ${token}` } };
-};
-
 export const fetchPendingDoctors = createAsyncThunk(
   'adminDoctor/fetchPending',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/admin/doctors/pending`, getAuthHeader());
+      const response = await client.get('/admin/doctors/pending');
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch pending doctors');
@@ -40,7 +33,7 @@ export const fetchAllDoctors = createAsyncThunk(
   'adminDoctor/fetchAll',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/admin/doctors`, getAuthHeader());
+      const response = await client.get('/admin/doctors');
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch all doctors');
@@ -52,11 +45,11 @@ export const reviewDoctor = createAsyncThunk(
   'adminDoctor/review',
   async ({ doctorId, status, rejectionReason }: { doctorId: number; status: string; rejectionReason?: string | null }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/admin/doctors/review`, {
+      const response = await client.post('/admin/doctors/review', {
         doctorId,
         status,
         rejectionReason
-      }, getAuthHeader());
+      });
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to review doctor');
@@ -68,7 +61,7 @@ export const deleteDoctor = createAsyncThunk(
   'adminDoctor/delete',
   async (id: number, { rejectWithValue }) => {
     try {
-      await axios.delete(`${API_URL}/admin/doctors/${id}`, getAuthHeader());
+      await client.delete(`/admin/doctors/${id}`);
       return id;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete doctor');
@@ -80,8 +73,7 @@ export const createDoctor = createAsyncThunk(
   'adminDoctor/create',
   async (formData: FormData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/admin/doctors`, formData, {
-        ...getAuthHeader(),
+      const response = await client.post('/admin/doctors', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       return response.data.data;
@@ -95,14 +87,25 @@ export const assignHospitalToDoctor = createAsyncThunk(
   'adminDoctor/assignHospital',
   async ({ doctorId, hospitalId }: { doctorId: number; hospitalId: number | null }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(
-        `${API_URL}/admin/doctors/${doctorId}/assign-hospital`,
-        { hospitalId },
-        getAuthHeader()
+      const response = await client.put(
+        `/admin/doctors/${doctorId}/assign-hospital`,
+        { hospitalId }
       );
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to assign hospital');
+    }
+  }
+);
+
+export const createSchedule = createAsyncThunk(
+  'adminDoctor/createSchedule',
+  async (data: { doctorId: number; date: string; startTime: string; endTime: string; slotDuration?: number; maxPatientsPerSlot?: number; clinicRoom?: string; notes?: string; hospitalId?: number | null }, { rejectWithValue }) => {
+    try {
+      const response = await client.post('/admin/doctors/schedules', data);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create schedule');
     }
   }
 );
@@ -157,6 +160,9 @@ const adminDoctorSlice = createSlice({
         state.loading = false;
         state.success = true;
         state.doctors.unshift(action.payload);
+      })
+      .addCase(createSchedule.fulfilled, (state) => {
+        state.success = true;
       })
       .addCase(deleteDoctor.fulfilled, (state, action) => {
         state.doctors = state.doctors.filter(d => d.id !== action.payload);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import client from '../api/client';
 import { 
   Star, 
   Calendar, 
@@ -56,10 +56,7 @@ export const DoctorProfileView = ({
 
   const fetchDoctorDetails = async () => {
     try {
-      const token = localStorage.getItem('admin_token');
-      const response = await axios.get(`/api/admin/doctors/${doctorId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await client.get(`/admin/doctors/${doctorId}`);
       setDoctor(response.data.data);
     } catch (err) {
       console.error('Failed to fetch doctor details', err);

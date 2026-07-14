@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchPendingDoctors, fetchAllDoctors, reviewDoctor, deleteDoctor, assignHospitalToDoctor, createDoctor } from '../store/slices/doctorSlice';
+import { fetchPendingDoctors, fetchAllDoctors, reviewDoctor, deleteDoctor, assignHospitalToDoctor, createDoctor, createSchedule } from '../store/slices/doctorSlice';
 import { fetchHospitals } from '../store/slices/hospitalSlice';
 import { logout } from '../store/slices/authSlice';
 import type { AppDispatch, RootState } from '../store';
@@ -108,17 +108,26 @@ const DashboardPage = () => {
     languages: '', baseHourlyRate: '', hospitalId: '',
   });
   const [createDoctorError, setCreateDoctorError] = useState('');
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState({
+    date: '', startTime: '', endTime: '', slotDuration: '30', maxPatientsPerSlot: '1', clinicRoom: '', notes: '',
+  });
+  const [scheduleError, setScheduleError] = useState('');
+  const [scheduleSuccess, setScheduleSuccess] = useState('');
+
+  const specializations = [
+    'General Practice', 'Cardiology', 'Dermatology', 'Endocrinology', 'Gastroenterology',
+    'Neurology', 'Oncology', 'Ophthalmology', 'Orthopedics', 'Otolaryngology (ENT)',
+    'Pediatrics', 'Psychiatry', 'Pulmonology', 'Radiology', 'Surgery',
+    'Urology', 'Nephrology', 'Rheumatology', 'Hematology', 'Infectious Disease',
+    'Emergency Medicine', 'Anesthesiology', 'Obstetrics & Gynecology', 'Dentistry', 'Dermatology',
+  ];
 
   useEffect(() => {
     const fetchApplicationsCount = async () => {
       try {
-        const { default: axios } = await import('axios');
-        const { API_URL } = await import('../config/env');
-        const token = localStorage.getItem('admin_token');
-        if (!token) return;
-        const { data } = await axios.get(`${API_URL}/admin/hospital-applications`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const { default: apiClient } = await import('../api/client');
+        const { data } = await apiClient.get('/admin/hospital-applications');
         const pendingCount = (data.data || []).filter((app: any) => app.status === 'PENDING').length;
         setPendingAppsCount(pendingCount);
       } catch { /* ignore */ }
@@ -135,12 +144,8 @@ const DashboardPage = () => {
   useEffect(() => {
     const fetchAllHospitals = async () => {
       try {
-        const { default: axios } = await import('axios');
-        const { API_URL } = await import('../config/env');
-        const token = localStorage.getItem('admin_token');
-        const { data } = await axios.get(`${API_URL}/admin/hospitals?limit=200`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const { default: apiClient } = await import('../api/client');
+        const { data } = await apiClient.get('/admin/hospitals?limit=200');
         setHospitalsList(data.data || []);
       } catch { /* ignore */ }
     };
@@ -221,6 +226,33 @@ const DashboardPage = () => {
       }
     } catch (err: any) {
       setCreateDoctorError(err || 'Failed to create doctor');
+    }
+  };
+
+  const handleCreateSchedule = async () => {
+    setScheduleError('');
+    setScheduleSuccess('');
+    if (!selectedDoctor || !scheduleForm.date || !scheduleForm.startTime || !scheduleForm.endTime) {
+      setScheduleError('Date, start time, and end time are required');
+      return;
+    }
+    try {
+      await dispatch(createSchedule({
+        doctorId: selectedDoctor.id,
+        date: scheduleForm.date,
+        startTime: `${scheduleForm.date}T${scheduleForm.startTime}:00.000Z`,
+        endTime: `${scheduleForm.date}T${scheduleForm.endTime}:00.000Z`,
+        slotDuration: parseInt(scheduleForm.slotDuration) || 30,
+        maxPatientsPerSlot: parseInt(scheduleForm.maxPatientsPerSlot) || 1,
+        clinicRoom: scheduleForm.clinicRoom || undefined,
+        notes: scheduleForm.notes || undefined,
+        hospitalId: selectedDoctor.hospitalId || null,
+      })).unwrap();
+      setScheduleSuccess('Schedule created successfully');
+      setScheduleForm({ date: '', startTime: '', endTime: '', slotDuration: '30', maxPatientsPerSlot: '1', clinicRoom: '', notes: '' });
+      setTimeout(() => setScheduleSuccess(''), 3000);
+    } catch (err: any) {
+      setScheduleError(err || 'Failed to create schedule');
     }
   };
 
@@ -749,6 +781,33 @@ const DashboardPage = () => {
                       )}
                     </div>
                   </div>
+
+                  {/* Schedule Management */}
+                  <div className="paper-card" style={{...styles.infoCard, gridColumn: 'span 2'}}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <h4 style={{...styles.infoTitle, marginBottom: 0 }}><Clock size={16} /> Schedule</h4>
+                      <button
+                        onClick={() => { setShowScheduleModal(true); setScheduleError(''); setScheduleSuccess(''); }}
+                        style={{ backgroundColor: 'var(--accent-primary)', color: '#FFF', padding: '6px 14px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                      >
+                        <PlusCircle size={14} /> Create Schedule
+                      </button>
+                    </div>
+                    {scheduleSuccess && (
+                      <div style={{ backgroundColor: '#ECFDF3', border: '1px solid #D1FAE5', borderRadius: '8px', padding: '8px 14px', marginBottom: '8px', color: '#027A48', fontSize: '13px' }}>
+                        {scheduleSuccess}
+                      </div>
+                    )}
+                    {selectedDoctor.status === 'Approved' ? (
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+                        Click "Create Schedule" to add available time slots for this doctor.
+                      </p>
+                    ) : (
+                      <p style={{ color: '#F79009', fontSize: '13px' }}>
+                        Doctor must be approved before schedules can be created.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -818,7 +877,10 @@ const DashboardPage = () => {
               </div>
               <div>
                 <label style={styles.formLabel}>Specialization</label>
-                <input style={styles.formInput} value={createDoctorForm.specialization} onChange={e => setCreateDoctorForm(p => ({...p, specialization: e.target.value}))} placeholder="Cardiology" />
+                <select style={styles.formInput} value={createDoctorForm.specialization} onChange={e => setCreateDoctorForm(p => ({...p, specialization: e.target.value}))}>
+                  <option value="">Select specialization</option>
+                  {specializations.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
               <div>
                 <label style={styles.formLabel}>License Number</label>
@@ -860,6 +922,55 @@ const DashboardPage = () => {
               <button style={styles.cancelBtn} onClick={() => { setShowCreateDoctor(false); setCreateDoctorError(''); }}>Cancel</button>
               <button style={{...styles.approveBtn}} onClick={handleCreateDoctor}>
                 <PlusCircle size={16} /> Create Doctor
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showScheduleModal && selectedDoctor && (
+        <div style={styles.modalOverlay}>
+          <div className="glass-card animate-fade" style={{...styles.modalContent, width: '480px'}}>
+            <h3 style={{ marginBottom: '20px' }}>Create Schedule — {selectedDoctor.fullName}</h3>
+            {scheduleError && (
+              <div style={{ backgroundColor: '#FEF3F2', border: '1px solid #FEE4E2', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: '#B42318', fontSize: '13px' }}>
+                {scheduleError}
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div>
+                <label style={styles.formLabel}>Date *</label>
+                <input style={styles.formInput} type="date" value={scheduleForm.date} onChange={e => setScheduleForm(p => ({...p, date: e.target.value}))} />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Slot Duration (min)</label>
+                <input style={styles.formInput} type="number" min="5" value={scheduleForm.slotDuration} onChange={e => setScheduleForm(p => ({...p, slotDuration: e.target.value}))} />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Start Time *</label>
+                <input style={styles.formInput} type="time" value={scheduleForm.startTime} onChange={e => setScheduleForm(p => ({...p, startTime: e.target.value}))} />
+              </div>
+              <div>
+                <label style={styles.formLabel}>End Time *</label>
+                <input style={styles.formInput} type="time" value={scheduleForm.endTime} onChange={e => setScheduleForm(p => ({...p, endTime: e.target.value}))} />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Max Patients / Slot</label>
+                <input style={styles.formInput} type="number" min="1" value={scheduleForm.maxPatientsPerSlot} onChange={e => setScheduleForm(p => ({...p, maxPatientsPerSlot: e.target.value}))} />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Clinic Room</label>
+                <input style={styles.formInput} value={scheduleForm.clinicRoom} onChange={e => setScheduleForm(p => ({...p, clinicRoom: e.target.value}))} placeholder="Room 101" />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={styles.formLabel}>Notes</label>
+                <textarea style={{...styles.formInput, height: '60px', resize: 'vertical'}} value={scheduleForm.notes} onChange={e => setScheduleForm(p => ({...p, notes: e.target.value}))} placeholder="Optional notes..." />
+              </div>
+            </div>
+            <div style={{...styles.modalActions, marginTop: '20px' }}>
+              <button style={styles.cancelBtn} onClick={() => setShowScheduleModal(false)}>Cancel</button>
+              <button style={styles.approveBtn} onClick={handleCreateSchedule}>
+                <PlusCircle size={16} /> Create Schedule
               </button>
             </div>
           </div>

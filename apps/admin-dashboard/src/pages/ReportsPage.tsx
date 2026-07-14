@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../config/env';
+import client from '../api/client';
 import { formatNum } from '../utils/ethiopianDate';
 import {
   TrendingUp,
@@ -167,15 +166,12 @@ const ReportsPage: React.FC<{ onNavigate?: (view: string, filter?: 'all' | 'acti
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
-      const headers = { Authorization: `Bearer ${token}` };
-
       const [growthRes, activeRes, apptRes, staffRes, utilRes] = await Promise.all([
-        axios.get(`${API_URL}/admin/stats/patient-growth?months=12`, { headers }),
-        axios.get(`${API_URL}/admin/stats/active-patients`, { headers }),
-        axios.get(`${API_URL}/admin/stats/appointments`, { headers }),
-        axios.get(`${API_URL}/admin/stats/staff-performance`, { headers }),
-        axios.get(`${API_URL}/admin/stats/equipment-utilization`, { headers }),
+        client.get('/admin/stats/patient-growth?months=12'),
+        client.get('/admin/stats/active-patients'),
+        client.get('/admin/stats/appointments'),
+        client.get('/admin/stats/staff-performance'),
+        client.get('/admin/stats/equipment-utilization'),
       ]);
 
       setGrowth(growthRes.data.data || []);
@@ -195,8 +191,7 @@ const ReportsPage: React.FC<{ onNavigate?: (view: string, filter?: 'all' | 'acti
   const fetchDoctors = async () => {
     setDoctorsLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
-      const res = await axios.get(`${API_URL}/admin/doctors`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await client.get('/admin/doctors');
       setDoctorList(res.data.data || []);
       setDoctorsLoaded(true);
     } catch (err) {

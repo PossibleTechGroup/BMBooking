@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import client from '../api/client';
 import { 
   Star, 
   MessageSquare, 
@@ -40,13 +40,7 @@ export const ReviewsPage = ({ onViewProfile }: { onViewProfile: (id: number) => 
 
   const fetchReviews = async () => {
     try {
-      const token = localStorage.getItem('admin_token');
-      // Using the public endpoint but could be an admin one if needed
-      // For now, we'll fetch all doctors and their reviews or a dedicated admin endpoint
-      // Backend route is /api/admin/doctors
-      const response = await axios.get('/api/admin/doctors', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await client.get('/admin/doctors');
       
       // Flatten reviews from all doctors
       const allReviews: Review[] = [];

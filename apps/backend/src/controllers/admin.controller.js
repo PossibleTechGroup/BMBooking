@@ -528,6 +528,31 @@ const AdminController = {
     }
   },
 
+  createDoctorSchedule: async (req, res) => {
+    try {
+      const { doctorId, date, startTime, endTime, slotDuration, maxPatientsPerSlot, clinicRoom, notes, hospitalId } = req.body;
+      if (!doctorId || !date || !startTime || !endTime) {
+        return res.status(400).json({ status: 'fail', message: 'doctorId, date, startTime, and endTime are required' });
+      }
+
+      const ReceptionistService = require('../services/receptionist.service');
+      const schedule = await ReceptionistService.createDoctorSchedule({
+        doctorId: parseInt(doctorId),
+        date,
+        startTime,
+        endTime,
+        slotDuration: slotDuration || 30,
+        maxPatientsPerSlot: maxPatientsPerSlot || 1,
+        clinicRoom,
+        notes,
+      }, hospitalId || null);
+
+      res.status(201).json({ status: 'success', data: schedule });
+    } catch (err) {
+      res.status(400).json({ status: 'fail', message: err.message });
+    }
+  },
+
   updateDoctorFee: async (req, res) => {
     try {
       const { id } = req.params;

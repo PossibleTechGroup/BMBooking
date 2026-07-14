@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
+import client from '../../api/client';
 
 interface WithdrawalRequest {
   id: number;
@@ -31,12 +31,9 @@ const initialState: PayoutState = {
 
 export const fetchWithdrawals = createAsyncThunk(
   'payouts/fetch',
-  async (_, { getState, rejectWithValue }) => {
-    const state = getState() as any;
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get('/api/admin/withdrawals', {
-        headers: { Authorization: `Bearer ${state.auth.token}` }
-      });
+      const response = await client.get('/admin/withdrawals');
       return response.data.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch payouts');
@@ -46,14 +43,10 @@ export const fetchWithdrawals = createAsyncThunk(
 
 export const completePayout = createAsyncThunk(
   'payouts/complete',
-  async ({ id, formData }: { id: number; formData: FormData }, { getState, rejectWithValue }) => {
-    const state = getState() as any;
+  async ({ id, formData }: { id: number; formData: FormData }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`/api/admin/withdrawals/${id}/complete`, formData, {
-        headers: { 
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${state.auth.token}` 
-        }
+      const response = await client.post(`/admin/withdrawals/${id}/complete`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       return response.data.data;
     } catch (err: any) {

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../config/env';
+import client from '../api/client';
 import { 
   Building2, 
   Search, 
@@ -46,10 +45,7 @@ export const AppliedHospitalsPage: React.FC = () => {
   const fetchApplications = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
-      const response = await axios.get(`${API_URL}/admin/hospital-applications`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await client.get('/admin/hospital-applications');
       setApplications(response.data.data || []);
     } catch (err) {
       console.error('Failed to fetch hospital applications', err);
@@ -61,11 +57,8 @@ export const AppliedHospitalsPage: React.FC = () => {
   const handleMarkContacted = async (id: string) => {
     setUpdatingId(id);
     try {
-      const token = localStorage.getItem('admin_token');
-      await axios.patch(`${API_URL}/admin/hospital-applications/${id}`, {
+      await client.patch(`/admin/hospital-applications/${id}`, {
         status: 'CONTACTED'
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       });
       // Refresh local list
       await fetchApplications();

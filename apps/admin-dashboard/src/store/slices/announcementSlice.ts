@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-
-import { API_URL } from '../../config/env';
+import client from '../../api/client';
 
 interface Announcement {
   id: number;
@@ -30,16 +28,11 @@ const initialState: AnnouncementState = {
   error: null,
 };
 
-const getAuthHeader = () => {
-  const token = localStorage.getItem('admin_token');
-  return { headers: { Authorization: `Bearer ${token}` } };
-};
-
 export const fetchAnnouncements = createAsyncThunk(
   'announcements/fetchAll',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/admin/announcements`, getAuthHeader());
+      const response = await client.get('/admin/announcements');
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch announcements');
@@ -51,7 +44,7 @@ export const createAnnouncement = createAsyncThunk(
   'announcements/create',
   async (data: { title: string; message: string; audience: string }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/admin/announcements`, data, getAuthHeader());
+      const response = await client.post('/admin/announcements', data);
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to create announcement');
@@ -63,7 +56,7 @@ export const updateAnnouncement = createAsyncThunk(
   'announcements/update',
   async ({ id, data }: { id: number; data: { title: string; message: string; audience: string } }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(`${API_URL}/admin/announcements/${id}`, data, getAuthHeader());
+      const response = await client.put(`/admin/announcements/${id}`, data);
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update announcement');
@@ -75,7 +68,7 @@ export const deleteAnnouncement = createAsyncThunk(
   'announcements/delete',
   async (id: number, { rejectWithValue }) => {
     try {
-      await axios.delete(`${API_URL}/admin/announcements/${id}`, getAuthHeader());
+      await client.delete(`/admin/announcements/${id}`);
       return id;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete announcement');
@@ -87,7 +80,7 @@ export const togglePublishAnnouncement = createAsyncThunk(
   'announcements/togglePublish',
   async (id: number, { rejectWithValue }) => {
     try {
-      const response = await axios.patch(`${API_URL}/admin/announcements/${id}/publish`, {}, getAuthHeader());
+      const response = await client.patch(`/admin/announcements/${id}/publish`);
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to toggle publish');
@@ -99,7 +92,7 @@ export const resendAnnouncement = createAsyncThunk(
   'announcements/resend',
   async (id: number, { rejectWithValue }) => {
     try {
-      await axios.post(`${API_URL}/admin/announcements/${id}/resend`, {}, getAuthHeader());
+      await client.post(`/admin/announcements/${id}/resend`);
       return id;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to resend');

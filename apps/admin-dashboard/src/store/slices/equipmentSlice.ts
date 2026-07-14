@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-
-import { API_URL } from '../../config/env';
+import client from '../../api/client';
 
 interface EquipmentState {
   items: any[];
@@ -23,16 +21,11 @@ const initialState: EquipmentState = {
   error: null,
 };
 
-const getAuthHeader = () => {
-  const token = localStorage.getItem('admin_token');
-  return { headers: { Authorization: `Bearer ${token}` } };
-};
-
 export const fetchAdminHospitals = createAsyncThunk(
   'adminEquipment/fetchItems',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/equipment/search`, getAuthHeader());
+      const response = await client.get('/equipment/search');
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch items');
@@ -44,11 +37,8 @@ export const addItem = createAsyncThunk(
   'adminEquipment/addItem',
   async (formData: FormData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/admin/equipment`, formData, {
-        headers: {
-          ...getAuthHeader().headers,
-          'Content-Type': 'multipart/form-data',
-        },
+      const response = await client.post('/admin/equipment', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       return response.data.data;
     } catch (error: any) {
@@ -61,11 +51,8 @@ export const updateItem = createAsyncThunk(
   'adminEquipment/updateItem',
   async ({ id, formData }: { id: number; formData: FormData }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(`${API_URL}/admin/equipment/${id}`, formData, {
-        headers: {
-          ...getAuthHeader().headers,
-          'Content-Type': 'multipart/form-data',
-        },
+      const response = await client.put(`/admin/equipment/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       return response.data.data;
     } catch (error: any) {
@@ -78,7 +65,7 @@ export const deleteItem = createAsyncThunk(
   'adminEquipment/deleteItem',
   async (id: number, { rejectWithValue }) => {
     try {
-      await axios.delete(`${API_URL}/admin/equipment/${id}`, getAuthHeader());
+      await client.delete(`/admin/equipment/${id}`);
       return id;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete item');
@@ -90,10 +77,7 @@ export const fetchEquipmentBookings = createAsyncThunk(
   'adminEquipment/fetchBookings',
   async (params: { status?: string; hospitalId?: number; date?: string } = {}, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/admin/equipment-bookings`, {
-        ...getAuthHeader(),
-        params,
-      });
+      const response = await client.get('/admin/equipment-bookings', { params });
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch bookings');
@@ -105,7 +89,7 @@ export const postAnnouncement = createAsyncThunk(
   'adminEquipment/postAnnouncement',
   async (data: any, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/admin/equipment/announce`, data, getAuthHeader());
+      const response = await client.post('/admin/equipment/announce', data);
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to post announcement');
