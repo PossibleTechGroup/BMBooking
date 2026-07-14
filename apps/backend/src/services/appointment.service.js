@@ -140,7 +140,7 @@ const AppointmentService = {
           where: { id: data.doctorId },
           select: { hospitalId: true },
         });
-        if (doctor) {
+        if (doctor && doctor.hospitalId) {
           // Check if patient already has an active card for this hospital
           const existingCard = await prisma.card.findFirst({
             where: {
