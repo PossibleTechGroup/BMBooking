@@ -1,6 +1,15 @@
 (function () {
   TG.init();
 
+  document.addEventListener('focusin', (e) => {
+    const el = e.target;
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+      setTimeout(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  });
+
   Router.register('onboarding', (el) => OnboardingView.render(el));
   Router.register('login', (el) => LoginView.render(el));
   Router.register('setup', (el) => SetupView.render(el));
