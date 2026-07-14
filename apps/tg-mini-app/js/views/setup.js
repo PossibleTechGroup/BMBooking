@@ -207,8 +207,11 @@ const SetupView = (() => {
         Store.setUser(user);
       }
       state.loading = false;
-      state.isEdit = false;
-      Router.goBack();
+      if (state.isEdit) {
+        Router.goBack();
+      } else {
+        Router.navigate('home');
+      }
     } catch (err) {
       state.error = err.message;
       state.loading = false;

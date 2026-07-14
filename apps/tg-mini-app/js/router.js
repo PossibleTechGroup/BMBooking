@@ -3,6 +3,7 @@ const Router = (() => {
   let routes = {};
   let beforeHooks = [];
   let history = [];
+  let navigatingBack = false;
 
   function register(name, renderFn) {
     routes[name] = renderFn;
@@ -28,9 +29,10 @@ const Router = (() => {
       TG.showBackButton();
     }
 
-    if (currentRoute && currentRoute !== name) {
+    if (!navigatingBack && currentRoute && currentRoute !== name) {
       history.push(currentRoute);
     }
+    navigatingBack = false;
 
     const app = document.getElementById('app');
     document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
@@ -70,6 +72,7 @@ const Router = (() => {
   function goBack() {
     if (history.length > 0) {
       const prev = history.pop();
+      navigatingBack = true;
       navigate(prev);
     } else {
       navigate('home');
