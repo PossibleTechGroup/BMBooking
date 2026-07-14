@@ -1,8 +1,31 @@
 const TG = (() => {
-  const webapp = window.Telegram?.WebApp;
+  let webapp = null;
   let ready = false;
 
-  function init() {
+  function loadTelegramSDK() {
+    return new Promise((resolve) => {
+      if (window.Telegram?.WebApp) {
+        resolve();
+        return;
+      }
+      const existing = document.querySelector('script[src*="telegram-web-app.js"]');
+      if (existing) {
+        existing.addEventListener('load', resolve);
+        existing.addEventListener('error', resolve);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://telegram.org/js/telegram-web-app.js';
+      script.onload = resolve;
+      script.onerror = resolve;
+      document.head.appendChild(script);
+      setTimeout(resolve, 5000);
+    });
+  }
+
+  async function init() {
+    await loadTelegramSDK();
+    webapp = window.Telegram?.WebApp || null;
     if (!webapp) {
       console.warn('Telegram WebApp SDK not available (running outside Telegram?)');
       return;

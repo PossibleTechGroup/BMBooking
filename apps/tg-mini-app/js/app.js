@@ -1,5 +1,5 @@
 (function () {
-  TG.init();
+  TG.init().then(() => {
 
   document.addEventListener('focusin', (e) => {
     const el = e.target;
@@ -54,4 +54,5 @@
   } else {
     Router.navigate('login');
   }
+  });
 })();

@@ -161,7 +161,7 @@ services:
     restart: unless-stopped
     environment:
       BOT_TOKEN: ${BOT_TOKEN}
-      WEBAPP_URL: https://bmbookingtelegrambot.possibletechplc.com
+      WEBAPP_URL: ${WEBAPP_URL}
     networks:
       - bm-network
 

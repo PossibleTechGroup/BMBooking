@@ -4,7 +4,8 @@
   "description": "BM Booking Telegram Bot - sends Open WebApp button on /start",
   "main": "bot.js",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node bot.js",
+    "dev": "node bot.js"
   },
   "dependencies": {
     "telegraf": "^4.16.3"
