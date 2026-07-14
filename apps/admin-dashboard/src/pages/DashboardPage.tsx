@@ -108,7 +108,7 @@ const DashboardPage = () => {
     languages: '', baseHourlyRate: '', hospitalId: '',
   });
   const [createDoctorError, setCreateDoctorError] = useState('');
-  const [doctorSuccess, setDoctorSuccess] = useState<{ name: string; tempPassword: string } | null>(null);
+  const [doctorSuccess, setDoctorSuccess] = useState<{ name: string; tempPassword: string; doctor: any } | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({
     date: '', startTime: '', endTime: '', slotDuration: '30', maxPatientsPerSlot: '1', clinicRoom: '', notes: '',
@@ -223,7 +223,7 @@ const DashboardPage = () => {
       setShowCreateDoctor(false);
       setCreateDoctorForm({ fullName: '', phone: '', email: '', specialization: '', licenseNumber: '', experienceYears: '', bio: '', clinicName: '', clinicAddress: '', languages: '', baseHourlyRate: '', hospitalId: '' });
       if (result?.tempPassword) {
-        setDoctorSuccess({ name: result.fullName || createDoctorForm.fullName, tempPassword: result.tempPassword });
+        setDoctorSuccess({ name: result.fullName || createDoctorForm.fullName, tempPassword: result.tempPassword, doctor: result });
       }
     } catch (err: any) {
       setCreateDoctorError(err || 'Failed to create doctor');
@@ -995,9 +995,20 @@ const DashboardPage = () => {
             </div>
             <button
               onClick={() => setDoctorSuccess(null)}
-              style={{ width: '100%', padding: '12px', backgroundColor: 'var(--accent-primary)', color: '#FFF', borderRadius: '8px', border: 'none', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}
+              style={{ width: '100%', padding: '12px', backgroundColor: 'var(--accent-primary)', color: '#FFF', borderRadius: '8px', border: 'none', fontSize: '15px', fontWeight: 600, cursor: 'pointer', marginBottom: '10px' }}
             >
               Done
+            </button>
+            <button
+              onClick={() => {
+                setDoctorSuccess(null);
+                setSelectedDoctor(doctorSuccess.doctor);
+                setShowScheduleModal(true);
+              }}
+              style={{ width: '100%', padding: '12px', backgroundColor: 'transparent', color: 'var(--accent-primary)', borderRadius: '8px', border: '2px solid var(--accent-primary)', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              <Calendar size={16} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+              Create Schedule Now
             </button>
           </div>
         </div>
