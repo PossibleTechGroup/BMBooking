@@ -1,38 +1,543 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap');
 
 :root {
   --bg: #F9F7F2;
   --surface: #FFFFFF;
-  --surface-alt: #FAFAF8;
-  --ink: #1A1A1A;
-  --ink-light: #344054;
-  --slate: #3E5C76;
-  --text: #101828;
-  --text-body: #344054;
-  --text-meta: #667085;
-  --text-light: #98A2B3;
+  --ink: #101828;
+  --ink-soft: #667085;
+  --accent: #1A1A1A;
+  --accent-soft: #EEF1F4;
+  --line: #E4E7EC;
+  --btn-ghost-bg: #F1F2F0;
   --success: #027A48;
-  --success-bg: #ECFDF3;
-  --border: #E4E7EC;
-  --border-light: #F2F4F7;
-  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+
+  --bg-main: var(--bg);
+  --bg-alt: var(--bg);
+  --bg-card: var(--surface);
+  --text-main: var(--ink);
+  --text-muted: var(--ink-soft);
+  --border-main: var(--line);
+  --border-focus: rgba(26, 26, 26, 0.2);
+  
+  --font: 'Inter Tight', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
   --r-sm: 8px;
   --r-md: 12px;
   --r-lg: 16px;
-  --r-xl: 20px;
+  --r-xl: 24px;
   --r-pill: 100px;
-  --shadow-card: 0 1px 3px rgba(16,24,40,0.04), 0 1px 2px rgba(16,24,40,0.06);
-  --shadow-lift: 0 4px 16px rgba(16,24,40,0.06), 0 1px 3px rgba(16,24,40,0.04);
-  --shadow-hover: 0 8px 24px rgba(16,24,40,0.08), 0 2px 6px rgba(16,24,40,0.04);
+  
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.04);
+  --shadow-lg: 0 12px 24px rgba(16, 24, 40, 0.06);
+  --shadow-glow: 0 0 30px rgba(26, 26, 26, 0.04);
+  --shadow-premium: 0 12px 40px rgba(16, 24, 40, 0.06);
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  background: var(--bg-main);
+}
 
 body {
   font-family: var(--font);
+  font-weight: 300;
   line-height: 1.5;
-  color: var(--text-body);
-  background: var(--bg);
+  background: var(--bg-main);
+  color: var(--text-main);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
+
+/* Dev Grid Background */
+.dev-grid-bg {
+  background-image: radial-gradient(rgba(16, 24, 40, 0.02) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+@keyframes lineDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  animation: spin 0.6s linear infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-soft);
+}
+
+/* Premium Tech Card hover effect */
+.glow-card {
+  position: relative;
+  transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid var(--border-main);
+  background: var(--bg-card);
+}
+
+.glow-card:hover {
+  transform: translateY(-4px) !important;
+  border-color: var(--accent);
+  box-shadow: 0 20px 40px rgba(16, 24, 40, 0.06), var(--shadow-glow);
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid var(--border-main) !important;
+  box-shadow: 0 12px 40px rgba(16, 24, 40, 0.04) !important;
+}
+
+/* Global transition style */
+.transition-custom {
+  transition: all 300ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Page fade/slide-up entries */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Splash logo heartbeat/scale pulse */
+@keyframes logoPulse {
+  0%, 100% {
+    transform: scale(0.95);
+    filter: drop-shadow(0 4px 10px rgba(27, 36, 22, 0.1));
+  }
+  50% {
+    transform: scale(1.02);
+    filter: drop-shadow(0 12px 30px rgba(27, 36, 22, 0.2));
+  }
+}
+
+.logo-pulse {
+  animation: logoPulse 1.8s ease-in-out infinite;
+}
+
+/* Button specs (44px height, 10px radius) */
+.btn {
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 10px; /* rounded-lg, not full pill */
+  font-weight: 500;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  font-family: var(--font);
+  text-decoration: none;
+  border: none;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(26, 26, 26, 0.15);
+}
+
+.btn-ghost, .btn-secondary {
+  background: var(--btn-ghost-bg);
+  color: var(--ink);
+  border: none;
+}
+.btn-ghost:hover, .btn-secondary:hover {
+  background: var(--accent-soft);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+/* Headline Treatment */
+.hero-title {
+  font-weight: 700;
+  color: var(--ink);
+  font-size: clamp(2.3rem, 5vw, 4rem);
+  line-height: 1.1;
+  font-family: var(--font);
+}
+.hero-title .emphasis {
+  font-weight: 700;
+  color: var(--accent);
+}
+.hero-title .struck {
+  text-decoration: line-through;
+  text-decoration-color: #E0666B;
+  text-decoration-thickness: 1px;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+/* Entrance Animations */
+@keyframes fadeRise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.badge { animation: fadeRise 0.5s ease-out both; }
+.hero-title { animation: fadeRise 0.5s ease-out 0.08s both; }
+.hero-sub { animation: fadeRise 0.5s ease-out 0.16s both; }
+.cta-row { animation: fadeRise 0.5s ease-out 0.24s both; }
+.demo-panel { animation: fadeRise 0.6s ease-out 0.34s both; }
+
+/* How It Works — booking flow animation sequential reveal */
+.step-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .5s ease-out, transform .5s ease-out;
+  box-shadow: var(--shadow-sm);
+}
+
+.step-card.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Snap hover lift */
+.step-card.in-view:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.06);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+/* Stagger transition delay per index */
+.step-card:nth-child(1) { transition-delay: 0s; }
+.step-card:nth-child(2) { transition-delay: .12s; }
+.step-card:nth-child(3) { transition-delay: .24s; }
+
+/* Icon circle standard spacing */
+.info-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Step 1 — "Find a Doctor/Equipment" icon micro-animation */
+.icon-ping {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  opacity: 0;
+}
+.step-card.in-view .icon-ping {
+  animation: ping .8s ease-out .3s 1;
+}
+
+@keyframes ping {
+  0%   { transform: scale(0.8); opacity: .6; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Step 2 — "Pick a Slot" micro-animation */
+.slot-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: background .2s ease, transform .2s ease;
+}
+.step-card.in-view .slot-dot.selected {
+  background: var(--accent);
+  animation: dotPop .3s ease-out .5s both;
+}
+
+@keyframes dotPop {
+  0%   { transform: scale(0.6); }
+  60%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* Step 3 — "Confirm & Pay" micro-animation */
+.confirm-check {
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+}
+.step-card.in-view .confirm-check {
+  animation: drawCheck .4s ease-out .5s forwards;
+}
+
+@keyframes drawCheck {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge, .hero-title, .hero-sub, .cta-row, .demo-panel, .step-card, .icon-ping, .slot-dot, .confirm-check, .step-transition-forward, .step-transition-backward {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .step-card.in-view .slot-dot.selected {
+    background: var(--accent) !important;
+  }
+  .step-card.in-view .confirm-check {
+    stroke-dashoffset: 0 !important;
+  }
+}
+
+/* Modal spec */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.24); /* light scrim */
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeInOverlay 0.2s ease-out both;
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal-card {
+  position: relative;
+  background: var(--surface);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(16, 24, 40, 0.12);
+  padding: 32px;
+  width: 90%;
+  max-width: 380px;
+  animation: fadeRise 0.25s ease-out both;
+  font-family: var(--font);
+}
+
+.modal-icon-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.modal-card h3 {
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.modal-card p {
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.modal-close:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.modal-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--ink);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.modal-link-row:hover {
+  color: var(--accent);
+}
+
+/* Telegram tab crossfade */
+.demo-tab-content {
+  transition: opacity .2s ease, transform .2s ease;
+}
+.demo-tab-content[data-state="entering"] { opacity: 0; transform: translateY(6px); }
+.demo-tab-content[data-state="active"]   { opacity: 1; transform: translateY(0); }
+
+/* Step Modal */
+.step-modal {
+  background: var(--surface);
+  border-radius: 24px;
+  width: 90%;
+  max-width: 420px;
+  padding: 28px;
+  box-shadow: 0 20px 60px rgba(16, 24, 40, 0.12);
+  animation: fadeRise 0.25s ease-out both;
+}
+
+.step-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.step-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: background .2s ease, width .2s ease, border-radius .2s ease;
+}
+.step-dot.completed { background: var(--success); }
+.step-dot.active {
+  background: var(--accent);
+  width: 20px;
+  border-radius: 4px;
+}
+
+.step-option-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+.step-option-card:hover { background: var(--accent-soft); }
+.step-option-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+@keyframes stepFadeRise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes stepFadeFall {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.step-transition-forward {
+  animation: stepFadeRise 0.25s ease-out both;
+}
+
+.step-transition-backward {
+  animation: stepFadeFall 0.25s ease-out both;
+}
+
+.step-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+}
+
+@keyframes pulseOnce {
+  0% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.6); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.badge-dot {
+  animation: pulseOnce 1.2s ease-out 1;
+}
+
+/* Spotlight Card style definitions */
+.spotlight-card {
+  position: relative;
+  overflow: hidden;
+}
+.spotlight-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    240px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    rgba(26, 26, 26, 0.05),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity .2s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+.spotlight-card:hover::before {
+  opacity: 1;
+}
+
+
+
+

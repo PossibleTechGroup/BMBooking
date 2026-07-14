@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   KeyboardAvoidingView,
@@ -37,6 +37,8 @@ import { AppDispatch, RootState } from "../../store";
 import { clearError, requestOtp, resetOtpStatus, verifyOtp } from "../../store/slices/authSlice";
 import { SPRING_CONFIG, FadeInDownSpring } from "../../hooks/useAnimations";
 import { phoneNationalAutofill, smsOtpAutofill } from "../../utils/autofill";
+import { OnboardingPager } from "../../components/OnboardingPager";
+import { storage } from "../../utils/storage";
 
 type AuthStep = "phone" | "role" | "otp";
 
@@ -100,6 +102,7 @@ export default function LoginScreen() {
     (state: RootState) => state.auth
   );
 
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
   const [step, setStep] = useState<AuthStep>("phone");
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState<"patient" | "doctor" | null>(null);
@@ -107,6 +110,17 @@ export default function LoginScreen() {
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [errorKey, setErrorKey] = useState(0);
   const hiddenOtpInput = useRef<TextInput>(null);
+
+  useEffect(() => {
+    storage.getItem("onboarding-seen").then((val) => {
+      setShowOnboarding(val !== "true");
+    });
+  }, []);
+
+  const handleOnboardingComplete = useCallback(() => {
+    storage.setItem("onboarding-seen", "true");
+    setShowOnboarding(false);
+  }, []);
 
   const { shakeStyle: phoneShakeStyle, shake: shakePhone } = useFieldShake();
   const { shakeStyle: otpShakeStyle, shake: shakeOtp } = useFieldShake();
@@ -413,6 +427,24 @@ export default function LoginScreen() {
       </Animated.View>
     );
   };
+
+  if (showOnboarding === null) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: "center", alignItems: "center" }}>
+        <Animated.View entering={FadeIn.duration(300)}>
+          <Animated.Image
+            source={require("../../assets/images/bm-booking-logo.png")}
+            resizeMode="contain"
+            style={{ width: 80, height: 80, opacity: 0.6 }}
+          />
+        </Animated.View>
+      </View>
+    );
+  }
+
+  if (showOnboarding) {
+    return <OnboardingPager onComplete={handleOnboardingComplete} />;
+  }
 
   return (
     <Animated.View style={[{ flex: 1, backgroundColor: theme.background }, containerAnimatedStyle]}>

@@ -451,3 +451,24 @@ model Review {
 
   @@map("reviews")
 }
+
+enum HospitalApplicationStatus {
+  PENDING
+  CONTACTED
+  APPROVED
+  REJECTED
+}
+
+model HospitalApplication {
+  id            String                    @id @default(cuid())
+  hospitalName  String                    @map("hospital_name")
+  contactPerson String                    @map("contact_person")
+  contactInfo   String                    @map("contact_info")
+  status        HospitalApplicationStatus @default(PENDING)
+  createdAt     DateTime                  @default(now()) @map("created_at")
+  updatedAt     DateTime                  @updatedAt @map("updated_at")
+  contactedAt   DateTime?                 @map("contacted_at")
+  notes         String?                   @map("notes")
+
+  @@map("hospital_applications")
+}

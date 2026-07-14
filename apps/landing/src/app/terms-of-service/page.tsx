@@ -50,7 +50,7 @@ const sectionHeadStyle = {
   gap: 10,
   marginBottom: "0.85rem",
   paddingBottom: "0.65rem",
-  borderBottom: "1px solid var(--border)",
+  borderBottom: "1px solid var(--line)",
 };
 const iconStyle = {
   display: "flex",
@@ -58,35 +58,37 @@ const iconStyle = {
   justifyContent: "center",
   width: 32,
   height: 32,
-  borderRadius: "var(--r-sm)",
-  background: "var(--ink)",
-  color: "#fff",
+  borderRadius: "8px",
+  background: "var(--accent-soft)",
+  color: "var(--ink)",
   flexShrink: 0,
 };
 const h2Style = {
-  fontSize: "1.1rem",
-  fontWeight: 700,
-  color: "var(--text)",
+  fontSize: "1.15rem",
+  fontWeight: 650,
+  color: "var(--ink)",
   letterSpacing: "-0.015em",
   lineHeight: 1.2,
 };
 const h3Style = {
-  fontSize: "0.88rem",
+  fontSize: "0.92rem",
   fontWeight: 600,
-  color: "var(--text)",
+  color: "var(--ink)",
   margin: "1.1rem 0 0.4rem",
 };
 const pStyle = {
-  fontSize: "0.88rem",
-  color: "var(--text-body)",
+  fontSize: "0.9rem",
+  color: "var(--ink-soft)",
   marginBottom: "0.75rem",
-  lineHeight: 1.6,
+  lineHeight: 1.65,
+  fontWeight: 400,
 };
 const liStyle = {
-  fontSize: "0.88rem",
-  color: "var(--text-body)",
-  lineHeight: 1.55,
+  fontSize: "0.9rem",
+  color: "var(--ink-soft)",
+  lineHeight: 1.6,
   marginBottom: 4,
+  fontWeight: 400,
 };
 const ulStyle = {
   marginLeft: "1.25rem",
@@ -231,17 +233,17 @@ export default function TermsOfService() {
             alignItems: "flex-start",
             gap: 10,
             padding: "0.85rem 1rem",
-            borderRadius: "var(--r-md)",
-            background: "var(--surface-alt)",
-            border: "1px solid var(--border)",
+            borderRadius: "12px",
+            background: "var(--accent-soft)",
+            border: "1px solid var(--line)",
             margin: "0.85rem 0",
           }}
         >
           <AlertTriangle
             size={16}
-            style={{ color: "var(--slate)", flexShrink: 0, marginTop: 1 }}
+            style={{ color: "var(--ink-soft)", flexShrink: 0, marginTop: 1 }}
           />
-          <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-body)" }}>
+          <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--ink-soft)", fontWeight: 400 }}>
             We reserve the right to suspend or terminate accounts that show signs
             of unauthorized use.
           </p>
@@ -556,17 +558,17 @@ export default function TermsOfService() {
             alignItems: "flex-start",
             gap: 10,
             padding: "0.85rem 1rem",
-            borderRadius: "var(--r-md)",
-            background: "var(--surface-alt)",
-            border: "1px solid var(--border)",
+            borderRadius: "12px",
+            background: "var(--accent-soft)",
+            border: "1px solid var(--line)",
             margin: "0.85rem 0",
           }}
         >
           <AlertTriangle
             size={16}
-            style={{ color: "var(--slate)", flexShrink: 0, marginTop: 1 }}
+            style={{ color: "var(--ink-soft)", flexShrink: 0, marginTop: 1 }}
           />
-          <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-body)" }}>
+          <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--ink-soft)", fontWeight: 400 }}>
             Violation of these prohibitions may result in immediate account
             suspension or termination without prior notice.
           </p>
@@ -812,7 +814,7 @@ export default function TermsOfService() {
           <strong>Possible Technology P.L.C</strong>
           <br />
           Email:{" "}
-          <a href="mailto:possiblework2026@gmail.com">
+          <a href="mailto:possiblework2026@gmail.com" style={{ color: "var(--accent)", fontWeight: 500, textDecoration: "none" }}>
             possiblework2026@gmail.com
           </a>
           <br />
@@ -821,6 +823,7 @@ export default function TermsOfService() {
             href="https://possibletechplc.com"
             target="_blank"
             rel="noopener noreferrer"
+            style={{ color: "var(--accent)", fontWeight: 500, textDecoration: "none" }}
           >
             possibletechplc.com
           </a>

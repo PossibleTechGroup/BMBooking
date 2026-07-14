@@ -13,6 +13,7 @@ import { ReviewsPage } from './ReviewsPage';
 import { DoctorProfileView } from './DoctorProfileView';
 import { AnnouncementsPage } from './AnnouncementsPage';
 import ReportsPage from './ReportsPage';
+import AppliedHospitalsPage from './AppliedHospitalsPage';
 import { formatDate } from '../utils/ethiopianDate';
 import { useTimeFormat, setTimeFormat, setCalendarFormat } from '../utils/timeFormat';
 import {
@@ -40,7 +41,7 @@ import {
   Clock,
 } from 'lucide-react';
 
-type TabView = 'dashboard' | 'patients' | 'analysis' | 'reports' | 'hospitals' | 'items' | 'announcements' | 'reviews' | 'profile';
+type TabView = 'dashboard' | 'patients' | 'analysis' | 'reports' | 'hospitals' | 'applied-hospitals' | 'items' | 'announcements' | 'reviews' | 'profile';
 
 type NavigateOpts = {
   filter?: 'all' | 'active' | 'inactive';
@@ -88,6 +89,26 @@ const DashboardPage = () => {
   const [hospitalsList, setHospitalsList] = useState<any[]>([]);
   const { isEthiopian, isEthiopianCalendar } = useTimeFormat();
   const [showSettingsPopover, setShowSettingsPopover] = useState(false);
+  const [pendingAppsCount, setPendingAppsCount] = useState(0);
+
+  useEffect(() => {
+    const fetchApplicationsCount = async () => {
+      try {
+        const { default: axios } = await import('axios');
+        const { API_URL } = await import('../config/env');
+        const token = localStorage.getItem('admin_token');
+        if (!token) return;
+        const { data } = await axios.get(`${API_URL}/admin/hospital-applications`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const pendingCount = (data.data || []).filter((app: any) => app.status === 'PENDING').length;
+        setPendingAppsCount(pendingCount);
+      } catch { /* ignore */ }
+    };
+    fetchApplicationsCount();
+    const interval = setInterval(fetchApplicationsCount, 30000);
+    return () => clearInterval(interval);
+  }, [view]);
 
   useEffect(() => {
     localStorage.setItem('admin_tab', view);
@@ -184,6 +205,34 @@ const DashboardPage = () => {
               style={{...styles.navBtn, color: view === 'hospitals' ? 'var(--accent-primary)' : 'var(--text-secondary)'}}
             >
               <Building2Icon size={18} /> Hospitals
+            </button>
+            <button
+              onClick={() => navigateToTab('applied-hospitals')}
+              style={{
+                ...styles.navBtn,
+                color: view === 'applied-hospitals' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                position: 'relative'
+              }}
+            >
+              <Building2Icon size={18} /> Applied Hospitals
+              {pendingAppsCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  right: '-12px',
+                  backgroundColor: '#D92D20',
+                  color: '#FFFFFF',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  borderRadius: '10px',
+                  padding: '2px 6px',
+                  minWidth: '16px',
+                  textAlign: 'center',
+                  boxShadow: '0 0 0 2px var(--surface)'
+                }}>
+                  {pendingAppsCount}
+                </span>
+              )}
             </button>
             <button 
               onClick={() => navigateToTab('items')} 
@@ -289,6 +338,8 @@ const DashboardPage = () => {
         <AnalysisPage />
       ) : view === 'hospitals' ? (
         <HospitalsPage />
+      ) : view === 'applied-hospitals' ? (
+        <AppliedHospitalsPage />
       ) : view === 'items' ? (
         <ItemsPage />
       ) : view === 'announcements' ? (

@@ -42,7 +42,7 @@ const sectionHeadStyle = {
   gap: 10,
   marginBottom: "0.85rem",
   paddingBottom: "0.65rem",
-  borderBottom: "1px solid var(--border)",
+  borderBottom: "1px solid var(--line)",
 };
 const iconStyle = {
   display: "flex",
@@ -50,35 +50,37 @@ const iconStyle = {
   justifyContent: "center",
   width: 32,
   height: 32,
-  borderRadius: "var(--r-sm)",
-  background: "var(--ink)",
-  color: "#fff",
+  borderRadius: "8px",
+  background: "var(--accent-soft)",
+  color: "var(--ink)",
   flexShrink: 0,
 };
 const h2Style = {
-  fontSize: "1.1rem",
-  fontWeight: 700,
-  color: "var(--text)",
+  fontSize: "1.15rem",
+  fontWeight: 650,
+  color: "var(--ink)",
   letterSpacing: "-0.015em",
   lineHeight: 1.2,
 };
 const h3Style = {
-  fontSize: "0.88rem",
+  fontSize: "0.92rem",
   fontWeight: 600,
-  color: "var(--text)",
+  color: "var(--ink)",
   margin: "1.1rem 0 0.4rem",
 };
 const pStyle = {
-  fontSize: "0.88rem",
-  color: "var(--text-body)",
+  fontSize: "0.9rem",
+  color: "var(--ink-soft)",
   marginBottom: "0.75rem",
-  lineHeight: 1.6,
+  lineHeight: 1.65,
+  fontWeight: 400,
 };
 const liStyle = {
-  fontSize: "0.88rem",
-  color: "var(--text-body)",
-  lineHeight: 1.55,
+  fontSize: "0.9rem",
+  color: "var(--ink-soft)",
+  lineHeight: 1.6,
   marginBottom: 4,
+  fontWeight: 400,
 };
 const ulStyle = {
   marginLeft: "1.25rem",
@@ -89,26 +91,27 @@ const tableStyle = {
   borderCollapse: "separate" as const,
   borderSpacing: 0,
   margin: "0.85rem 0",
-  border: "1px solid var(--border)",
-  borderRadius: "var(--r-md)",
+  border: "1px solid var(--line)",
+  borderRadius: "12px",
   overflow: "hidden",
-  fontSize: "0.82rem",
+  fontSize: "0.85rem",
 };
 const thStyle = {
-  background: "var(--surface-alt)",
+  background: "var(--accent-soft)",
   fontWeight: 600,
-  color: "var(--text)",
+  color: "var(--ink)",
   textAlign: "left" as const,
-  padding: "0.6rem 0.85rem",
-  borderBottom: "1px solid var(--border)",
-  fontSize: "0.78rem",
+  padding: "0.65rem 0.85rem",
+  borderBottom: "1px solid var(--line)",
+  fontSize: "0.82rem",
 };
 const tdStyle = {
-  padding: "0.55rem 0.85rem",
-  color: "var(--text-body)",
-  borderBottom: "1px solid var(--border-light)",
+  padding: "0.6rem 0.85rem",
+  color: "var(--ink-soft)",
+  borderBottom: "1px solid var(--line)",
   verticalAlign: "top" as const,
-  lineHeight: 1.45,
+  lineHeight: 1.5,
+  fontWeight: 400,
 };
 
 const calloutStyle = {
@@ -116,9 +119,9 @@ const calloutStyle = {
   alignItems: "flex-start" as const,
   gap: 10,
   padding: "0.85rem 1rem",
-  borderRadius: "var(--r-md)",
-  background: "var(--surface-alt)",
-  border: "1px solid var(--border)",
+  borderRadius: "12px",
+  background: "var(--accent-soft)",
+  border: "1px solid var(--line)",
   margin: "0.85rem 0",
 };
 
@@ -141,12 +144,12 @@ export default function PrivacyPolicy() {
           <strong>Possible Technology P.L.C</strong>
           <br />
           Website:{" "}
-          <a href="https://possibletechplc.com" target="_blank" rel="noopener">
+          <a href="https://possibletechplc.com" target="_blank" rel="noopener" style={{ color: "var(--accent)", fontWeight: 500, textDecoration: "none" }}>
             possibletechplc.com
           </a>
           <br />
           Email:{" "}
-          <a href="mailto:possiblework2026@gmail.com">
+          <a href="mailto:possiblework2026@gmail.com" style={{ color: "var(--accent)", fontWeight: 500, textDecoration: "none" }}>
             possiblework2026@gmail.com
           </a>
         </p>
@@ -377,9 +380,9 @@ export default function PrivacyPolicy() {
         <div style={calloutStyle}>
           <Shield
             size={16}
-            style={{ color: "var(--slate)", flexShrink: 0, marginTop: 1 }}
+            style={{ color: "var(--ink-soft)", flexShrink: 0, marginTop: 1 }}
           />
-          <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-body)" }}>
+          <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--ink-soft)", fontWeight: 400 }}>
             We do <strong>not</strong> sell your personal data to third parties
             for advertising or marketing purposes.
           </p>
@@ -450,9 +453,9 @@ export default function PrivacyPolicy() {
         <div style={calloutStyle}>
           <AlertTriangle
             size={16}
-            style={{ color: "var(--slate)", flexShrink: 0, marginTop: 1 }}
+            style={{ color: "var(--ink-soft)", flexShrink: 0, marginTop: 1 }}
           />
-          <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-body)" }}>
+          <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--ink-soft)", fontWeight: 400 }}>
             While we strive to protect your data, no method of transmission or
             storage is 100% secure. We cannot guarantee absolute security.
           </p>
@@ -497,7 +500,7 @@ export default function PrivacyPolicy() {
         </ul>
         <p style={pStyle}>
           To exercise any of these rights, contact us at{" "}
-          <a href="mailto:possiblework2026@gmail.com">
+          <a href="mailto:possiblework2026@gmail.com" style={{ color: "var(--accent)", fontWeight: 500, textDecoration: "none" }}>
             possiblework2026@gmail.com
           </a>
           .
@@ -674,12 +677,12 @@ export default function PrivacyPolicy() {
           <strong>Possible Technology P.L.C</strong>
           <br />
           Email:{" "}
-          <a href="mailto:possiblework2026@gmail.com">
+          <a href="mailto:possiblework2026@gmail.com" style={{ color: "var(--accent)", fontWeight: 500, textDecoration: "none" }}>
             possiblework2026@gmail.com
           </a>
           <br />
           Website:{" "}
-          <a href="https://possibletechplc.com" target="_blank" rel="noopener">
+          <a href="https://possibletechplc.com" target="_blank" rel="noopener" style={{ color: "var(--accent)", fontWeight: 500, textDecoration: "none" }}>
             possibletechplc.com
           </a>
         </p>

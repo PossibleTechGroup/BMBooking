@@ -3,6 +3,7 @@ const AdminController = require('../controllers/admin.controller');
 const AdminEquipmentController = require('../controllers/admin.equipment.controller');
 const AdminHospitalController = require('../controllers/admin.hospital.controller');
 const AnnouncementController = require('../controllers/announcement.controller');
+const HospitalApplicationController = require('../controllers/hospital-application.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 const roleMiddleware = require('../middleware/role.middleware');
 const validate = require('../middleware/validation.middleware');
@@ -17,6 +18,10 @@ router.post('/login', AdminController.login);
 // Protected Admin Routes (Requires existing Admin token)
 router.use(authMiddleware);
 router.use(roleMiddleware(['admin']));
+
+// Hospital Applications Management
+router.get('/hospital-applications', HospitalApplicationController.listApplications);
+router.patch('/hospital-applications/:id', HospitalApplicationController.updateApplicationStatus);
 
 const multer = require('multer');
 const path = require('path');
