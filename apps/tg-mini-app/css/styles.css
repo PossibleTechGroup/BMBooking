@@ -34,6 +34,12 @@ html {
   height: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  color-scheme: light;
+}
+
+html * {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 body {
@@ -48,9 +54,38 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
-body.dark {
-  --border: #2c2c2c;
-  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+html.dark {
+  color-scheme: dark;
+
+  --elev-0: #0B0C0F;
+  --elev-1: #16171C;
+  --elev-2: #1E2028;
+  --elev-3: #262832;
+  --elev-glow: rgba(107, 154, 196, 0.06);
+
+  --bg: var(--tg-theme-bg-color, var(--elev-0));
+  --surface: var(--elev-1);
+  --section-bg: var(--elev-1);
+  --secondary-bg: var(--elev-2);
+  --text: var(--tg-theme-text-color, #F2F2F0);
+  --hint: var(--tg-theme-hint-color, #8B8F98);
+  --link: var(--tg-theme-link-color, #7AAAD6);
+  --button: var(--tg-theme-button-color, #ECECEC);
+  --button-text: var(--tg-theme-button-text-color, #101014);
+  --section-separator: var(--tg-theme-section-separator-color, rgba(255,255,255,0.06));
+  --accent: #7AAAD6;
+  --secondary-accent: #7AAAD6;
+  --danger: #F0645F;
+  --success: #55C069;
+  --warning: #FFB454;
+  --border: rgba(255,255,255,0.07);
+  --border-strong: rgba(255,255,255,0.14);
+  --shadow: 0 1px 2px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.35);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-glow-accent: 0 0 0 1px rgba(122,170,214,0.25), 0 4px 20px rgba(122,170,214,0.15);
+  --text-primary: #F2F2F0;
+  --text-secondary: #8B8F98;
+  --primary-dark: #ECECEC;
 }
 
 #app {
@@ -522,6 +557,12 @@ a {
   color: #757575;
 }
 
+html.dark .badge-pending   { background: rgba(255,180,84,0.15); color: #FFB454; }
+html.dark .badge-accepted  { background: rgba(122,170,214,0.15); color: #8FBDE0; }
+html.dark .badge-completed { background: rgba(85,192,105,0.15); color: #7BD48D; }
+html.dark .badge-declined  { background: rgba(240,100,95,0.15); color: #F0645F; }
+html.dark .badge-cancelled { background: rgba(139,143,152,0.15); color: #A8ACB5; }
+
 /* ─── Loading ─── */
 .loading {
   display: flex;
@@ -572,6 +613,10 @@ a {
   color: #1565c0;
   border: 1px solid #bbdefb;
 }
+
+html.dark .alert-error   { background: rgba(240,100,95,0.12); border-color: rgba(240,100,95,0.25); }
+html.dark .alert-success { background: rgba(85,192,105,0.12); border-color: rgba(85,192,105,0.25); }
+html.dark .alert-info    { background: rgba(122,170,214,0.12); border-color: rgba(122,170,214,0.25); }
 
 /* ─── Doctor Card ─── */
 .doctor-card {
@@ -1350,4 +1395,114 @@ a {
   cursor: pointer;
   font-family: 'Inter', sans-serif;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* ═══════════════════════════════════════════
+   DARK THEME — Ink Design System
+   ═══════════════════════════════════════════ */
+
+/* ─── Glass (chrome only: header, nav, sheets) ─── */
+html.dark .glass-surface {
+  background: rgba(30, 32, 40, 0.72);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  html.dark .glass-surface {
+    background: var(--elev-2);
+  }
+}
+
+/* ─── Micro-interactions ─── */
+html.dark button:active,
+html.dark .doctor-card:active,
+html.dark .slot-chip:active {
+  transform: scale(0.97);
+}
+
+html.dark .slot-chip.selected {
+  box-shadow: var(--shadow-glow-accent);
+}
+
+/* ─── Skeleton shimmer ─── */
+html.dark .skeleton {
+  background: linear-gradient(90deg, var(--elev-1) 25%, var(--elev-2) 37%, var(--elev-1) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ─── Screen: ambient glow on dark bg ─── */
+html.dark .screen {
+  background: radial-gradient(600px 300px at 50% -10%, var(--elev-glow), transparent);
+}
+
+/* ─── Screen: search bar ─── */
+html.dark .search-bar {
+  background: var(--elev-1);
+  border: 1px solid var(--border);
+}
+
+html.dark .search-bar:focus-within {
+  border-color: var(--link);
+  box-shadow: 0 0 0 3px rgba(122,170,214,0.15);
+}
+
+/* ─── Screen: empty state ─── */
+html.dark .empty-state-icon {
+  background: var(--elev-2);
+}
+
+/* ─── Screen: doctor cards ─── */
+html.dark .doctor-card {
+  background: var(--elev-1);
+  box-shadow: var(--shadow-sm);
+}
+
+html.dark .doctor-card:active {
+  box-shadow: var(--shadow);
+}
+
+/* ─── Screen: quick action cards ─── */
+html.dark .quick-action {
+  background: var(--elev-1);
+  box-shadow: var(--shadow-sm);
+}
+
+html.dark .quick-action-icon {
+  background: var(--elev-2);
+}
+
+/* ─── Screen: success glow ─── */
+html.dark .success-screen .check-icon {
+  box-shadow: 0 0 40px rgba(85, 192, 105, 0.25);
+}
+
+/* ─── Screen: profile avatar lift ─── */
+html.dark .profile-avatar-circle {
+  box-shadow: var(--shadow-sm);
+}
+
+/* ─── Screen: onboarding dot glow ─── */
+html.dark .onboarding-dot.active {
+  box-shadow: var(--shadow-glow-accent);
+}
+
+/* ─── Screen: pref toggle active ─── */
+html.dark .pref-toggle.active {
+  box-shadow: var(--shadow-glow-accent);
+}
+
+/* ─── Screen: sticky bottom bar (booking confirm) ─── */
+html.dark .glass-bottom-bar {
+  background: rgba(30, 32, 40, 0.85);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border-top: 1px solid rgba(255,255,255,0.08);
 }

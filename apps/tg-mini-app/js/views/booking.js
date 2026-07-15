@@ -465,7 +465,7 @@ const BookingView = (() => {
         </div>
         <div class="card-row">
           <span class="text-hint">${t('payment')}</span>
-          <span>${state.paymentDone ? `<span style="display:inline-flex;align-items:center;gap:4px;color:#027A48">&check; ${t('paid')} (${state.totalPayable} ${t('etb')})</span>` : `<span style="display:inline-flex;align-items:center;gap:4px;color:#E53935">&cross; ${t('notPaid')}</span>`}</span>
+          <span>${state.paymentDone ? `<span style="display:inline-flex;align-items:center;gap:4px;color:var(--success)">&check; ${t('paid')} (${state.totalPayable} ${t('etb')})</span>` : `<span style="display:inline-flex;align-items:center;gap:4px;color:var(--danger)">&cross; ${t('notPaid')}</span>`}</span>
         </div>
         <div class="card-row">
           <span class="text-hint">${t('amount')}</span>

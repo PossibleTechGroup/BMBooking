@@ -35,9 +35,11 @@ const TG = (() => {
     ready = true;
 
     document.documentElement.classList.toggle('dark', webapp.colorScheme === 'dark');
+    syncThemeColors();
 
     webapp.onEvent('themeChanged', () => {
       document.documentElement.classList.toggle('dark', webapp.colorScheme === 'dark');
+      syncThemeColors();
     });
 
     webapp.onEvent('viewportChanged', () => {
@@ -56,7 +58,7 @@ const TG = (() => {
     }
 
     if (webapp.disableVerticalSwipes) {
-      try { webapp.disableVerticalSwipes(); } catch {}
+      try { webapp.disableVerticalSwipes(); } catch { }
     }
   }
 

@@ -338,7 +338,7 @@ const EquipmentView = (() => {
         ${state.totalPayable > 0 ? `
         <div class="card-row">
           <span class="text-hint">Payment</span>
-          <span style="color:#027A48;display:inline-flex;align-items:center;gap:4px">${ICON.check} Paid (${state.totalPayable} ETB)</span>
+          <span style="color:var(--success);display:inline-flex;align-items:center;gap:4px">${ICON.check} Paid (${state.totalPayable} ETB)</span>
         </div>` : ''}
         ${state.notes ? `
         <div class="card-row">
