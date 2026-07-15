@@ -2,34 +2,12 @@ const TG = (() => {
   let webapp = null;
   let ready = false;
 
-<<<<<<< HEAD
-  function loadTelegramSDK() {
-    return new Promise((resolve) => {
-      if (window.Telegram?.WebApp) {
-        resolve();
-        return;
-      }
-      const existing = document.querySelector('script[src*="telegram-web-app.js"]');
-      if (existing) {
-        existing.addEventListener('load', resolve);
-        existing.addEventListener('error', resolve);
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://telegram.org/js/telegram-web-app.js';
-      script.onload = resolve;
-      script.onerror = resolve;
-      document.head.appendChild(script);
-      setTimeout(resolve, 5000);
-    });
-=======
   function syncThemeColors() {
     if (!webapp) return;
     const isDark = webapp.colorScheme === 'dark';
     const bg = isDark ? '#18191C' : '#F9F7F2';
     webapp.setHeaderColor(bg);
     webapp.setBottomBarColor(bg);
->>>>>>> 4b26588 (tg changes)
   }
 
   async function init() {
