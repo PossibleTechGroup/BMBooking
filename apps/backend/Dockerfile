@@ -13,4 +13,4 @@ COPY . .
 
 EXPOSE 5000
 
-CMD npx prisma generate && npm run dev
+CMD npx prisma migrate deploy && npx prisma generate && npm run dev
