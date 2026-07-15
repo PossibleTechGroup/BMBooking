@@ -2,6 +2,7 @@ const TG = (() => {
   let webapp = null;
   let ready = false;
 
+<<<<<<< HEAD
   function loadTelegramSDK() {
     return new Promise((resolve) => {
       if (window.Telegram?.WebApp) {
@@ -21,6 +22,14 @@ const TG = (() => {
       document.head.appendChild(script);
       setTimeout(resolve, 5000);
     });
+=======
+  function syncThemeColors() {
+    if (!webapp) return;
+    const isDark = webapp.colorScheme === 'dark';
+    const bg = isDark ? '#18191C' : '#F9F7F2';
+    webapp.setHeaderColor(bg);
+    webapp.setBottomBarColor(bg);
+>>>>>>> 4b26588 (tg changes)
   }
 
   async function init() {

@@ -57,34 +57,34 @@ body {
 html.dark {
   color-scheme: dark;
 
-  --elev-0: #0B0C0F;
-  --elev-1: #16171C;
-  --elev-2: #1E2028;
-  --elev-3: #262832;
-  --elev-glow: rgba(107, 154, 196, 0.06);
+  --elev-0: #18191C;
+  --elev-1: #1F2023;
+  --elev-2: #26272B;
+  --elev-3: #2E2F34;
+  --elev-glow: rgba(90, 169, 230, 0.05);
 
   --bg: var(--tg-theme-bg-color, var(--elev-0));
   --surface: var(--elev-1);
   --section-bg: var(--elev-1);
   --secondary-bg: var(--elev-2);
-  --text: var(--tg-theme-text-color, #F2F2F0);
-  --hint: var(--tg-theme-hint-color, #8B8F98);
-  --link: var(--tg-theme-link-color, #7AAAD6);
+  --text: var(--tg-theme-text-color, #F5F5F5);
+  --hint: var(--tg-theme-hint-color, #8E8E93);
+  --link: var(--tg-theme-link-color, #5AA9E6);
   --button: var(--tg-theme-button-color, #ECECEC);
   --button-text: var(--tg-theme-button-text-color, #101014);
   --section-separator: var(--tg-theme-section-separator-color, rgba(255,255,255,0.06));
-  --accent: #7AAAD6;
-  --secondary-accent: #7AAAD6;
+  --accent: #5AA9E6;
+  --secondary-accent: #5AA9E6;
   --danger: #F0645F;
-  --success: #55C069;
+  --success: #5FCB77;
   --warning: #FFB454;
-  --border: rgba(255,255,255,0.07);
-  --border-strong: rgba(255,255,255,0.14);
-  --shadow: 0 1px 2px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.35);
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
-  --shadow-glow-accent: 0 0 0 1px rgba(122,170,214,0.25), 0 4px 20px rgba(122,170,214,0.15);
-  --text-primary: #F2F2F0;
-  --text-secondary: #8B8F98;
+  --border: rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.12);
+  --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.25);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-glow-accent: 0 0 0 1px rgba(90,169,230,0.25), 0 4px 18px rgba(90,169,230,0.12);
+  --text-primary: #F5F5F5;
+  --text-secondary: #8E8E93;
   --primary-dark: #ECECEC;
 }
 
@@ -558,10 +558,10 @@ a {
 }
 
 html.dark .badge-pending   { background: rgba(255,180,84,0.15); color: #FFB454; }
-html.dark .badge-accepted  { background: rgba(122,170,214,0.15); color: #8FBDE0; }
-html.dark .badge-completed { background: rgba(85,192,105,0.15); color: #7BD48D; }
+html.dark .badge-accepted  { background: rgba(90,169,230,0.15); color: #7BB8E8; }
+html.dark .badge-completed { background: rgba(95,203,119,0.15); color: #7BD48D; }
 html.dark .badge-declined  { background: rgba(240,100,95,0.15); color: #F0645F; }
-html.dark .badge-cancelled { background: rgba(139,143,152,0.15); color: #A8ACB5; }
+html.dark .badge-cancelled { background: rgba(142,142,147,0.15); color: #A8ACB5; }
 
 /* ─── Loading ─── */
 .loading {
@@ -615,8 +615,8 @@ html.dark .badge-cancelled { background: rgba(139,143,152,0.15); color: #A8ACB5;
 }
 
 html.dark .alert-error   { background: rgba(240,100,95,0.12); border-color: rgba(240,100,95,0.25); }
-html.dark .alert-success { background: rgba(85,192,105,0.12); border-color: rgba(85,192,105,0.25); }
-html.dark .alert-info    { background: rgba(122,170,214,0.12); border-color: rgba(122,170,214,0.25); }
+html.dark .alert-success { background: rgba(95,203,119,0.12); border-color: rgba(95,203,119,0.25); }
+html.dark .alert-info    { background: rgba(90,169,230,0.12); border-color: rgba(90,169,230,0.25); }
 
 /* ─── Doctor Card ─── */
 .doctor-card {
@@ -1403,10 +1403,10 @@ html.dark .alert-info    { background: rgba(122,170,214,0.12); border-color: rgb
 
 /* ─── Glass (chrome only: header, nav, sheets) ─── */
 html.dark .glass-surface {
-  background: rgba(30, 32, 40, 0.72);
+  background: rgba(38, 39, 43, 0.78);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.07);
 }
 
 @supports not (backdrop-filter: blur(1px)) {
@@ -1416,9 +1416,17 @@ html.dark .glass-surface {
 }
 
 /* ─── Micro-interactions ─── */
+html.dark button,
+html.dark .card,
+html.dark .doctor-card,
+html.dark .slot-chip,
+html.dark .quick-action-icon {
+  transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
 html.dark button:active,
-html.dark .doctor-card:active,
-html.dark .slot-chip:active {
+html.dark .card:active,
+html.dark .doctor-card:active {
   transform: scale(0.97);
 }
 
@@ -1451,7 +1459,7 @@ html.dark .search-bar {
 
 html.dark .search-bar:focus-within {
   border-color: var(--link);
-  box-shadow: 0 0 0 3px rgba(122,170,214,0.15);
+  box-shadow: 0 0 0 3px rgba(90,169,230,0.15);
 }
 
 /* ─── Screen: empty state ─── */
@@ -1481,7 +1489,7 @@ html.dark .quick-action-icon {
 
 /* ─── Screen: success glow ─── */
 html.dark .success-screen .check-icon {
-  box-shadow: 0 0 40px rgba(85, 192, 105, 0.25);
+  box-shadow: 0 0 40px rgba(95, 203, 119, 0.25);
 }
 
 /* ─── Screen: profile avatar lift ─── */
@@ -1491,18 +1499,31 @@ html.dark .profile-avatar-circle {
 
 /* ─── Screen: onboarding dot glow ─── */
 html.dark .onboarding-dot.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #FFFFFF;
   box-shadow: var(--shadow-glow-accent);
 }
 
-/* ─── Screen: pref toggle active ─── */
+/* ─── Screen: pref toggle active — accent pill, not stark white ─── */
 html.dark .pref-toggle.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #FFFFFF;
+  box-shadow: var(--shadow-glow-accent);
+}
+
+/* ─── Screen: onboarding primary btn — accent, not inverted ─── */
+html.dark .onboarding-btn-primary {
+  background: var(--accent);
+  color: #FFFFFF;
   box-shadow: var(--shadow-glow-accent);
 }
 
 /* ─── Screen: sticky bottom bar (booking confirm) ─── */
 html.dark .glass-bottom-bar {
-  background: rgba(30, 32, 40, 0.85);
+  background: rgba(38, 39, 43, 0.88);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid rgba(255,255,255,0.07);
 }
