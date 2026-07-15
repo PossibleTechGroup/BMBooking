@@ -27,7 +27,7 @@ const DoctorsView = (() => {
         <h1 class="view-header-title">Doctors</h1>
         <div class="view-header-spacer"></div>
       </div>
-      <div class="search-bar">
+      <div class="search-bar glass-surface">
         ${ICON.search}
         <input type="text" id="doctor-search" placeholder="Search doctors..." value="${searchQuery}" />
       </div>
@@ -70,6 +70,7 @@ const DoctorsView = (() => {
         <div class="empty-state">
           <div class="empty-state-icon">${ICON.stethoscope}</div>
           <h3>No doctors found</h3>
+          <p>Try a different search term or browse all available doctors.</p>
         </div>`;
       return;
     }

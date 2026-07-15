@@ -10,8 +10,7 @@ const TG = (() => {
     webapp.setBottomBarColor(bg);
   }
 
-  async function init() {
-    await loadTelegramSDK();
+  function init() {
     webapp = window.Telegram?.WebApp || null;
     if (!webapp) {
       console.warn('Telegram WebApp SDK not available (running outside Telegram?)');

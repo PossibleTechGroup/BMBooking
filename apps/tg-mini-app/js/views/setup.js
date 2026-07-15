@@ -168,7 +168,7 @@ const SetupView = (() => {
     if (!ethDisplay) return;
     if (state.dateOfBirth && TimeUtils.getCalendarFormat() === 'ethiopian') {
       ethDisplay.innerHTML = `
-        <div style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:12px;color:var(--hint-color,#888);">
+        <div style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:12px;color:var(--hint,#888);">
           ${ICON.calendar}
           <span>${TimeUtils.formatEthiopianCalendarDate(new Date(state.dateOfBirth + 'T12:00:00'), 'medium')}</span>
         </div>`;

@@ -54,7 +54,7 @@ const EquipmentView = (() => {
         <h1 class="view-header-title">Equipment</h1>
         <div class="view-header-spacer"></div>
       </div>
-      <div class="search-bar">
+      <div class="search-bar glass-surface">
         ${ICON.search}
         <input type="text" id="eq-search" placeholder="Search equipment..." value="${state.searchQuery}" />
       </div>
