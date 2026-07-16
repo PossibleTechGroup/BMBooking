@@ -13,7 +13,7 @@ const LoginView = (() => {
 
   function renderPhone(container) {
     container.innerHTML = `
-      <div class="header"><h1>BM Booking</h1></div>
+      <div class="header"><h1>BM</h1></div>
       <p class="text-hint mb-16">Enter your phone number to get started</p>
       <div class="input-group phone-input-group">
         <label>Phone Number</label>

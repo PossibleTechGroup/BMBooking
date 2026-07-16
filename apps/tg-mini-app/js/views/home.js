@@ -40,7 +40,7 @@ const HomeView = (() => {
             `).join('')}
           </div>
         </div>
-        <h1 class="view-header-title">BM Booking</h1>
+        <h1 class="view-header-title">BM</h1>
         <button class="view-header-icon" id="home-profile-btn">
           ${ICON.user}
         </button>
