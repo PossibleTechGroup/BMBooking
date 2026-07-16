@@ -2,7 +2,7 @@
   "name": "bm-tg-mini-app",
   "private": true,
   "version": "1.0.0",
-  "description": "BM Telegram Mini App - Patient portal",
+  "description": "BM Booking Telegram Mini App - Patient portal",
   "scripts": {
     "start": "npx serve . -p 8081 -s",
     "dev": "npx serve . -p 8081 -s"

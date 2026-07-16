@@ -3,7 +3,7 @@ const OnboardingView = (() => {
 
   const slides = [
     {
-      heading: 'Welcome to BM',
+      heading: 'Welcome to BM Booking',
       body: 'Book medical appointments, find trusted doctors, and manage your health — all from Telegram.',
       list: null,
     },
