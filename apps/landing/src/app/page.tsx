@@ -335,6 +335,34 @@ export default function Home() {
         <span>Subscribe to <a href="https://t.me/bm_booking_bot" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontWeight: 500, textDecoration: "none" }}>@bm_booking_bot</a> on Telegram for the latest updates ↗</span>
       </div>
 
+      {/* Wrapper for nav + hero (covers both with KineticGrid background) */}
+      <div style={{ position: "relative" }}>
+        {/* Kinetic Grid — desktop only */}
+        {!isMobile && (
+          <KineticGrid
+            background="transparent"
+            dotColor="#1A1A1A"
+            lineColor="#3E5C76"
+            trailColor="#3E5C76"
+            spacing={24}
+            radius={380}
+            strength={4}
+            trail={false}
+            windowTracking
+            style={{
+              position: "absolute",
+              top: 0,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "100vw",
+              height: "100%",
+              zIndex: 0,
+              maskImage: "linear-gradient(to bottom, black 60%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to bottom, black 60%, transparent 100%)",
+            }}
+          />
+        )}
+
       {/* Floating Navigation Header */}
       <nav 
         className="glass transition-custom"
@@ -432,7 +460,7 @@ export default function Home() {
             Register Hospital
           </button>
           <button
-            onClick={() => setIsAppModalOpen(true)}
+            onClick={() => setIsComingSoonModalOpen(true)}
             className="btn btn-ghost"
             style={{
               padding: "0 18px",
@@ -613,29 +641,7 @@ export default function Home() {
           textAlign: "center",
         }}
       >
-        {/* Kinetic Grid — desktop only */}
         {!isMobile && (
-          <>
-            <KineticGrid
-              background="transparent"
-              dotColor="#1A1A1A"
-              lineColor="#3E5C76"
-              trailColor="#3E5C76"
-              spacing={36}
-              radius={300}
-              strength={2.5}
-              trail={false}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: "100vw",
-                height: "100%",
-                pointerEvents: "auto",
-              }}
-            />
-            {/* Antigravity Cursor Spotlight Orb */}
             <div 
               className="antigravity-orb" 
               style={{
@@ -650,8 +656,7 @@ export default function Home() {
                 transition: 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
               }}
             />
-          </>
-        )}
+          )}
 
         <div style={{ position: "relative", zIndex: 1, maxWidth: "800px", margin: "0 auto" }}>
           {/* Animated text background glow */}
@@ -714,7 +719,7 @@ export default function Home() {
             <br />
             Manage Clinic Bookings
             <br />
-            <span style={{ color: "var(--accent)" }}>All Inside Telegram</span>
+            <span style={{ color: "var(--accent)" }}>All in One Platform</span>
           </h1>
 
           {/* Subhead */}
@@ -729,7 +734,7 @@ export default function Home() {
               margin: "0 auto 3rem",
             }}
           >
-            Your next clinical appointment is just a Telegram message away. No apps to download, no endless forms — just instant doctor scheduling and digital health cards for patients and forward-thinking clinics.
+            Your next clinical appointment is just a few clicks away. No endless forms, just instant doctor scheduling and digital health cards in one unified platform.
           </p>
 
           {/* Call to Actions (CTA row) */}
@@ -769,6 +774,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </div>{/* end nav+hero wrapper */}
 
       {/* How It Works Section */}
       <section 
@@ -1330,9 +1336,9 @@ export default function Home() {
             <div className="modal-icon-circle">
               <Smartphone size={24} />
             </div>
-            <h3>Coming Soon</h3>
+            <h3>Under Production</h3>
             <p>
-              The mobile app is in the works. In the meantime, book instantly through our Telegram bot — no download needed.
+              We're still putting the finishing touches on this. No download needed.
             </p>
             <a 
               href="https://t.me/bm_booking_bot" 

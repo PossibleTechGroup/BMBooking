@@ -11,6 +11,7 @@ interface KineticGridProps {
   radius?: number;
   strength?: number;
   trail?: boolean;
+  windowTracking?: boolean;
   style?: CSSProperties;
 }
 
@@ -105,6 +106,11 @@ export default function KineticGrid(props: KineticGridProps) {
     host.addEventListener("touchmove", onTouch, { passive: true });
     host.addEventListener("touchend", onLeave);
 
+    if (cfg.windowTracking) {
+      window.addEventListener("mousemove", onMove);
+      document.documentElement.addEventListener("mouseleave", onLeave);
+    }
+
     const ro = new ResizeObserver(() => build());
     ro.observe(host);
 
@@ -141,18 +147,18 @@ export default function KineticGrid(props: KineticGridProps) {
           const down = cols[c]?.[ri + 1];
           const prox = m.active ? Math.max(0, 1 - Math.sqrt((m.x - d.x) ** 2 + (m.y - d.y) ** 2) / R) : 0;
           if (right) {
-            ctx.globalAlpha = 0.12 + prox * 0.7;
+            ctx.globalAlpha = 0.12;
             ctx.strokeStyle = cfg.lineColor;
-            ctx.lineWidth = 0.8 + prox * 2.5;
+            ctx.lineWidth = 0.8;
             ctx.beginPath();
             ctx.moveTo(d.x, d.y);
             ctx.lineTo(right.x, right.y);
             ctx.stroke();
           }
           if (down) {
-            ctx.globalAlpha = 0.12 + prox * 0.7;
+            ctx.globalAlpha = 0.12;
             ctx.strokeStyle = cfg.lineColor;
-            ctx.lineWidth = 0.8 + prox * 2.5;
+            ctx.lineWidth = 0.8;
             ctx.beginPath();
             ctx.moveTo(d.x, d.y);
             ctx.lineTo(down.x, down.y);
@@ -163,10 +169,10 @@ export default function KineticGrid(props: KineticGridProps) {
 
       for (const d of dots) {
         const prox = m.active ? Math.max(0, 1 - Math.sqrt((m.x - d.x) ** 2 + (m.y - d.y) ** 2) / R) : 0;
-        ctx.globalAlpha = 0.35 + prox * 0.65;
+        ctx.globalAlpha = 0.35;
         ctx.fillStyle = cfg.dotColor;
         ctx.beginPath();
-        ctx.arc(d.x, d.y, 1.2 + prox * 3, 0, 2 * Math.PI);
+        ctx.arc(d.x, d.y, 1.2, 0, 2 * Math.PI);
         ctx.fill();
       }
 
@@ -201,8 +207,13 @@ export default function KineticGrid(props: KineticGridProps) {
       host.removeEventListener("mouseleave", onLeave);
       host.removeEventListener("touchmove", onTouch);
       host.removeEventListener("touchend", onLeave);
+
+      if (cfg.windowTracking) {
+        window.removeEventListener("mousemove", onMove);
+        document.documentElement.removeEventListener("mouseleave", onLeave);
+      }
     };
-  }, [cfg.background, cfg.dotColor, cfg.lineColor, cfg.trailColor, cfg.spacing, cfg.radius, cfg.strength, cfg.trail]);
+  }, [cfg.background, cfg.dotColor, cfg.lineColor, cfg.trailColor, cfg.spacing, cfg.radius, cfg.strength, cfg.trail, cfg.windowTracking]);
 
   return (
     <div
