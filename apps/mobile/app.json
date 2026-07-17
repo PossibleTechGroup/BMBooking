@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "BM Booking",
-    "slug": "olmec",
+    "slug": "bm-booking",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -17,7 +17,6 @@
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
@@ -64,7 +63,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c978ff5c-73e7-4900-9301-bf29287e8e5c"
+        "projectId": "b5c8b3ba-1908-4591-95a4-0b93fcc328d8"
       }
     },
     "owner": "abelashine"
