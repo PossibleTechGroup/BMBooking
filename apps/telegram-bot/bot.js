@@ -88,13 +88,37 @@ const setBotInfo = async () => {
   }
 };
 
+const MAX_RETRIES = 10;
+const BASE_DELAY = 5000;
+
 console.log(`Starting BM-Booking bot...`);
 console.log(`WebApp URL: ${WEBAPP_URL}`);
 
-setBotInfo().then(() => {
-  bot.launch();
-  console.log("Bot is running!");
-});
+let running = false;
 
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+const startBot = async (attempt = 1) => {
+  try {
+    await setBotInfo();
+    await bot.launch();
+    running = true;
+    console.log("Bot is running!");
+  } catch (err) {
+    if (err.message.includes("409") && attempt < MAX_RETRIES) {
+      const delay = BASE_DELAY * Math.pow(2, attempt - 1);
+      console.warn(`Conflict detected (attempt ${attempt}/${MAX_RETRIES}). Retrying in ${delay / 1000}s...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return startBot(attempt + 1);
+    }
+    console.error("Failed to start bot:", err.message);
+    process.exit(1);
+  }
+};
+
+startBot();
+
+process.once("SIGINT", () => {
+  if (running) bot.stop("SIGINT");
+});
+process.once("SIGTERM", () => {
+  if (running) bot.stop("SIGTERM");
+});

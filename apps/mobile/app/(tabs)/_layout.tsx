@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
+import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "../../constants/theme";
 import { useColorScheme } from "../../hooks/use-color-scheme";
@@ -19,7 +20,14 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: theme.surface,
           borderTopColor: theme.border,
-          paddingBottom: insets.bottom + 4,
+          height: Platform.OS === 'web' ? 76 : 64 + insets.bottom,
+          paddingBottom: Platform.OS === 'web' ? 16 : insets.bottom + 10,
+          paddingTop: 8,
+          marginBottom: Platform.OS === 'web' ? 40 : 0,
+          marginHorizontal: Platform.OS === 'web' ? 16 : 0,
+          borderRadius: Platform.OS === 'web' ? 16 : 0,
+          borderWidth: Platform.OS === 'web' ? 1 : 0,
+          borderColor: theme.border,
         },
       }}
     >

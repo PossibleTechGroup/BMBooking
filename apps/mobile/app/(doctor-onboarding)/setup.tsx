@@ -3,7 +3,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, View, StyleSheet } from "react-native";
+import { Alert, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import Animated, { FadeIn, FadeOutLeft, SlideInRight } from "react-native-reanimated";
@@ -54,6 +54,7 @@ export default function DoctorSetupScreen() {
   const [step, setStep] = useState<Step>(1);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const hasShownFeeAlert = useRef(false);
 
   const handleBioFocus = () => {
     setTimeout(() => {
@@ -143,6 +144,17 @@ export default function DoctorSetupScreen() {
       showSubscription.remove();
       hideSubscription.remove();
     };
+  }, []);
+
+  useEffect(() => {
+    if (!hasShownFeeAlert.current) {
+      hasShownFeeAlert.current = true;
+      Alert.alert(
+        "Appointment Fee",
+        "Your consultation fee as a new doctor is set to 50 Birr. You can update this later from your profile.",
+        [{ text: "Got it" }]
+      );
+    }
   }, []);
 
   // Validation
