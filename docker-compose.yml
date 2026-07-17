@@ -153,6 +153,21 @@ services:
     networks:
       - bm-network
 
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: bm-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-53411}:3000"
+    environment:
+      BACKEND_URL: http://backend:5000
+    depends_on:
+      - backend
+    networks:
+      - bm-network
+
   telegram-bot:
     build:
       context: ./apps/telegram-bot
