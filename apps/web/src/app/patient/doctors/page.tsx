@@ -165,8 +165,12 @@ function DoctorsPage() {
                     )}
                   </div>
                 </div>
-                <div className="w-14 h-14 rounded-[12px] bg-foreground/5 flex items-center justify-center ml-3 flex-shrink-0">
-                  <User size={20} className="text-border" />
+                <div className="w-14 h-14 rounded-[12px] bg-foreground/5 flex items-center justify-center ml-3 flex-shrink-0 overflow-hidden">
+                  {doctor.profilePicture ? (
+                    <img src={doctor.profilePicture} alt={doctor.fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={20} className="text-border" />
+                  )}
                 </div>
               </div>
               <div className="flex gap-2 mt-3">

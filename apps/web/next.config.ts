@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
         source: "/api/:path*",
         destination: "https://bmbookingapi.possibletechplc.com/api/:path*",
       },
+      {
+        source: "/uploads/:path*",
+        destination: "https://bmbookingapi.possibletechplc.com/uploads/:path*",
+      },
     ];
   },
 };
