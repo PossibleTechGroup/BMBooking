@@ -28,7 +28,7 @@ import { Colors } from "../../constants/theme";
 import { useColorScheme } from "../../hooks/use-color-scheme";
 import { AppDispatch, RootState } from "../../store";
 import { clearError, submitDoctorProfile } from "../../store/slices/authSlice";
-import { BASE_URL } from "../../constants/api";
+import { BASE_URL, getAssetUrl } from "../../constants/api";
 
 export default function EditProfessionalScreen() {
   const { t } = useTranslation();
@@ -52,10 +52,10 @@ export default function EditProfessionalScreen() {
 
   // Media State
   const [profileImage, setProfileImage] = useState<string | null>(
-    profile?.profilePicture ? `${BASE_URL}${profile.profilePicture}` : null
+    profile?.profilePicture ? getAssetUrl(profile.profilePicture) : null
   );
   const [introVideo, setIntroVideo] = useState<string | null>(
-    profile?.introVideo ? `${BASE_URL}${profile.introVideo}` : null
+    profile?.introVideo ? getAssetUrl(profile.introVideo) : null
   );
 
   // Sync state if profile loads after initial render
@@ -66,8 +66,8 @@ export default function EditProfessionalScreen() {
       setExperience(profile.experienceYears?.toString() || "");
       setBio(profile.bio || "");
       setLicenseNumber(profile.licenseNumber || "");
-      if (profile.profilePicture) setProfileImage(`${BASE_URL}${profile.profilePicture}`);
-      if (profile.introVideo) setIntroVideo(`${BASE_URL}${profile.introVideo}`);
+      if (profile.profilePicture) setProfileImage(getAssetUrl(profile.profilePicture));
+      if (profile.introVideo) setIntroVideo(getAssetUrl(profile.introVideo));
     }
   }, [profile]);
 

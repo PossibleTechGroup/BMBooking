@@ -393,7 +393,7 @@ export default function SponsorPicker({ onContinue }: SponsorPickerProps) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 32 },
-  header: { marginBottom: 8 },
+  header: { marginBottom: 8, paddingTop: 32 },
   sectionTitle: {
     marginBottom: 16,
     textTransform: 'none',

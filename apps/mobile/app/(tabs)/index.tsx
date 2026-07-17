@@ -21,7 +21,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../store";
 import { fetchDoctors } from "../../store/slices/doctorSlice";
 import { fetchCategories } from "../../store/slices/appointmentSlice";
-import { BASE_URL } from "../../constants/api";
+import { BASE_URL, getAssetUrl } from "../../constants/api";
 import { Video, ResizeMode } from "expo-av";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -164,7 +164,7 @@ export default function HomeScreen() {
                     {doctor.profilePicture ? (
                       <View style={{ width: '100%', height: '100%', borderRadius: 12, overflow: 'hidden' }}>
                         <Video
-                          source={{ uri: `${BASE_URL}${doctor.profilePicture}` }}
+                          source={{ uri: getAssetUrl(doctor.profilePicture) }}
                           style={{ width: '100%', height: '100%' }}
                           resizeMode={ResizeMode.COVER}
                           shouldPlay={false}

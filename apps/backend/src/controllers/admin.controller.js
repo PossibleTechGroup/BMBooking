@@ -1,7 +1,7 @@
 const fs = require('fs');
 const AdminService = require('../services/admin.service');
 const prisma = require('../lib/prisma');
-const { uploadToCloudinary } = require('../lib/cloudinary');
+const { uploadToCloudinary, handleCloudinaryUpload: cloudinaryUpload } = require('../lib/cloudinary');
 
 const handleCloudinaryUpload = async (file) => {
   if (!file) return null;
@@ -510,7 +510,7 @@ const AdminController = {
             languages: languages ? (typeof languages === 'string' ? JSON.parse(languages) : languages) : null,
             baseHourlyRate: baseHourlyRate ? parseFloat(baseHourlyRate) : null,
             hospitalId: hospitalId ? parseInt(hospitalId) : null,
-            profilePicture: req.file ? req.file.path || null : null,
+            profilePicture: req.file ? await cloudinaryUpload(req.file, 'doctors') : null,
             status: 'Approved',
           },
         });
@@ -585,7 +585,7 @@ const AdminController = {
         }
       }
       if (req.file) {
-        data.profilePicture = req.file.path || req.file.location || null;
+        data.profilePicture = await cloudinaryUpload(req.file, 'doctors');
       }
       const doctor = await prisma.doctorProfile.update({
         where: { id: parseInt(id) },

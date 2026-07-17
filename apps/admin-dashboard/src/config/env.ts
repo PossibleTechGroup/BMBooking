@@ -9,5 +9,6 @@ export const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || 'http://localhos
 export function assetUrl(path: string): string {
   if (!path) return '';
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  return `${BACKEND_URL}${path}`;
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${BACKEND_URL}${cleanPath}`;
 }

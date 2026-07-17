@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../store';
 import { fetchAllDoctors, reviewDoctor, deleteDoctor } from '../store/slices/doctorSlice';
+import { assetUrl } from '../config/env';
 import { 
   Users, 
   Star, 
@@ -97,7 +98,7 @@ export const DoctorsPage = () => {
             <div style={styles.cardTop}>
               <div style={styles.avatar}>
                 {doctor.profilePicture ? (
-                  <img src={doctor.profilePicture} style={styles.img} alt="" />
+                  <img src={assetUrl(doctor.profilePicture)} style={styles.img} alt="" />
                 ) : (
                   <Users size={24} color="#64748B" />
                 )}

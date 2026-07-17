@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import client from '../api/client';
+import { assetUrl } from '../config/env';
 import { 
   Star, 
   Calendar, 
@@ -83,7 +84,11 @@ export const DoctorProfileView = ({
       <div style={styles.profileHeader}>
         <div style={styles.headerTop}>
           <div style={styles.avatarLarge}>
-            {doctor.fullName[0]}
+            {doctor.profilePicture ? (
+              <img src={assetUrl(doctor.profilePicture)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+            ) : (
+              doctor.fullName[0]
+            )}
           </div>
           <div style={styles.headerInfo}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

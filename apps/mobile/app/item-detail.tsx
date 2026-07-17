@@ -26,7 +26,7 @@ import { Colors } from '../constants/theme';
 import { useColorScheme } from '../hooks/use-color-scheme';
 import { AppDispatch, RootState } from '../store';
 import { fetchItemDetail, clearSelectedItem, bookEquipment, fetchEquipmentAvailability, clearAvailability } from '../store/slices/equipmentSlice';
-import { BASE_URL, TELEBIRR_URL } from '../constants/api';
+import { BASE_URL, TELEBIRR_URL, getAssetUrl } from '../constants/api';
 import { formatDate, formatEthiopianLocalTime } from '../utils/ethiopianDate';
 import { useTimeFormat } from '../utils/timeFormat';
 
@@ -231,7 +231,7 @@ export default function ItemDetailScreen() {
           <Image
             source={{ 
               uri: selectedItem.photo 
-                ? `${BASE_URL}${selectedItem.photo}` 
+                ? getAssetUrl(selectedItem.photo) 
                 : 'https://images.unsplash.com/photo-1587350859728-117622bc93cf?q=80&w=800&auto=format&fit=crop' 
             }}
             style={styles.image}

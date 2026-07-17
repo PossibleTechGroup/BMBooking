@@ -20,7 +20,7 @@ import { Colors } from '../constants/theme';
 import { useColorScheme } from '../hooks/use-color-scheme';
 import { AppDispatch, RootState } from '../store';
 import { fetchHospitalDetail } from '../store/slices/equipmentSlice';
-import { BASE_URL } from '../constants/api';
+import { BASE_URL, getAssetUrl } from '../constants/api';
 
 export default function HospitalDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -74,7 +74,7 @@ export default function HospitalDetailScreen() {
           <Image
             source={{ 
               uri: hospital.photo 
-                ? `${BASE_URL}${hospital.photo}` 
+                ? getAssetUrl(hospital.photo) 
                 : 'https://images.unsplash.com/photo-1587350859728-117622bc93cf?q=80&w=800&auto=format&fit=crop' 
             }}
             style={styles.image}

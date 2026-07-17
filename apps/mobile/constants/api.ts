@@ -18,3 +18,10 @@ export const TELEBIRR_URL =
   (__DEV__ ? `http://${LOCAL_IP}:53402` : TELEBIRR);
 
 export const BASE_URL = getBaseUrl();
+
+export function getAssetUrl(path: string | null | undefined): string {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${BASE_URL}${cleanPath}`;
+}

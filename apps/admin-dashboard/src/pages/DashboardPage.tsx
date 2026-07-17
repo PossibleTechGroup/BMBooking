@@ -5,6 +5,7 @@ import { fetchPendingDoctors, fetchAllDoctors, reviewDoctor, deleteDoctor, assig
 import { fetchHospitals } from '../store/slices/hospitalSlice';
 import { logout } from '../store/slices/authSlice';
 import type { AppDispatch, RootState } from '../store';
+import { assetUrl } from '../config/env';
 import PatientsPage from './PatientsPage';
 import AnalysisPage from './AnalysisPage';
 import { ItemsPage } from './ItemsPage';
@@ -109,10 +110,12 @@ const DashboardPage = () => {
     languages: '', baseHourlyRate: '', hospitalId: '',
   });
   const [createDoctorError, setCreateDoctorError] = useState('');
+  const [createDoctorProfilePicture, setCreateDoctorProfilePicture] = useState<File | null>(null);
   const [doctorSuccess, setDoctorSuccess] = useState<{ name: string; tempPassword: string; doctor: any } | null>(null);
   const [showEditDoctor, setShowEditDoctor] = useState(false);
   const [editDoctorForm, setEditDoctorForm] = useState<any>({});
   const [editDoctorError, setEditDoctorError] = useState('');
+  const [editDoctorProfilePicture, setEditDoctorProfilePicture] = useState<File | null>(null);
   const [doctorSchedules, setDoctorSchedules] = useState<any[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -244,9 +247,11 @@ const DashboardPage = () => {
       if (editDoctorForm.baseHourlyRate !== undefined) fd.append('baseHourlyRate', editDoctorForm.baseHourlyRate || '');
       if (editDoctorForm.hospitalId !== undefined) fd.append('hospitalId', editDoctorForm.hospitalId || '');
       if (editDoctorForm.status !== undefined) fd.append('status', editDoctorForm.status);
+      if (editDoctorProfilePicture) fd.append('profilePicture', editDoctorProfilePicture);
       const updated = await dispatch(updateDoctor({ id: selectedDoctor.id, data: fd })).unwrap();
       setSelectedDoctor({ ...selectedDoctor, ...updated });
       setShowEditDoctor(false);
+      setEditDoctorProfilePicture(null);
     } catch (err: any) {
       setEditDoctorError(err || 'Failed to update doctor');
     }
@@ -280,9 +285,11 @@ const DashboardPage = () => {
       if (createDoctorForm.languages) fd.append('languages', JSON.stringify(createDoctorForm.languages.split(',').map((s: string) => s.trim()).filter(Boolean)));
       if (createDoctorForm.baseHourlyRate) fd.append('baseHourlyRate', createDoctorForm.baseHourlyRate);
       if (createDoctorForm.hospitalId) fd.append('hospitalId', createDoctorForm.hospitalId);
+      if (createDoctorProfilePicture) fd.append('profilePicture', createDoctorProfilePicture);
       const result = await dispatch(createDoctor(fd)).unwrap();
       setShowCreateDoctor(false);
       setCreateDoctorForm({ fullName: '', phone: '', email: '', specialization: '', licenseNumber: '', experienceYears: '', bio: '', clinicName: '', clinicAddress: '', languages: '', baseHourlyRate: '', hospitalId: '' });
+      setCreateDoctorProfilePicture(null);
       if (result?.tempPassword) {
         setDoctorSuccess({ name: result.fullName || createDoctorForm.fullName, tempPassword: result.tempPassword, doctor: result });
       }
@@ -595,7 +602,7 @@ const DashboardPage = () => {
                 >
                   <div style={styles.cardHeader}>
                     {doctor.profilePicture ? (
-                      <img src={doctor.profilePicture} alt="" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }} />
+                      <img src={assetUrl(doctor.profilePicture)} alt="" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }} />
                     ) : (
                       <div style={styles.avatarPlaceholder}>
                         {(doctor.fullName || 'D').charAt(0)}
@@ -798,7 +805,7 @@ const DashboardPage = () => {
                           <div>
                             <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Profile Photo</div>
                             <img
-                              src={selectedDoctor.profilePicture}
+                              src={assetUrl(selectedDoctor.profilePicture)}
                               alt=""
                               style={{ width: 160, height: 160, objectFit: 'cover', borderRadius: '16px', border: '1px solid var(--border)' }}
                             />
@@ -808,7 +815,7 @@ const DashboardPage = () => {
                           <div>
                             <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Intro Video</div>
                             <video
-                              src={selectedDoctor.introVideo}
+                              src={assetUrl(selectedDoctor.introVideo)}
                               controls
                               style={{ width: 280, height: 160, borderRadius: '16px', background: '#000' }}
                             />
@@ -1023,6 +1030,19 @@ const DashboardPage = () => {
                 <label style={styles.formLabel}>Bio</label>
                 <textarea style={{...styles.formInput, height: '80px', resize: 'vertical'}} value={createDoctorForm.bio} onChange={e => setCreateDoctorForm(p => ({...p, bio: e.target.value}))} placeholder="A short bio about the doctor..." />
               </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={styles.formLabel}>Profile Photo</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={e => {
+                    if (e.target.files && e.target.files[0]) {
+                      setCreateDoctorProfilePicture(e.target.files[0]);
+                    }
+                  }}
+                  style={styles.formInput}
+                />
+              </div>
             </div>
             <div style={{...styles.modalActions, marginTop: '20px' }}>
               <button style={styles.cancelBtn} onClick={() => { setShowCreateDoctor(false); setCreateDoctorError(''); }}>Cancel</button>
@@ -1097,6 +1117,19 @@ const DashboardPage = () => {
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={styles.formLabel}>Bio</label>
                 <textarea style={{...styles.formInput, height: '80px', resize: 'vertical'}} value={editDoctorForm.bio || ''} onChange={e => setEditDoctorForm((p: any) => ({...p, bio: e.target.value}))} />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={styles.formLabel}>Profile Photo</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={e => {
+                    if (e.target.files && e.target.files[0]) {
+                      setEditDoctorProfilePicture(e.target.files[0]);
+                    }
+                  }}
+                  style={styles.formInput}
+                />
               </div>
             </div>
             <div style={{...styles.modalActions, marginTop: '20px' }}>

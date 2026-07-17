@@ -3,7 +3,7 @@ import { View, StyleSheet, Pressable, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { MedCard } from "../medconnect/MedCard";
 import { MedText } from "../medconnect/MedText";
-import { BASE_URL } from "../../constants/api";
+import { getAssetUrl } from "../../constants/api";
 
 interface DoctorCardProps {
   item: any;
@@ -43,7 +43,7 @@ export const DoctorCard: React.FC<DoctorCardProps> = ({
       <MedCard style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <View style={styles.row}>
           {item.profilePicture ? (
-            <Image source={{ uri: `${BASE_URL}${item.profilePicture}` }} style={styles.avatar} />
+            <Image source={{ uri: getAssetUrl(item.profilePicture) }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: theme.primary + "12" }]}>
               <MedText style={{ fontSize: 16, fontWeight: "600", color: theme.primary }}>{initials}</MedText>

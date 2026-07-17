@@ -14,7 +14,7 @@ import { AppDispatch, RootState } from "../../store";
 import { logout } from "../../store/slices/authSlice";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
-import { BASE_URL } from "../../constants/api";
+import { BASE_URL, getAssetUrl } from "../../constants/api";
 import { useTimeFormat } from "../../utils/timeFormat";
 
 const PROFILE_ITEMS = [
@@ -122,7 +122,7 @@ export default function DoctorProfileScreen() {
         <View style={styles.profileHeader}>
           {hasPhoto ? (
             <Image
-              source={{ uri: `${BASE_URL}${profile.profilePicture}` }}
+              source={{ uri: getAssetUrl(profile.profilePicture) }}
               style={styles.avatar}
             />
           ) : (

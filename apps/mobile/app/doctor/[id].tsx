@@ -20,7 +20,7 @@ import { MedInput } from "../../components/medconnect/MedInput";
 import { Colors } from "../../constants/theme";
 import { useColorScheme } from "../../hooks/use-color-scheme";
 import { RootState } from "../../store";
-import { BASE_URL } from "../../constants/api";
+import { BASE_URL, getAssetUrl } from "../../constants/api";
 import axios from "axios";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslation } from "react-i18next";
@@ -151,7 +151,7 @@ export default function DoctorProfileScreen() {
         <View style={styles.videoContainer}>
           {doctor.introVideo ? (
             <Video
-              source={{ uri: `${BASE_URL}${doctor.introVideo}` }}
+              source={{ uri: getAssetUrl(doctor.introVideo) }}
               style={styles.video}
               useNativeControls
               resizeMode={ResizeMode.COVER}
@@ -172,7 +172,7 @@ export default function DoctorProfileScreen() {
             <View style={styles.avatarContainer}>
               {doctor.profilePicture ? (
                 <Image 
-                  source={{ uri: `${BASE_URL}${doctor.profilePicture}` }} 
+                  source={{ uri: getAssetUrl(doctor.profilePicture) }} 
                   style={styles.avatar} 
                 />
               ) : (
