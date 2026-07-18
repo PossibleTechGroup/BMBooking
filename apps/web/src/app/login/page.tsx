@@ -14,7 +14,7 @@ type AuthStep = 'phone' | 'role' | 'otp';
 export default function LoginPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { loading, error, otpSent, user } = useAppSelector((s) => s.auth);
+  const { loading, error, otpSent, user, doctorProfileStatus, patientProfileStatus } = useAppSelector((s) => s.auth);
 
   const [step, setStep] = useState<AuthStep>('phone');
   const [phone, setPhone] = useState('');
@@ -26,10 +26,23 @@ export default function LoginPage() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (user) {
-      router.push(user.role === 'doctor' ? '/doctor' : '/patient');
+    if (!user) return;
+    if (user.role === 'doctor') {
+      if (doctorProfileStatus === 'None' || doctorProfileStatus === 'Rejected') {
+        router.push('/doctor/onboarding');
+      } else if (doctorProfileStatus === 'PendingReview') {
+        router.push('/doctor/pending');
+      } else {
+        router.push('/doctor');
+      }
+    } else {
+      if (patientProfileStatus === 'None') {
+        router.push('/patient/onboarding');
+      } else {
+        router.push('/patient');
+      }
     }
-  }, [user, router]);
+  }, [user, doctorProfileStatus, patientProfileStatus, router]);
 
   useEffect(() => {
     if (otpSent) setStep('otp');
