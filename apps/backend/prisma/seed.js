@@ -189,7 +189,7 @@ async function main() {
       },
     });
     await prisma.serviceFee.create({
-      data: { hospitalId: h.id, amount: 150.0 },
+      data: { hospitalId: h.id, amount: 500.0 },
     });
     hospitals.push(h);
   }
