@@ -306,8 +306,17 @@ const equipmentSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
+      .addCase(fetchItemDetail.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchItemDetail.fulfilled, (state, action) => {
+        state.loading = false;
         state.selectedItem = action.payload;
+      })
+      .addCase(fetchItemDetail.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       })
       .addCase(fetchEquipmentCategories.fulfilled, (state, action) => {
         state.categories = action.payload;

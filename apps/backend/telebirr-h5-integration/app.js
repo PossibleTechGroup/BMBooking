@@ -18,49 +18,8 @@ const applyFabricToken = require("./service/apply-fabric-token");
 const { requestCreateOrder } = require("./service/request-create-order");
 const createRawRequest = require("./service/create-raw-request");
 
-// Auto-checkout: creates Telebirr payment order from query params and redirects.
-// Falls through to mock/test page if no amount or auto-checkout fails.
-app.get("/", async (req, res) => {
-  const { amount, title } = req.query;
-
-  if (amount && Number(amount) > 0) {
-    try {
-      const refNo = "ORD" + Date.now() + Math.random().toString(36).slice(2, 8).toUpperCase();
-      const baseUrl = `${req.protocol}://${req.get("host")}`;
-
-      const orderBody = {
-        refNo,
-        title: title || "BM Booking Payment",
-        total_amount: String(Math.round(parseFloat(amount) * 100) / 100),
-        trans_currency: "ETB",
-        notify_url: `${baseUrl}/notify.html`,
-        redirect_url: `${baseUrl}/payment-complete?to=${encodeURIComponent("bmbooking://payment-success")}`,
-      };
-
-      console.log("[AUTO-CHECKOUT] Creating order", refNo, "amount:", orderBody.total_amount);
-
-      const tokenResult = await applyFabricToken();
-      if (!tokenResult || !tokenResult.token) {
-        throw new Error("Failed to obtain fabric token");
-      }
-
-      const orderResult = await requestCreateOrder(orderBody, tokenResult.token);
-      if (!orderResult || !orderResult.biz_content || !orderResult.biz_content.prepay_id) {
-        throw new Error("Failed to create order: missing prepay_id");
-      }
-
-      const rawRequest = createRawRequest(orderResult.biz_content.prepay_id);
-      const paymentUrl = `${process.env.PAYMENT_GATEWAY}${rawRequest}&version=1.0&trade_type=Checkout`;
-
-      console.log("[AUTO-CHECKOUT] Redirecting to Telebirr payment URL");
-      return res.redirect(paymentUrl);
-    } catch (error) {
-      console.error("[AUTO-CHECKOUT] Failed:", error.message);
-      // Fall through to test.html if auto-order fails
-    }
-  }
-
-  // Show the payment form page — user confirms amount, creates order, gets redirected to Telebirr
+// Always show the payment form. ?amount= pre-fills the amount field.
+app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "test.html"));
 });
 

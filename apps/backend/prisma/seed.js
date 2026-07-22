@@ -14,14 +14,14 @@ function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + m
 
 // ── Hospital Data ────────────────────────────────────────────────────────
 const HOSPITALS = [
-  { name: "Black Lion Hospital", address: "Addis Ababa, Tichet St", phone: "+251111550000", cardPrice: 200, lat: 9.0153, lng: 38.7546 },
-  { name: "St. Paul's Hospital", address: "Addis Ababa, Swaziland St", phone: "+251112750125", cardPrice: 150, lat: 9.0196, lng: 38.7539 },
-  { name: "Zewditu Memorial Hospital", address: "Addis Ababa, Filwoha St", phone: "+251111551234", cardPrice: 100, lat: 9.0160, lng: 38.7404 },
-  { name: "Hayat Hospital", address: "Addis Ababa, Bole Rd", phone: "+251116610000", cardPrice: 250, lat: 9.0050, lng: 38.7830 },
-  { name: "Bethel Teaching Hospital", address: "Addis Ababa, Mexico St", phone: "+251115507070", cardPrice: 150, lat: 9.0050, lng: 38.7400 },
+  { name: "Black Lion Hospital", address: "Addis Ababa, Tichet St", phone: "+251111550000", cardPrice: 50, lat: 9.0153, lng: 38.7546 },
+  { name: "St. Paul's Hospital", address: "Addis Ababa, Swaziland St", phone: "+251112750125", cardPrice: 50, lat: 9.0196, lng: 38.7539 },
+  { name: "Zewditu Memorial Hospital", address: "Addis Ababa, Filwoha St", phone: "+251111551234", cardPrice: 50, lat: 9.0160, lng: 38.7404 },
+  { name: "Hayat Hospital", address: "Addis Ababa, Bole Rd", phone: "+251116610000", cardPrice: 50, lat: 9.0050, lng: 38.7830 },
+  { name: "Bethel Teaching Hospital", address: "Addis Ababa, Mexico St", phone: "+251115507070", cardPrice: 50, lat: 9.0050, lng: 38.7400 },
   { name: "St. Gabriel General Hospital", address: "Addis Ababa, Kazanchis", phone: "+251115516060", cardPrice: 50, lat: 9.0100, lng: 38.7650 },
-  { name: "Kadisco General Hospital", address: "Addis Ababa, Bole Medhanealem", phone: "+251116620101", cardPrice: 100, lat: 8.9980, lng: 38.7900 },
-  { name: "Landmark Hospital", address: "Addis Ababa, Megenagna", phone: "+25111234567", cardPrice: 300, lat: 9.0200, lng: 38.8000 },
+  { name: "Kadisco General Hospital", address: "Addis Ababa, Bole Medhanealem", phone: "+251116620101", cardPrice: 50, lat: 8.9980, lng: 38.7900 },
+  { name: "Landmark Hospital", address: "Addis Ababa, Megenagna", phone: "+25111234567", cardPrice: 50, lat: 9.0200, lng: 38.8000 },
 ];
 
 // ── 5 Real Doctors (from uploaded images) ────────────────────────────────
