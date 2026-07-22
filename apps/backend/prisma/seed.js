@@ -301,10 +301,12 @@ async function main() {
   }
   console.log(`  ✅ Equipment (${equipmentList.length} created)`);
 
-  // ── 7. Doctor Schedules — full week, working hours (8:00–17:00) ────────
+  // ── 7. Doctor Schedules + Slots — full week, working hours (8:00–17:00) ──
   //     Each doctor gets a schedule for the next 4 weeks, Mon–Fri
+  //     Each schedule gets 30-min slots from 8:00 to 17:00 (18 slots/day)
   const today = new Date(); today.setHours(0, 0, 0, 0);
   let scheduleCount = 0;
+  let slotCount = 0;
   for (const doctor of doctors) {
     for (let week = 0; week < 4; week++) {
       for (let day = 1; day <= 5; day++) { // Mon=1 .. Fri=5
@@ -313,7 +315,7 @@ async function main() {
         const date = onDate(today, dayOffset);
         const startTime = onDate(date, 0, 8, 0);
         const endTime = onDate(date, 0, 17, 0);
-        await prisma.doctorSchedule.create({
+        const schedule = await prisma.doctorSchedule.create({
           data: {
             doctorId: doctor.id,
             hospitalId: doctor.hospitalId,
@@ -327,10 +329,29 @@ async function main() {
           },
         });
         scheduleCount++;
+
+        // Create 30-min slots from 08:00 to 17:00 (18 slots)
+        for (let h = 8; h < 17; h++) {
+          for (let m = 0; m < 60; m += 30) {
+            const slotStart = onDate(date, 0, h, m);
+            const slotEnd = onDate(date, 0, h, m + 30);
+            if (slotEnd > endTime) break;
+            await prisma.scheduleSlot.create({
+              data: {
+                scheduleId: schedule.id,
+                startTime: slotStart,
+                endTime: slotEnd,
+                maxPatients: 1,
+              },
+            });
+            slotCount++;
+          }
+        }
       }
     }
   }
   console.log(`  ✅ Doctor Schedules (${scheduleCount} created — Mon-Fri, 8:00-17:00, 4 weeks)`);
+  console.log(`  ✅ Schedule Slots (${slotCount} created — 30-min slots per schedule)`);
 
   // ── Summary ───────────────────────────────────────────────────────────
   const counts = {
@@ -340,6 +361,7 @@ async function main() {
     doctors: await prisma.doctorProfile.count(),
     equipment: await prisma.medicalEquipment.count(),
     schedules: await prisma.doctorSchedule.count(),
+    slots: await prisma.scheduleSlot.count(),
   };
   console.log("\n📊 Seed Summary:", counts);
   console.log(
