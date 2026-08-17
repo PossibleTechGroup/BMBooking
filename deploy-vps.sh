@@ -34,7 +34,7 @@ if [ -d "$APP_DIR/.git" ]; then
 else
   echo "[3/6] Cloning repository..."
   rm -rf "$APP_DIR"
-  git clone https://github.com/your-repo/bmbooking.git "$APP_DIR"
+  git clone https://github.com/PossibleTechGroup/BMBooking.git "$APP_DIR"
   cd "$APP_DIR"
 fi
 
