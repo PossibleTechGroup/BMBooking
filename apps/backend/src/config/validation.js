@@ -46,7 +46,7 @@ const schemas = {
       "string.pattern.base":
         "Phone number must be a valid Ethiopian number (+251...)",
     }),
-    role: Joi.string().valid("patient", "doctor", "receptionist").optional(),
+    role: Joi.string().valid("patient", "doctor", "receptionist", "hospital").optional(),
     isRegistration: Joi.boolean().default(false),
   }),
 
@@ -63,12 +63,17 @@ const schemas = {
   verifyOTP: Joi.object({
     phone: Joi.string().regex(phoneRegex).required(),
     code: Joi.string().length(6).required(),
-    role: Joi.string().valid("patient", "doctor", "receptionist").optional(),
+    role: Joi.string().valid("patient", "doctor", "receptionist", "hospital").optional(),
     isRegistration: Joi.boolean().default(false),
   }),
 
   receptionistLogin: Joi.object({
     username: Joi.string().required(),
+    password: Joi.string().required(),
+  }),
+
+  hospitalLogin: Joi.object({
+    phone: Joi.string().required(),
     password: Joi.string().required(),
   }),
 
@@ -128,6 +133,15 @@ const schemas = {
 
   assignDoctorHospital: Joi.object({
     hospitalId: Joi.number().integer().required(),
+  }),
+
+  reviewDoctorByReceptionist: Joi.object({
+    status: Joi.string().valid("Approved", "Rejected").required(),
+    rejectionReason: Joi.when("status", {
+      is: "Rejected",
+      then: Joi.string().min(3).max(500).required(),
+      otherwise: Joi.any().optional(),
+    }),
   }),
 
   // Doctor Profile Schema

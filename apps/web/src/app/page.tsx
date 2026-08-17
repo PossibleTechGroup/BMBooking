@@ -11,7 +11,8 @@ export default function HomePage() {
 
   useEffect(() => {
     if (user && token) {
-      router.push(user.role === 'doctor' ? '/doctor' : '/patient');
+      if (user.role === 'hospital') router.push('/hospital');
+      else router.push(user.role === 'doctor' ? '/doctor' : '/patient');
     } else {
       router.push('/login');
     }

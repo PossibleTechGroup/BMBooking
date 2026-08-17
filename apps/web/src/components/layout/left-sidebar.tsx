@@ -10,7 +10,7 @@ interface Stat {
 
 interface LeftSidebarProps {
   name: string;
-  role: 'patient' | 'doctor';
+  role: 'patient' | 'doctor' | 'hospital';
   subtitle?: string;
   stats: Stat[];
   pills?: string[];
@@ -47,7 +47,7 @@ export function LeftSidebar({ name, role, subtitle, stats, pills, avatar, rating
         )}
         <div className="flex items-center justify-center gap-1.5 mt-1">
           <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary">
-            {role === 'doctor' ? 'Doctor' : 'Patient'}
+            {role === 'hospital' ? 'Hospital' : role === 'doctor' ? 'Doctor' : 'Patient'}
           </span>
           {rating != null && (
             <span className="flex items-center gap-0.5 text-[11px] text-muted">

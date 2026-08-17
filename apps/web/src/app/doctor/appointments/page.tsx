@@ -13,7 +13,7 @@ const STATUS_STYLES: Record<string, string> = {
   accepted: 'bg-[#ECFDF3] text-[#027A48]',
   completed: 'bg-[#EFF6FF] text-[#2563EB]',
   declined: 'bg-[#FEF3F2] text-[#B42318]',
-  cancelled: 'bg-[#F3F4F6] text-[#667085]',
+  cancelled: 'bg-[#F3F4F6] text-[#5A6B80]',
 };
 
 export default function DoctorAppointmentsPage() {

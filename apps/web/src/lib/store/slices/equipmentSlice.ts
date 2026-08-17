@@ -21,6 +21,7 @@ interface EquipmentState {
   searchResults: MedicalEquipment[];
   categories: { category: string; _count: { id: number } }[];
   myBookings: any[];
+  availability: { date: string; operatingHours: any; slots: { start: string; end: string; booked: boolean }[] } | null;
   loading: boolean;
   error: string | null;
 }
@@ -29,6 +30,7 @@ const initialState: EquipmentState = {
   searchResults: [],
   categories: [],
   myBookings: [],
+  availability: null,
   loading: false,
   error: null,
 };
@@ -94,6 +96,33 @@ export const fetchMyEquipmentBookings = createAsyncThunk(
   }
 );
 
+export const fetchEquipmentAvailability = createAsyncThunk(
+  'equipment/fetchAvailability',
+  async ({ equipmentId, date }: { equipmentId: number; date: string }, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/equipment/${equipmentId}/availability`, { params: { date } });
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch availability');
+    }
+  }
+);
+
+export const createEquipmentBooking = createAsyncThunk(
+  'equipment/createBooking',
+  async (data: { equipmentId: number; dateTime: string; notes?: string }, { getState, rejectWithValue }) => {
+    const state = getState() as { auth: { token: string | null } };
+    try {
+      const response = await api.post('/equipment/book', data, {
+        headers: { Authorization: `Bearer ${state.auth.token}` },
+      });
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to book equipment');
+    }
+  }
+);
+
 const equipmentSlice = createSlice({
   name: 'equipment',
   initialState,
@@ -105,6 +134,9 @@ const equipmentSlice = createSlice({
       .addCase(searchEquipment.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
       .addCase(fetchEquipmentCategories.fulfilled, (state, action) => { state.categories = action.payload; })
       .addCase(fetchMyEquipmentBookings.fulfilled, (state, action) => { state.myBookings = action.payload; })
+      .addCase(fetchEquipmentAvailability.fulfilled, (state, action) => { state.availability = action.payload; })
+      .addCase(createEquipmentBooking.fulfilled, (state, action) => { state.myBookings = [action.payload, ...state.myBookings]; })
+      .addCase(createEquipmentBooking.rejected, (state, action) => { state.error = action.payload as string; })
       .addCase(logout, () => initialState);
   },
 });

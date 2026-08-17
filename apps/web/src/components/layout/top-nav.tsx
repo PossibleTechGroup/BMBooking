@@ -28,11 +28,16 @@ export function TopNav({ navItems, portalLabel }: TopNavProps) {
 
   const displayName = user?.role === 'doctor'
     ? user?.doctorProfile?.fullName || user?.phone
+    : user?.role === 'hospital'
+    ? user?.hospitalProfile?.hospital?.name || user?.phone
     : user?.patientProfile?.fullName || user?.phone;
+
+  const homeLink = user?.role === 'doctor' ? '/doctor' : user?.role === 'hospital' ? '/hospital' : '/patient';
+  const profileLink = user?.role === 'doctor' ? '/doctor/profile' : user?.role === 'hospital' ? '/hospital/profile' : '/patient/profile';
 
   return (
     <header className="hidden lg:flex sticky top-0 z-50 h-[80px] bg-surface border-b border-border items-center px-6 gap-4">
-      <Link href={user?.role === 'doctor' ? '/doctor' : '/patient'} className="flex items-center gap-2 shrink-0">
+      <Link href={homeLink} className="flex items-center gap-2 shrink-0">
         <Image src="/bm-booking-logo.png" alt="BM Booking" width={36} height={36} className="w-9 h-9 rounded-[10px] object-cover" />
         <span className="text-[18px] font-bold text-primary tracking-[-0.3px]">BM</span>
       </Link>
@@ -84,7 +89,7 @@ export function TopNav({ navItems, portalLabel }: TopNavProps) {
             <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
             <div className="absolute right-0 top-full mt-1 w-48 bg-surface border border-border rounded-[12px] shadow-lg z-50 py-1 overflow-hidden">
               <Link
-                href={user?.role === 'doctor' ? '/doctor/profile' : '/patient/profile'}
+                href={profileLink}
                 onClick={() => setDropdownOpen(false)}
                 className="flex items-center gap-2 px-4 py-2.5 text-[13px] text-text-secondary hover:bg-foreground/5 transition-colors"
               >

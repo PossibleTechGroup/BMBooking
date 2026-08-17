@@ -1,17 +1,23 @@
 import type { NextConfig } from "next";
 
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://bmbookingapi.possibletechplc.com";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
+  turbopack: {
+    root: __dirname,
+  },
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: "https://bmbookingapi.possibletechplc.com/api/:path*",
+        destination: `${API_URL}/api/:path*`,
       },
       {
         source: "/uploads/:path*",
-        destination: "https://bmbookingapi.possibletechplc.com/uploads/:path*",
+        destination: `${API_URL}/uploads/:path*`,
       },
     ];
   },

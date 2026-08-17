@@ -4,12 +4,22 @@ const prisma = require("../lib/prisma");
 const AdminHospitalService = {
   listHospitals: async (page = 1, limit = 12) => {
     const skip = (page - 1) * limit;
+    const where = {
+      OR: [
+        { hospitalProfiles: { none: {} } },
+        { hospitalProfiles: { some: { status: 'APPROVED' } } },
+      ],
+    };
     const [hospitals, total] = await Promise.all([
       prisma.hospital.findMany({
+        where,
         skip,
         take: limit,
         orderBy: { name: "asc" },
         include: {
+          hospitalProfiles: {
+            select: { status: true },
+          },
           serviceFee: {
             select: { amount: true },
           },
@@ -22,7 +32,7 @@ const AdminHospitalService = {
           },
         },
       }),
-      prisma.hospital.count(),
+      prisma.hospital.count({ where }),
     ]);
     return {
       data: hospitals.map((h) => ({
@@ -36,6 +46,7 @@ const AdminHospitalService = {
         image: h.image,
         cardPrice: h.cardPrice,
         serviceFee: h.serviceFee?.amount || null,
+        status: h.hospitalProfiles?.[0]?.status || null,
         createdAt: h.createdAt,
         updatedAt: h.updatedAt,
         _count: h._count,

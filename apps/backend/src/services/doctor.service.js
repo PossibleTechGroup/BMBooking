@@ -95,6 +95,16 @@ const DoctorService = {
       }
     }
 
+    if (!profileData.hospitalId && profileData.clinicName) {
+      const matchedHospital = await prisma.hospital.findFirst({
+        where: { name: { equals: profileData.clinicName, mode: 'insensitive' } },
+        select: { id: true },
+      });
+      if (matchedHospital) {
+        profileData.hospitalId = matchedHospital.id;
+      }
+    }
+
     if (profile) {
       profile = await Doctor.updateProfile(userId, profileData);
     } else {
@@ -112,6 +122,15 @@ const DoctorService = {
   },
 
   updateProfile: async (userId, profileData) => {
+    if (!profileData.hospitalId && profileData.clinicName) {
+      const matchedHospital = await prisma.hospital.findFirst({
+        where: { name: { equals: profileData.clinicName, mode: 'insensitive' } },
+        select: { id: true },
+      });
+      if (matchedHospital) {
+        profileData.hospitalId = matchedHospital.id;
+      }
+    }
     return await Doctor.updateProfile(userId, profileData);
   },
 

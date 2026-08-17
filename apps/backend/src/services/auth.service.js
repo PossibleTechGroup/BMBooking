@@ -1,4 +1,5 @@
 const bcrypt = require("bcryptjs");
+const prisma = require("../lib/prisma");
 const User = require("../models/user.model");
 const OTP = require("../models/otp.model");
 const { signToken } = require("../lib/jwt.lib");
@@ -25,41 +26,80 @@ const AuthService = {
       }
     }
 
-    // Generate 6-digit OTP (Compatible with AfroMessage)
+    // Hospital accounts must be approved before they can request an OTP
+    if (existingUser && existingUser.role === "hospital") {
+      const hospitalProfile = existingUser.hospitalProfile
+        ? existingUser.hospitalProfile
+        : await prisma.hospitalProfile.findUnique({
+            where: { userId: existingUser.id },
+          });
+      if (!hospitalProfile) {
+        throw new Error(
+          "No hospital linked to this account. Please contact support.",
+        );
+      }
+      if (hospitalProfile.status === "PENDING") {
+        throw new Error(
+          "Your hospital registration is pending admin approval. Please try again later.",
+        );
+      }
+      if (hospitalProfile.status === "REJECTED") {
+        throw new Error(
+          hospitalProfile.rejectionReason
+            ? `Your hospital registration was rejected: ${hospitalProfile.rejectionReason}`
+            : "Your hospital registration was rejected.",
+        );
+      }
+    }
+
+    // Generate 6-digit OTP (Compatible with GeezSMS)
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
     // Store in DB
     await OTP.create(phone, code, expiresAt);
 
-    // --- AFROMESSAGE INTEGRATION ---
-    try {
-      const smsResponse = await fetch("https://api.afromessage.com/api/send", {
-        method: "POST",
-        headers: {
-          Authorization: process.env.AFROMESSAGE_API_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: process.env.AFROMESSAGE_FROM,
-          sender: process.env.AFROMESSAGE_SENDER,
-          to: phone,
-          message: `Your OTP code is ${code}`,
-        }),
-      });
+    // --- SMS DELIVERY (mock only when MOCK_OTP=true, GeezSMS otherwise) ---
+    const isMock = process.env.MOCK_OTP === "true";
 
-      const smsResult = await smsResponse.json();
-      console.log(`[AfroMessage] Response for ${phone}:`, smsResult);
-    } catch (error) {
-      console.error(
-        `[AfroMessage] Failed to send SMS to ${phone}:`,
-        error.message,
+    if (isMock) {
+      console.log(
+        `[OTP Simulation] Code for ${phone} is: ${code} (mock, no SMS sent)`,
       );
+    } else {
+      // GeezSMS expects an international format WITHOUT the leading "+"
+      const smsPhone = phone.replace(/^\+/, "");
+      let smsResult;
+      try {
+        const smsResponse = await fetch("https://api.geezsms.com/api/v1/sms/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: process.env.GEEZSMS_TOKEN,
+            phone: smsPhone,
+            msg: `Your OTP code is ${code}`,
+          }),
+        });
+
+        smsResult = await smsResponse.json();
+        console.log(`[GeezSMS] Response for ${smsPhone}:`, smsResult);
+      } catch (error) {
+        smsResult = { error: true, msg: error.message };
+      }
+
+      if (smsResult.error) {
+        throw new Error(
+          `Failed to send OTP via SMS: ${smsResult.msg || "unknown SMS error"}`,
+        );
+      }
     }
 
     return {
       status: "success",
       message: "OTP sent successfully",
+      ...(isMock && { mockCode: code }),
     };
   },
 
@@ -76,6 +116,11 @@ const AuthService = {
     } else {
       // New user: Create account (Requires role)
       if (!role) throw new Error("Role is required to create a new account.");
+      if (role === "hospital") {
+        throw new Error(
+          "Hospitals must complete the hospital registration form before logging in.",
+        );
+      }
       user = await User.create(phone, role);
     }
 
@@ -94,6 +139,32 @@ const AuthService = {
     } else if (user.isLocked) {
       // Unlock if time has passed
       await User.unlockAccount(user.id);
+    }
+
+    // Hospital approval gate: hospitals must be approved by an admin before logging in
+    if (user.role === "hospital") {
+      const hospitalProfile = user.hospitalProfile
+        ? user.hospitalProfile
+        : await prisma.hospitalProfile.findUnique({
+            where: { userId: user.id },
+          });
+      if (!hospitalProfile) {
+        throw new Error(
+          "No hospital linked to this account. Please contact support.",
+        );
+      }
+      if (hospitalProfile.status === "PENDING") {
+        throw new Error(
+          "Your hospital registration is pending admin approval. Please try again later.",
+        );
+      }
+      if (hospitalProfile.status === "REJECTED") {
+        throw new Error(
+          hospitalProfile.rejectionReason
+            ? `Your hospital registration was rejected: ${hospitalProfile.rejectionReason}`
+            : "Your hospital registration was rejected.",
+        );
+      }
     }
 
     // --- OTP VERIFICATION ---
@@ -161,6 +232,51 @@ const AuthService = {
     return {
       token,
       user: { id: user.id, username: user.username, role: user.role },
+    };
+  },
+
+  loginHospital: async (phone, password) => {
+    const user = await User.findByPhone(phone);
+    if (!user || user.role !== "hospital") {
+      throw new Error("Invalid phone or password");
+    }
+
+    if (!user.password) {
+      throw new Error("Invalid phone or password");
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      throw new Error("Invalid phone or password");
+    }
+
+    const hospitalProfile = user.hospitalProfile
+      ? user.hospitalProfile
+      : await prisma.hospitalProfile.findUnique({
+          where: { userId: user.id },
+        });
+    if (!hospitalProfile) {
+      throw new Error("No hospital linked to this account. Please contact support.");
+    }
+    if (hospitalProfile.status === "PENDING") {
+      throw new Error("Your hospital registration is pending admin approval. Please try again later.");
+    }
+    if (hospitalProfile.status === "REJECTED") {
+      throw new Error(
+        hospitalProfile.rejectionReason
+          ? `Your hospital registration was rejected: ${hospitalProfile.rejectionReason}`
+          : "Your hospital registration was rejected."
+      );
+    }
+
+    const token = signToken({
+      id: user.id,
+      phone: user.phone,
+      role: user.role,
+    });
+    return {
+      token,
+      user: { id: user.id, phone: user.phone, role: user.role },
     };
   },
 };

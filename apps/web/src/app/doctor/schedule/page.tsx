@@ -47,7 +47,7 @@ const APPT_COLORS: Record<string, { bg: string; border: string; text: string }> 
   accepted: { bg: 'bg-[#ECFDF3]', border: 'border-[#027A48]', text: 'text-[#027A48]' },
   completed: { bg: 'bg-[#EFF6FF]', border: 'border-[#2563EB]', text: 'text-[#2563EB]' },
   declined: { bg: 'bg-[#FEF3F2]', border: 'border-[#B42318]', text: 'text-[#B42318]' },
-  cancelled: { bg: 'bg-[#F3F4F6]', border: 'border-[#667085]', text: 'text-[#667085]' },
+  cancelled: { bg: 'bg-[#F3F4F6]', border: 'border-[#5A6B80]', text: 'text-[#5A6B80]' },
 };
 
 type CalendarType = 'gregorian' | 'ethiopian';

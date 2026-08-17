@@ -21,6 +21,11 @@ router.post(
   validate(schemas.receptionistLogin),
   AuthController.receptionistLogin,
 );
+router.post(
+  "/hospital-login",
+  validate(schemas.hospitalLogin),
+  AuthController.hospitalLogin,
+);
 
 // Push token registration (requires auth)
 router.post("/push-token", authMiddleware, AuthController.registerPushToken);

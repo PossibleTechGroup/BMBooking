@@ -15,6 +15,7 @@ import { DoctorProfileView } from './DoctorProfileView';
 import { AnnouncementsPage } from './AnnouncementsPage';
 import ReportsPage from './ReportsPage';
 import AppliedHospitalsPage from './AppliedHospitalsPage';
+import { HospitalRegistrationsPage } from './HospitalRegistrationsPage';
 import { formatDate } from '../utils/ethiopianDate';
 import { useTimeFormat, setTimeFormat, setCalendarFormat } from '../utils/timeFormat';
 import {
@@ -54,7 +55,7 @@ import {
   BadgeCheck,
 } from 'lucide-react';
 
-type TabView = 'dashboard' | 'patients' | 'analysis' | 'reports' | 'hospitals' | 'applied-hospitals' | 'items' | 'announcements' | 'reviews' | 'profile';
+type TabView = 'dashboard' | 'patients' | 'analysis' | 'reports' | 'hospitals' | 'hospital-registrations' | 'applied-hospitals' | 'items' | 'announcements' | 'reviews' | 'profile';
 
 type NavigateOpts = {
   filter?: 'all' | 'active' | 'inactive';
@@ -103,6 +104,7 @@ const DashboardPage = () => {
   const { isEthiopian, isEthiopianCalendar } = useTimeFormat();
   const [showSettingsPopover, setShowSettingsPopover] = useState(false);
   const [pendingAppsCount, setPendingAppsCount] = useState(0);
+  const [pendingRegistrationsCount, setPendingRegistrationsCount] = useState(0);
   const [showCreateDoctor, setShowCreateDoctor] = useState(false);
   const [createDoctorForm, setCreateDoctorForm] = useState({
     fullName: '', phone: '', email: '', specialization: '', licenseNumber: '',
@@ -147,6 +149,20 @@ const DashboardPage = () => {
     };
     fetchApplicationsCount();
     const interval = setInterval(fetchApplicationsCount, 30000);
+    return () => clearInterval(interval);
+  }, [view]);
+
+  useEffect(() => {
+    const fetchRegistrationsCount = async () => {
+      try {
+        const { default: apiClient } = await import('../api/client');
+        const { data } = await apiClient.get('/admin/hospital-registrations');
+        const pendingCount = (data.data || []).filter((reg: any) => reg.status === 'PENDING').length;
+        setPendingRegistrationsCount(pendingCount);
+      } catch { /* ignore */ }
+    };
+    fetchRegistrationsCount();
+    const interval = setInterval(fetchRegistrationsCount, 30000);
     return () => clearInterval(interval);
   }, [view]);
 
@@ -372,6 +388,34 @@ const DashboardPage = () => {
               <Building2Icon size={18} /> Hospitals
             </button>
             <button
+              onClick={() => navigateToTab('hospital-registrations')}
+              style={{
+                ...styles.navBtn,
+                color: view === 'hospital-registrations' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                position: 'relative'
+              }}
+            >
+              <Building2Icon size={18} /> Hospital Registrations
+              {pendingRegistrationsCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  right: '-12px',
+                  backgroundColor: '#D92D20',
+                  color: '#FFFFFF',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  borderRadius: '10px',
+                  padding: '2px 6px',
+                  minWidth: '16px',
+                  textAlign: 'center',
+                  boxShadow: '0 0 0 2px var(--surface)'
+                }}>
+                  {pendingRegistrationsCount}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => navigateToTab('applied-hospitals')}
               style={{
                 ...styles.navBtn,
@@ -503,6 +547,8 @@ const DashboardPage = () => {
         <AnalysisPage />
       ) : view === 'hospitals' ? (
         <HospitalsPage />
+      ) : view === 'hospital-registrations' ? (
+        <HospitalRegistrationsPage />
       ) : view === 'applied-hospitals' ? (
         <AppliedHospitalsPage />
       ) : view === 'items' ? (

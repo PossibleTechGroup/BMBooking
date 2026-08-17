@@ -13,6 +13,13 @@ enum Role {
   doctor
   receptionist
   admin
+  hospital
+}
+
+enum HospitalProfileStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum DoctorStatus {
@@ -36,6 +43,7 @@ model User {
   doctorProfile DoctorProfile?
   patientProfile PatientProfile?
   receptionistProfile ReceptionistProfile?
+  hospitalProfile HospitalProfile?
   patientAppointments Appointment[] @relation("PatientAppointments")
   bookedByAppointments Appointment[] @relation("BookedByAppointments")
   equipmentBookings   EquipmentBooking[] @relation("EquipmentBookings")
@@ -87,6 +95,7 @@ model Hospital {
 
   doctors       DoctorProfile[]
   receptionists ReceptionistProfile[]
+  hospitalProfiles HospitalProfile[]
   schedules     DoctorSchedule[]
   equipment     MedicalEquipment[]
   equipmentBookings EquipmentBooking[]
@@ -112,6 +121,20 @@ model ReceptionistProfile {
   createdSchedules     DoctorSchedule[] @relation("CreatedSchedules")
 
   @@map("receptionist_profiles")
+}
+
+model HospitalProfile {
+  id              Int                  @id @default(autoincrement())
+  userId          Int                  @unique @map("user_id")
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hospitalId      Int                  @map("hospital_id")
+  hospital        Hospital             @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  status          HospitalProfileStatus @default(PENDING)
+  rejectionReason String?              @map("rejection_reason")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  @@map("hospital_profiles")
 }
 
 model DoctorProfile {

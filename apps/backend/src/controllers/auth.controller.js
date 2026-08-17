@@ -54,6 +54,25 @@ const AuthController = {
     }
   },
 
+  hospitalLogin: async (req, res) => {
+    try {
+      const { phone, password } = req.body;
+      if (!phone || !password) {
+        return res
+          .status(400)
+          .json({
+            status: "fail",
+            message: "Phone and password are required",
+          });
+      }
+
+      const result = await AuthService.loginHospital(phone, password);
+      res.status(200).json({ status: "success", data: result });
+    } catch (err) {
+      res.status(400).json({ status: "fail", message: err.message });
+    }
+  },
+
   /**
    * POST /api/auth/push-token
    * Register or update the user's Expo push token for push notifications

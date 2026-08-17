@@ -1,8 +1,13 @@
 import axios from 'axios';
 
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'https://bmbookingapi.possibletechplc.com';
+
+export const TELEBIRR_URL =
+  process.env.NEXT_PUBLIC_TELEBIRR_URL || 'http://157.180.114.86:53402';
+
 export const api = axios.create({
-  baseURL: 'https://bmbookingapi.possibletechplc.com/api',
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: `${API_URL}/api`,
   timeout: 60000,
 });
 

@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
-import { searchEquipment, fetchEquipmentCategories } from '@/lib/store/slices/equipmentSlice';
+import { searchEquipment, fetchEquipmentCategories, fetchEquipmentAvailability, createEquipmentBooking } from '@/lib/store/slices/equipmentSlice';
 import { MedText } from '@/components/ui/med-text';
 import { MedCard } from '@/components/ui/med-card';
-import { Search, Cpu, Clock, MapPin } from 'lucide-react';
+import { MedButton } from '@/components/ui/med-button';
+import { Search, Cpu, Clock, MapPin, X, Calendar, CheckCircle } from 'lucide-react';
 
 const CATEGORY_LABELS: Record<string, string> = {
   MRI: 'MRI',
@@ -17,14 +18,28 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default function EquipmentPage() {
   const dispatch = useAppDispatch();
-  const { searchResults, categories, loading } = useAppSelector((s) => s.equipment);
+  const { searchResults, categories, availability, loading, error } = useAppSelector((s) => s.equipment);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+
+  const [bookingEq, setBookingEq] = useState<any>(null);
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingTime, setBookingTime] = useState('');
+  const [bookingNotes, setBookingNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [booked, setBooked] = useState<any>(null);
 
   useEffect(() => {
     dispatch(searchEquipment({}));
     dispatch(fetchEquipmentCategories());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (bookingEq?.id && bookingDate) {
+      setBookingTime('');
+      dispatch(fetchEquipmentAvailability({ equipmentId: bookingEq.id, date: bookingDate }));
+    }
+  }, [bookingEq?.id, bookingDate, dispatch]);
 
   const filtered = searchResults.filter((eq) => {
     const matchesSearch = eq.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -32,6 +47,33 @@ export default function EquipmentPage() {
     const matchesCat = selectedCategory === 'All' || eq.category === selectedCategory;
     return matchesSearch && matchesCat;
   });
+
+  const freeSlots = (availability?.slots || []).filter((s) => !s.booked);
+
+  const handleBook = async () => {
+    if (!bookingEq || !bookingDate || !bookingTime) return;
+    setSubmitting(true);
+    const [h, m] = bookingTime.split(':').map(Number);
+    const [y, mo, d] = bookingDate.split('-').map(Number);
+    const dateTime = new Date(Date.UTC(y, mo - 1, d, h - 3, m)).toISOString();
+    const result = await dispatch(createEquipmentBooking({
+      equipmentId: bookingEq.id,
+      dateTime,
+      notes: bookingNotes || undefined,
+    }));
+    setSubmitting(false);
+    if (createEquipmentBooking.fulfilled.match(result)) {
+      setBooked(result.payload);
+    }
+  };
+
+  const closeModal = () => {
+    setBookingEq(null);
+    setBookingDate('');
+    setBookingTime('');
+    setBookingNotes('');
+    setBooked(null);
+  };
 
   return (
     <div className="p-5 max-w-3xl mx-auto">
@@ -95,6 +137,14 @@ export default function EquipmentPage() {
                   <MedText variant="metadata">{eq.isOperational ? 'Available' : 'Unavailable'}</MedText>
                 </div>
               </div>
+              <div className="flex-shrink-0">
+                <MedButton
+                  title="Book"
+                  onPress={() => setBookingEq(eq)}
+                  type="outline"
+                  disabled={!eq.isOperational}
+                />
+              </div>
             </div>
           </MedCard>
         ))}
@@ -104,6 +154,81 @@ export default function EquipmentPage() {
           </div>
         )}
       </div>
+
+      {/* Booking Modal */}
+      {bookingEq && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-end sm:items-center justify-center p-4" onClick={closeModal}>
+          <div className="bg-surface rounded-t-[20px] sm:rounded-[20px] w-full max-w-lg p-6 animate-in slide-in-from-bottom-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {booked ? (
+              <div className="text-center py-6">
+                <CheckCircle size={48} className="text-success mx-auto mb-4" />
+                <MedText variant="h2" as="h3" className="mb-2">Booking Confirmed</MedText>
+                <MedText variant="body" className="text-text-secondary mb-1">{bookingEq.name}</MedText>
+                <MedText variant="metadata" className="mb-1">
+                  {new Date(booked.dateTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </MedText>
+                {booked.confirmationCode && (
+                  <MedText variant="metadata">Code: {booked.confirmationCode}</MedText>
+                )}
+                <div className="mt-6">
+                  <MedButton title="Done" onPress={closeModal} />
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-center mb-5">
+                  <div>
+                    <MedText variant="h2" as="h3">Book Equipment</MedText>
+                    <MedText variant="metadata">{bookingEq.name}</MedText>
+                  </div>
+                  <button onClick={closeModal}><X size={20} /></button>
+                </div>
+
+                {error && (
+                  <div className="mb-4 px-4 py-3 rounded-[12px] bg-error-bg text-error text-[13px]">
+                    {error}
+                  </div>
+                )}
+
+                <div className="mb-4">
+                  <MedText variant="metadata" className="mb-2">Date</MedText>
+                  <input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)}
+                    className="w-full h-12 px-4 rounded-[12px] border border-border bg-surface text-text text-[16px] outline-none focus:border-border-focus" />
+                </div>
+
+                {bookingDate && (
+                  <div className="mb-4">
+                    <MedText variant="metadata" className="mb-2">Available Slots</MedText>
+                    {freeSlots.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto">
+                        {freeSlots.map((slot, i) => (
+                          <button key={i} onClick={() => setBookingTime(slot.start)}
+                            className={`px-3 py-1.5 rounded-full text-[13px] font-medium transition-all ${
+                              bookingTime === slot.start ? 'bg-primary text-white' : 'bg-foreground/5 text-text-secondary hover:bg-foreground/10'
+                            }`}>
+                            {slot.start}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <MedText variant="metadata" className="text-muted">No available slots on this date</MedText>
+                    )}
+                  </div>
+                )}
+
+                <div className="mb-6">
+                  <MedText variant="metadata" className="mb-2">Notes (optional)</MedText>
+                  <textarea value={bookingNotes} onChange={(e) => setBookingNotes(e.target.value)}
+                    placeholder="Add notes..."
+                    className="w-full min-h-[80px] p-3 rounded-[12px] border border-border bg-surface text-text text-[14px] outline-none focus:border-border-focus resize-none placeholder:text-muted" />
+                </div>
+
+                <MedButton title="Confirm Booking" onPress={handleBook} disabled={!bookingDate || !bookingTime} loading={submitting} />
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
