@@ -119,7 +119,7 @@ export const MedLoadingOverlay: React.FC<MedLoadingOverlayProps> = ({ visible, m
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
-        <View style={[styles.card, { backgroundColor: '#F9F7F2', borderColor: 'rgba(26, 26, 26, 0.08)' }]}>
+        <View style={[styles.card, { backgroundColor: '#EAF2FB', borderColor: 'rgba(21, 101, 192, 0.08)' }]}>
           
           {/* Physics Liquid Glass Animation Container */}
           <View style={styles.animationContainer}>
@@ -133,11 +133,11 @@ export const MedLoadingOverlay: React.FC<MedLoadingOverlayProps> = ({ visible, m
           </View>
 
           {/* Text/Status Indicator */}
-          <MedText variant="h2" style={{ marginTop: 24, fontWeight: '700', color: '#1A1A1A', textAlign: 'center' }}>
+          <MedText variant="h2" style={{ marginTop: 24, fontWeight: '700', color: '#0B1E33', textAlign: 'center' }}>
             {message || t('submitProfile')}
           </MedText>
           
-          <MedText variant="metadata" style={{ marginTop: 8, color: '#667085', textAlign: 'center', lineHeight: 18 }}>
+          <MedText variant="metadata" style={{ marginTop: 8, color: '#5A6B80', textAlign: 'center', lineHeight: 18 }}>
             Uploading your profile details & media. Please wait...
           </MedText>
 
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   bubble3: {
     width: 56,
     height: 56,
-    backgroundColor: '#1A1A1A', // deep solid charcoal
+    backgroundColor: '#1565C0', // deep hospital blue
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#1A1A1A',

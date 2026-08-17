@@ -847,7 +847,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#F9F7F2', // Matches screen bg
+    backgroundColor: '#EAF2FB', // Matches screen bg
     zIndex: 1,
   },
   avatarCircle: {
@@ -865,7 +865,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#98A2B3',
+    color: '#8CA3BD',
     marginBottom: 12,
     letterSpacing: 0.2,
     textTransform: 'none',

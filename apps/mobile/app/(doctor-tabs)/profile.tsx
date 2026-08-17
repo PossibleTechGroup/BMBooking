@@ -38,7 +38,7 @@ const PROFILE_ITEMS = [
     title: "privacyPolicy",
     subtitle: "privacyPolicySubtitle",
     icon: "shield-checkmark-outline",
-    color: "#3E5C76",
+    color: "#1E5A8A",
     url: "privacy"
   },
   {
@@ -46,7 +46,7 @@ const PROFILE_ITEMS = [
     title: "termsOfService",
     subtitle: "termsOfServiceSubtitle",
     icon: "document-text-outline",
-    color: "#667085",
+    color: "#5A6B80",
     url: "terms"
   },
 ];

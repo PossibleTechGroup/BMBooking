@@ -1,6 +1,6 @@
-const CACHE = "bm-v1";
-const ASSET_CACHE = "bm-assets-v1";
-const API_CACHE = "bm-api-v1";
+const CACHE = "bm-v2";
+const ASSET_CACHE = "bm-assets-v2";
+const API_CACHE = "bm-api-v2";
 
 const STATIC_EXTENSIONS = /\.(js|css|json|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot)$/;
 const API_PATTERN = /\/api\//;

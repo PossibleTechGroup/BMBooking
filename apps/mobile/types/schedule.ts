@@ -79,5 +79,5 @@ export function getDayColor(day: string): string {
     Monday: "#4F46E5", Tuesday: "#7C3AED", Wednesday: "#2563EB",
     Thursday: "#0891B2", Friday: "#059669", Saturday: "#D97706", Sunday: "#DC2626",
   };
-  return colors[day] || "#1A1A1A";
+  return colors[day] || "#1565C0";
 }

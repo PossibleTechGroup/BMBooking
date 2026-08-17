@@ -109,6 +109,7 @@ export default function LoginScreen() {
   const [otpText, setOtpText] = useState("");
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [errorKey, setErrorKey] = useState(0);
+  const [mockCode, setMockCode] = useState("");
   const hiddenOtpInput = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -198,6 +199,12 @@ export default function LoginScreen() {
       } else {
         shakePhone();
       }
+    } else {
+      const code = (result.payload as any)?.data?.mockCode;
+      if (code) {
+        setMockCode(code);
+        setOtpText(code);
+      }
     }
   };
 
@@ -205,6 +212,13 @@ export default function LoginScreen() {
     if (!role || loading) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const result = await dispatch(requestOtp({ phone: `+251${phone}`, role, isRegistration: true }));
+    if (requestOtp.fulfilled.match(result)) {
+      const code = (result.payload as any)?.data?.mockCode;
+      if (code) {
+        setMockCode(code);
+        setOtpText(code);
+      }
+    }
   };
 
   const handleVerifyOtp = () => {
@@ -354,6 +368,14 @@ export default function LoginScreen() {
           {t("otpSubtitle")}
         </MedText>
 
+        {mockCode ? (
+          <View style={styles.mockCodeBanner}>
+            <MedText style={styles.mockCodeText}>
+              Dev OTP: {mockCode}
+            </MedText>
+          </View>
+        ) : null}
+
         <Animated.View style={otpShakeStyle}>
           <Pressable
             onPress={() => hiddenOtpInput.current?.focus()}
@@ -486,6 +508,8 @@ const styles = StyleSheet.create({
   stepContainer: { width: "100%", marginTop: 20 },
   heading: { marginBottom: 8 },
   subtitle: { marginBottom: 32 },
+  mockCodeBanner: { backgroundColor: "#FFF4E5", borderColor: "#F59E0B", borderWidth: 1, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 20, alignItems: "center" },
+  mockCodeText: { color: "#B45309", fontSize: 14, fontWeight: "600" },
   phoneInputContainer: { flexDirection: "row", height: 60, borderRadius: 12, borderWidth: 1.5, overflow: "hidden", alignItems: "center", marginBottom: 24 },
   countryCode: { paddingHorizontal: 18, borderRightWidth: 1, height: "100%", justifyContent: "center" },
   phoneInput: { flex: 1, fontSize: 18, fontWeight: "600", paddingHorizontal: 16, letterSpacing: 0.3 },

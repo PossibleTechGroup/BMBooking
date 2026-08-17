@@ -20,7 +20,6 @@ interface AuthState {
   loading: boolean;
   error: string | null;
   otpSent: boolean;
-  mockCode: string | null;
   doctorProfileStatus: ProfileStatus;
   patientProfileStatus: ProfileStatus;
   rejectionReason: string | null;
@@ -32,7 +31,6 @@ const initialState: AuthState = {
   loading: false,
   error: null,
   otpSent: false,
-  mockCode: null,
   doctorProfileStatus: 'None',
   patientProfileStatus: 'None',
   rejectionReason: null,
@@ -164,7 +162,6 @@ const authSlice = createSlice({
       state.user = null;
       state.token = null;
       state.otpSent = false;
-      state.mockCode = null;
       state.doctorProfileStatus = 'None';
       state.patientProfileStatus = 'None';
       state.rejectionReason = null;
@@ -185,10 +182,9 @@ const authSlice = createSlice({
         }
       })
       .addCase(requestOtp.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(requestOtp.fulfilled, (state, action) => {
+      .addCase(requestOtp.fulfilled, (state) => {
         state.loading = false;
         state.otpSent = true;
-        state.mockCode = action.payload?.data?.mockCode ?? null;
       })
       .addCase(requestOtp.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
       .addCase(verifyOtp.pending, (state) => { state.loading = true; state.error = null; })

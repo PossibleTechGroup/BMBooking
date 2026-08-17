@@ -135,16 +135,15 @@ export default function HomeScreen() {
             <MedText variant="body" color={theme.muted}>{t('noDoctorsAvailable')}</MedText>
           )}
           {featuredDoctors.map((doctor) => (
-            <Pressable
-              key={doctor.id}
-              onPress={() =>
-                router.push({
-                  pathname: "/doctor/[id]",
-                  params: { id: doctor.id },
-                })
-              }
-            >
-              <MedCard style={styles.doctorCard}>
+            <MedCard key={doctor.id} style={styles.doctorCard}>
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: "/doctor/[id]",
+                    params: { id: doctor.id },
+                  })
+                }
+              >
                 <View style={styles.doctorInfo}>
                   <View style={styles.doctorDetails}>
                     <MedText variant="body" style={{ fontSize: 16, fontWeight: '500', color: theme.text }}>
@@ -175,23 +174,23 @@ export default function HomeScreen() {
                     )}
                   </View>
                 </View>
-                <MedButton
-                  title={t('bookAppointment')}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/modal",
-                      params: { 
-                        doctorId: doctor.id,
-                        doctorName: doctor.fullName,
-                        doctorFee: doctor.hospital?.cardPrice
-                      },
-                    })
-                  }
-                  style={{ marginTop: 16 }}
-                  textStyle={{ fontWeight: '500' }}
-                />
-              </MedCard>
-            </Pressable>
+              </Pressable>
+              <MedButton
+                title={t('bookAppointment')}
+                onPress={() =>
+                  router.push({
+                    pathname: "/modal",
+                    params: { 
+                      doctorId: doctor.id,
+                      doctorName: doctor.fullName,
+                      doctorFee: doctor.hospital?.cardPrice
+                    },
+                  })
+                }
+                style={{ marginTop: 16 }}
+                textStyle={{ fontWeight: '500' }}
+              />
+            </MedCard>
           ))}
         </View>
         )}

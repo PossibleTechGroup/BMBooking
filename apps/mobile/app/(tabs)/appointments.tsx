@@ -858,7 +858,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#E4E7EC',
+    borderBottomColor: '#D8E3F0',
   },
   topTab: {
     paddingVertical: 12,
@@ -868,7 +868,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#E4E7EC',
+    borderBottomColor: '#D8E3F0',
   },
   tab: {
     paddingVertical: 12,

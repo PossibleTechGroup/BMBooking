@@ -123,12 +123,12 @@ function AppContent() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: colorScheme === "dark" ? "#1A1A1A" : "#F9F7F2",
+          backgroundColor: colorScheme === "dark" ? "#0B1E33" : "#EAF2FB",
         }}
       >
         <ActivityIndicator
           size="large"
-          color={colorScheme === "dark" ? "#F9F7F2" : "#1A1A1A"}
+          color={colorScheme === "dark" ? "#4DA3FF" : "#1565C0"}
         />
       </View>
     );

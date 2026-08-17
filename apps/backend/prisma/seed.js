@@ -9,9 +9,6 @@ function onDate(base, dayOffset, hours = 0, minutes = 0) {
   return d;
 }
 
-function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-
 // ── Hospital Data ────────────────────────────────────────────────────────
 const HOSPITALS = [
   { name: "Black Lion Hospital", address: "Addis Ababa, Tichet St", phone: "+251111550000", cardPrice: 50, lat: 9.0153, lng: 38.7546 },
@@ -39,7 +36,7 @@ const DOCTORS = [
     clinicName: "Gessese Heart Clinic",
     clinicAddress: "Bole, Addis Ababa",
     languages: ["Amharic", "English"],
-    profilePicture: "/uploads/Mulualem_Gessese.png",
+    profilePicture: "https://i.pravatar.cc/300?img=12",
   },
   {
     phone: "+251910000002",
@@ -54,7 +51,7 @@ const DOCTORS = [
     clinicName: "Menberu Child Health Center",
     clinicAddress: "Kazanchis, Addis Ababa",
     languages: ["Amharic", "English", "Oromiffa"],
-    profilePicture: "/uploads/Menberu.jpg",
+    profilePicture: "https://i.pravatar.cc/300?img=32",
   },
   {
     phone: "+251910000003",
@@ -69,7 +66,7 @@ const DOCTORS = [
     clinicName: "Dellil Orthopedic Clinic",
     clinicAddress: "Piazza, Addis Ababa",
     languages: ["Amharic", "English"],
-    profilePicture: "/uploads/MIftah_Dellil.png",
+    profilePicture: "https://i.pravatar.cc/300?img=59",
   },
   {
     phone: "+251910000004",
@@ -84,7 +81,7 @@ const DOCTORS = [
     clinicName: "Elshaday Skin & Beauty Clinic",
     clinicAddress: "Bole, Addis Ababa",
     languages: ["Amharic", "English"],
-    profilePicture: "/uploads/elshaday.png",
+    profilePicture: "https://i.pravatar.cc/300?img=45",
   },
   {
     phone: "+251910000005",
@@ -99,15 +96,9 @@ const DOCTORS = [
     clinicName: "Shume Neurology Center",
     clinicAddress: "Megenagna, Addis Ababa",
     languages: ["Amharic", "English"],
-    profilePicture: "/uploads/paulos_shume.jpg",
+    profilePicture: "https://i.pravatar.cc/300?img=68",
   },
 ];
-
-// ── Patient Data ─────────────────────────────────────────────────────────
-const PATIENT_FIRST_M = ["Abebe","Dawit","Brook","Mulugeta","Yohannes","Tewodros","Bereket","Ephrem","Girma","Haile"];
-const PATIENT_FIRST_F = ["Helen","Tigist","Sara","Hiwot","Meron","Bethlehem","Rahel","Kidist","Selamawit","Mahlet"];
-const PATIENT_LAST = ["Yohannes","Tadesse","Belay","Girmay","Kebede","Alemu","Tesfaye","Abera","Wolde","Desta"];
-const BLOOD_TYPES = ["A+","A-","B+","B-","AB+","AB-","O+","O-"];
 
 // ── Equipment Data ───────────────────────────────────────────────────────
 const EQUIPMENT_DEFS = [
@@ -248,36 +239,7 @@ async function main() {
     console.log(`  ✅ ${d.fullName} — ${d.specialization} — 50 ETB`);
   }
 
-  // ── 5. Patients (20) ──────────────────────────────────────────────────
-  const patients = [];
-  for (let i = 0; i < 20; i++) {
-    const isFemale = Math.random() > 0.5;
-    const first = isFemale ? pick(PATIENT_FIRST_F) : pick(PATIENT_FIRST_M);
-    const last = pick(PATIENT_LAST);
-    const phone = `+2519${String(70000000 + i).padStart(8, "0")}`;
-    const year = 1970 + rand(0, 40);
-    const month = rand(1, 12);
-    const day = rand(1, 28);
-    try {
-      const u = await prisma.user.create({
-        data: {
-          phone, email: `${first.toLowerCase()}.${last.toLowerCase()}${i}@email.com`,
-          password: "password123", role: "patient",
-          patientProfile: {
-            create: {
-              fullName: `${first} ${last}`, gender: isFemale ? "FEMALE" : "MALE",
-              bloodType: pick(BLOOD_TYPES), dateOfBirth: new Date(year, month - 1, day),
-              emergencyContact: `+2519${String(80000000 + rand(0, 9999)).padStart(8, "0")}`,
-            },
-          },
-        },
-      });
-      patients.push(u);
-    } catch (e) { /* skip duplicates */ }
-  }
-  console.log(`  ✅ Patients (${patients.length} created)`);
-
-  // ── 6. Medical Equipment ──────────────────────────────────────────────
+  // ── 5. Medical Equipment ──────────────────────────────────────────────
   const equipmentList = [];
   for (let i = 0; i < EQUIPMENT_DEFS.length; i++) {
     const e = EQUIPMENT_DEFS[i];
@@ -301,7 +263,7 @@ async function main() {
   }
   console.log(`  ✅ Equipment (${equipmentList.length} created)`);
 
-  // ── 7. Doctor Schedules + Slots — full week, working hours (8:00–17:00) ──
+  // ── 6. Doctor Schedules + Slots — full week, working hours (8:00–17:00) ──
   //     Each doctor gets a schedule for the next 4 weeks, Mon–Fri
   //     Each schedule gets 30-min slots from 8:00 to 17:00 (18 slots/day)
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -356,7 +318,6 @@ async function main() {
   // ── Summary ───────────────────────────────────────────────────────────
   const counts = {
     hospitals: await prisma.hospital.count(),
-    patients: await prisma.patientProfile.count(),
     receptionists: await prisma.receptionistProfile.count(),
     doctors: await prisma.doctorProfile.count(),
     equipment: await prisma.medicalEquipment.count(),

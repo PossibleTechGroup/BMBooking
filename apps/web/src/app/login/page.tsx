@@ -32,7 +32,7 @@ type AuthStep = 'phone' | 'role' | 'otp' | 'hospital-login';
 export default function LoginPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { loading, error, otpSent, mockCode, user, doctorProfileStatus } = useAppSelector((s) => s.auth);
+  const { loading, error, otpSent, user, doctorProfileStatus } = useAppSelector((s) => s.auth);
 
   const [step, setStep] = useState<AuthStep>('phone');
   const [phone, setPhone] = useState('');
@@ -62,9 +62,8 @@ export default function LoginPage() {
   useEffect(() => {
     if (otpSent) {
       setStep('otp');
-      if (mockCode && mockCode.length === 6) setOtpDigits(mockCode.split(''));
     }
-  }, [otpSent, mockCode]);
+  }, [otpSent]);
 
   const isPhoneValid = /^[79]\d{8}$/.test(phone);
 
@@ -213,14 +212,6 @@ export default function LoginPage() {
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
             <MedText variant="h1" as="h1" className="mb-2">Verify OTP</MedText>
             <MedText variant="body" className="mb-8">Enter the 6-digit code sent to +251{phone}</MedText>
-
-            {mockCode && (
-              <div className="mb-6 px-4 py-3 rounded-[12px] bg-primary/10 border border-primary/30 text-center">
-                <p className="text-[12px] font-bold text-primary uppercase tracking-wide mb-1">Dev Mode &middot; Mock OTP</p>
-                <p className="text-[22px] font-bold tracking-[6px] text-primary">{mockCode}</p>
-                <p className="text-[12px] text-muted mt-1">Auto-filled &mdash; press Verify</p>
-              </div>
-            )}
 
             <div className="flex justify-center gap-3 mb-6">
               {otpDigits.map((digit, i) => (

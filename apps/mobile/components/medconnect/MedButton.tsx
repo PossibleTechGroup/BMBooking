@@ -80,7 +80,7 @@ export const MedButton: React.FC<MedButtonProps> = ({
 
   const getTextStyle = () => {
     if (disabled && type === "primary") {
-      return { color: colorScheme === "dark" ? "#CCC" : "#667085" };
+      return { color: colorScheme === "dark" ? "#CCC" : "#5A6B80" };
     }
     switch (type) {
       case "primary":

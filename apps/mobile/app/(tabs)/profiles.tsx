@@ -150,7 +150,7 @@ export default function ProfilesScreen() {
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: "#E4E7EC", true: "#A6F4C5" }}
+        trackColor={{ false: "#D8E3F0", true: "#A6F4C5" }}
         thumbColor={value ? theme.success : "#FFFFFF"}
       />
     </View>

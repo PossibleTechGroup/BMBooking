@@ -48,7 +48,7 @@ export function Step3Schedule({ theme, schedules, onAdd, onEdit, onRemove }: Pro
       {schedules.length > 0 ? (
         <View style={{ marginBottom: 20, gap: 10 }}>
           {schedules.map(entry => {
-            const dayColor = entry.isRecurring ? getDayColor(entry.day || "Monday") : "#3E5C76";
+            const dayColor = entry.isRecurring ? getDayColor(entry.day || "Monday") : "#1E5A8A";
             return (
               <Animated.View
                 key={entry.id}
@@ -60,7 +60,7 @@ export function Step3Schedule({ theme, schedules, onAdd, onEdit, onRemove }: Pro
                   <View style={{
                     backgroundColor: "#FFFFFF",
                     borderWidth: 1.5,
-                    borderColor: "#E4E7EC",
+                    borderColor: "#D8E3F0",
                     borderRadius: 16,
                     padding: 16,
                     flexDirection: "row",
@@ -96,14 +96,14 @@ export function Step3Schedule({ theme, schedules, onAdd, onEdit, onRemove }: Pro
                             {formatDisplayTime(entry.startTime, isEthiopian)} – {formatDisplayTime(entry.endTime, isEthiopian)}
                           </MedText>
                           {!entry.isRecurring && (
-                            <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: "#3E5C76" }}>
+                            <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: "#1565C0" }}>
                               <MedText variant="metadata" style={{ color: "#FFF", fontSize: 8, fontWeight: "800" }}>ONE-TIME</MedText>
                             </View>
                           )}
                         </View>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                          <Ionicons name={entry.hospitalId ? "business-outline" : "home-outline"} size={13} color="#667085" />
-                          <MedText variant="metadata" style={{ color: "#667085", fontWeight: "500" }}>
+                          <Ionicons name={entry.hospitalId ? "business-outline" : "home-outline"} size={13} color="#5A6B80" />
+                          <MedText variant="metadata" style={{ color: "#5A6B80", fontWeight: "500" }}>
                             {entry.hospitalName || "Private Practice"}
                           </MedText>
                         </View>

@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     marginTop: -20,
-    backgroundColor: '#F9F7F2', // Match theme.background
+    backgroundColor: '#EAF2FB', // Match theme.background
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
