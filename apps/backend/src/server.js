@@ -20,6 +20,7 @@ const ReminderService = require("./services/reminder.service");
 const telegramRoutes = require("./routes/telegram.routes");
 const legalRoutes = require("./routes/legal.routes");
 const hospitalApplicationRoutes = require("./routes/hospital-application.routes");
+const hospitalPortalRoutes = require("./routes/hospital-portal.routes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -55,6 +56,7 @@ app.use('/api/reviews', require('./routes/review.routes'));
 app.use('/api/announcements', require('./routes/announcement.routes'));
 app.use('/api/hospitals', require('./routes/hospital.routes'));
 app.use('/api/hospital-applications', hospitalApplicationRoutes);
+app.use('/api/hospital', hospitalPortalRoutes);
 app.use('/api/receptionist', receptionistRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/legal', legalRoutes);

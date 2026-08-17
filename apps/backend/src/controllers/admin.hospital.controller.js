@@ -1,7 +1,61 @@
 const AdminHospitalService = require("../services/admin.hospital.service");
+const prisma = require("../lib/prisma");
 const { handleCloudinaryUpload } = require('../lib/cloudinary');
 
 const AdminHospitalController = {
+  listHospitalRegistrations: async (req, res) => {
+    try {
+      const status = req.query.status;
+      const where = status ? { status } : {};
+      const registrations = await prisma.hospitalProfile.findMany({
+        where,
+        include: {
+          hospital: {
+            select: { id: true, name: true, address: true, phone: true, email: true },
+          },
+          user: { select: { id: true, phone: true, email: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      res.status(200).json({ status: "success", data: registrations });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  },
+
+  updateHospitalRegistrationStatus: async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const { status, rejectionReason } = req.body;
+      if (!["APPROVED", "REJECTED"].includes(status)) {
+        return res
+          .status(400)
+          .json({ status: "fail", message: "Status must be APPROVED or REJECTED" });
+      }
+
+      const profile = await prisma.hospitalProfile.findUnique({
+        where: { id },
+      });
+      if (!profile) {
+        return res.status(404).json({ status: "fail", message: "Registration not found" });
+      }
+
+      const updated = await prisma.hospitalProfile.update({
+        where: { id },
+        data: {
+          status,
+          rejectionReason: status === "REJECTED" ? rejectionReason || null : null,
+        },
+        include: {
+          hospital: { select: { id: true, name: true } },
+          user: { select: { id: true, phone: true } },
+        },
+      });
+      res.status(200).json({ status: "success", data: updated });
+    } catch (err) {
+      res.status(400).json({ status: "fail", message: err.message });
+    }
+  },
   listHospitals: async (req, res) => {
     try {
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);

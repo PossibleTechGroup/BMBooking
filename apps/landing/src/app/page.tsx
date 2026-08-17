@@ -341,9 +341,9 @@ export default function Home() {
         {!isMobile && (
           <KineticGrid
             background="transparent"
-            dotColor="#1A1A1A"
-            lineColor="#3E5C76"
-            trailColor="#3E5C76"
+            dotColor="#1565C0"
+            lineColor="#1E5A8A"
+            trailColor="#1E5A8A"
             spacing={24}
             radius={380}
             strength={4}

@@ -6,6 +6,7 @@ import {
   registerDoctor,
   updateDoctor,
   deleteDoctor,
+  reviewDoctor,
   clearRegisterResult,
   type Doctor,
 } from '../../store/slices/doctorsSlice';
@@ -15,10 +16,13 @@ import { showToast } from '../../components/Toast';
 
 export function useDoctorsPage() {
   const dispatch = useDispatch<AppDispatch>();
-  const { doctors, loading, error, page, totalPages, total, saving, registerResult } =
+  const { doctors, stats, loading, error, page, totalPages, total, saving, registerResult } =
     useSelector((state: RootState) => state.doctors);
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  // Review modal
+  const [rejectTarget, setRejectTarget] = useState<Doctor | null>(null);
 
   // Edit modal
   const [editDoctor, setEditDoctor] = useState<Doctor | null>(null);
@@ -97,6 +101,27 @@ export function useDoctorsPage() {
     }
   };
 
+  const handleApprove = async (doctor: Doctor) => {
+    try {
+      await dispatch(reviewDoctor({ id: doctor.id, status: 'Approved' })).unwrap();
+      showToast({ type: 'success', message: `${doctor.fullName} approved and is now active.` });
+    } catch (err) {
+      showToast({ type: 'error', message: typeof err === 'string' ? err : 'Approval failed' });
+    }
+  };
+
+  const handleReject = async (reason: string) => {
+    if (!rejectTarget) return;
+    const target = rejectTarget;
+    setRejectTarget(null);
+    try {
+      await dispatch(reviewDoctor({ id: target.id, status: 'Rejected', rejectionReason: reason })).unwrap();
+      showToast({ type: 'success', message: `${target.fullName} rejected.` });
+    } catch (err) {
+      showToast({ type: 'error', message: typeof err === 'string' ? err : 'Rejection failed' });
+    }
+  };
+
   const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
     if (!regForm.fullName || !regForm.phone) return;
@@ -126,13 +151,18 @@ export function useDoctorsPage() {
 
   const clearRegResult = () => dispatch(clearRegisterResult());
 
+  const pendingDoctors = doctors.filter((d) => d.status === 'PendingReview');
+
   return {
-    doctors, loading, error, page, totalPages, total, saving, registerResult,
+    doctors, stats, loading, error, page, totalPages, total, saving, registerResult,
     expandedId,
     editDoctor, setEditDoctor, editForm, setEditForm, editError,
     deleteTarget, setDeleteTarget,
+    rejectTarget, setRejectTarget,
     showRegister, setShowRegister, regForm, setRegForm, regError,
+    pendingDoctors,
     loadDoctors, toggleExpand,
-    openEdit, handleEditSubmit, handleDelete, handleRegister, clearRegResult,
+    openEdit, handleEditSubmit, handleDelete, handleApprove, handleReject,
+    handleRegister, clearRegResult,
   };
 }

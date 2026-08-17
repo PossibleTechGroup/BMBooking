@@ -5,7 +5,7 @@ const TG = (() => {
   function syncThemeColors() {
     if (!webapp) return;
     const isDark = webapp.colorScheme === 'dark';
-    const bg = isDark ? '#18191C' : '#F9F7F2';
+    const bg = isDark ? '#0B1E33' : '#EAF2FB';
     webapp.setHeaderColor(bg);
     webapp.setBottomBarColor(bg);
   }

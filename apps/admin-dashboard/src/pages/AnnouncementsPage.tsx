@@ -315,11 +315,11 @@ const s: Record<string, React.CSSProperties> = {
   audienceBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 16px', borderRadius: '10px', border: '1.5px solid #E2E8F0', cursor: 'pointer', fontWeight: 600, fontSize: '14px', transition: 'all 0.15s' },
   formActions: { display: 'flex', gap: '12px', justifyContent: 'flex-end', paddingTop: '8px', borderTop: '1px solid #F1F5F9' },
   cancelBtn: { padding: '10px 22px', borderRadius: '10px', border: '1px solid #E2E8F0', backgroundColor: '#FFF', color: '#64748B', cursor: 'pointer', fontWeight: 600, fontSize: '14px' },
-  submitBtn: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 22px', borderRadius: '10px', border: 'none', backgroundColor: '#0F172A', color: '#FFF', fontWeight: 600, fontSize: '14px', cursor: 'pointer' },
+  submitBtn: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 22px', borderRadius: '10px', border: 'none', backgroundColor: 'var(--accent-primary)', color: '#FFF', fontWeight: 600, fontSize: '14px', cursor: 'pointer' },
 
   emptyState: { textAlign: 'center', padding: '80px 20px' },
   emptyIcon: { marginBottom: '16px' },
-  emptyBtn: { display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '11px 22px', borderRadius: '10px', backgroundColor: '#0F172A', color: '#FFF', fontWeight: 600, fontSize: '14px', border: 'none', cursor: 'pointer' },
+  emptyBtn: { display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '11px 22px', borderRadius: '10px', backgroundColor: 'var(--accent-primary)', color: '#FFF', fontWeight: 600, fontSize: '14px', border: 'none', cursor: 'pointer' },
 
   list: { display: 'flex', flexDirection: 'column', gap: '12px' },
   card: { padding: '20px 24px', borderRadius: '14px', border: '1px solid #E2E8F0', backgroundColor: '#FFF', transition: 'box-shadow 0.2s' },

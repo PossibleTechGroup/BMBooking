@@ -17,11 +17,20 @@ export interface Doctor {
   bio: string | null;
   profilePicture: string | null;
   introVideo: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
   user: DoctorUser;
+}
+
+interface DoctorStats {
+  approved: number;
+  pending: number;
+  rejected: number;
 }
 
 interface DoctorsState {
   doctors: Doctor[];
+  stats: DoctorStats;
   loading: boolean;
   error: string;
   page: number;
@@ -33,6 +42,7 @@ interface DoctorsState {
 
 const initialState: DoctorsState = {
   doctors: [],
+  stats: { approved: 0, pending: 0, rejected: 0 },
   loading: false,
   error: '',
   page: 1,
@@ -92,6 +102,18 @@ export const deleteDoctor = createAsyncThunk(
   }
 );
 
+export const reviewDoctor = createAsyncThunk(
+  'doctors/review',
+  async ({ id, status, rejectionReason }: { id: number; status: 'Approved' | 'Rejected'; rejectionReason?: string }, { rejectWithValue }) => {
+    try {
+      const res = await client.patch(`/receptionist/doctors/${id}/review`, { status, rejectionReason });
+      return res.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Review failed');
+    }
+  }
+);
+
 const doctorsSlice = createSlice({
   name: 'doctors',
   initialState,
@@ -108,6 +130,7 @@ const doctorsSlice = createSlice({
       .addCase(fetchDoctors.fulfilled, (state, action) => {
         state.loading = false;
         state.doctors = action.payload.data;
+        state.stats = action.payload.stats || { approved: 0, pending: 0, rejected: 0 };
         state.page = action.payload.pagination.page;
         state.totalPages = action.payload.pagination.totalPages;
         state.total = action.payload.pagination.total;
@@ -156,6 +179,28 @@ const doctorsSlice = createSlice({
       .addCase(deleteDoctor.rejected, (state, action) => {
         state.saving = false;
         state.error = (action.payload as string) || 'Delete failed';
+      })
+      .addCase(reviewDoctor.pending, (state) => {
+        state.saving = true;
+        state.error = '';
+      })
+      .addCase(reviewDoctor.fulfilled, (state, action) => {
+        state.saving = false;
+        if (action.payload) {
+          const idx = state.doctors.findIndex(d => d.id === action.payload.id);
+          if (idx !== -1) state.doctors[idx] = { ...state.doctors[idx], ...action.payload };
+          if (action.payload.status === 'Approved') {
+            state.stats.approved += 1;
+            state.stats.pending = Math.max(0, state.stats.pending - 1);
+          } else if (action.payload.status === 'Rejected') {
+            state.stats.rejected += 1;
+            state.stats.pending = Math.max(0, state.stats.pending - 1);
+          }
+        }
+      })
+      .addCase(reviewDoctor.rejected, (state, action) => {
+        state.saving = false;
+        state.error = (action.payload as string) || 'Review failed';
       });
   },
 });

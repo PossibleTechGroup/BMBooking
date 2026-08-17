@@ -15,6 +15,9 @@ const User = {
           include: { paymentMethods: true },
         },
         patientProfile: true,
+        hospitalProfile: {
+          include: { hospital: true },
+        },
       },
     });
   },

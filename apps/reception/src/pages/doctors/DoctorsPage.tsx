@@ -1,20 +1,24 @@
-import { UserRound, Loader2, Plus } from 'lucide-react';
+import { UserRound, Loader2, Plus, ClipboardList } from 'lucide-react';
 import { useDoctorsPage } from './useDoctorsPage';
 import { styles } from './styles';
 import DoctorCard from './DoctorCard';
 import EditDoctorModal from './EditDoctorModal';
 import DeleteDoctorModal from './DeleteDoctorModal';
+import RejectDoctorModal from './RejectDoctorModal';
 import RegisterDoctorModal from './RegisterDoctorModal';
 
 function DoctorsPage() {
   const {
-    doctors, loading, error, page, totalPages, total, saving, registerResult,
+    doctors, stats, loading, error, page, totalPages, total, saving, registerResult,
     expandedId,
     editDoctor, setEditDoctor, editForm, setEditForm, editError,
     deleteTarget, setDeleteTarget,
+    rejectTarget, setRejectTarget,
     showRegister, setShowRegister, regForm, setRegForm, regError,
+    pendingDoctors,
     loadDoctors, toggleExpand,
-    openEdit, handleEditSubmit, handleDelete, handleRegister, clearRegResult,
+    openEdit, handleEditSubmit, handleDelete, handleApprove, handleReject,
+    handleRegister, clearRegResult,
   } = useDoctorsPage();
 
   return (
@@ -49,6 +53,51 @@ function DoctorsPage() {
         </div>
       )}
 
+      {/* Stats */}
+      {!loading && (
+        <div style={styles.statsRow}>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Active Doctors</div>
+            <div style={styles.statValue}>{stats.approved}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Pending Requests</div>
+            <div style={{ ...styles.statValue, color: '#F79009' }}>{stats.pending}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Rejected</div>
+            <div style={styles.statValue}>{stats.rejected}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Pending requests section */}
+      {!loading && pendingDoctors.length > 0 && (
+        <div style={styles.pendingSection}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ClipboardList size={18} color="#F79009" />
+            <h3 style={styles.pendingTitle}>Pending Verification Requests</h3>
+          </div>
+          <p style={styles.pendingSubtitle}>
+            These doctors requested to join your hospital. Review their details before approving or rejecting.
+          </p>
+          <div style={styles.grid}>
+            {pendingDoctors.map((doctor) => (
+              <DoctorCard
+                key={doctor.id}
+                doctor={doctor}
+                isExpanded={expandedId === doctor.id}
+                onToggle={toggleExpand}
+                onEdit={openEdit}
+                onDelete={setDeleteTarget}
+                onApprove={handleApprove}
+                onReject={setRejectTarget}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 0', color: 'var(--text-secondary)', gap: '8px' }}>
@@ -71,6 +120,8 @@ function DoctorsPage() {
                 onToggle={toggleExpand}
                 onEdit={openEdit}
                 onDelete={setDeleteTarget}
+                onApprove={handleApprove}
+                onReject={setRejectTarget}
               />
             ))}
           </div>
@@ -104,6 +155,15 @@ function DoctorsPage() {
           saving={saving}
           onClose={() => setDeleteTarget(null)}
           onConfirm={handleDelete}
+        />
+      )}
+
+      {rejectTarget && (
+        <RejectDoctorModal
+          doctor={rejectTarget}
+          saving={saving}
+          onClose={() => setRejectTarget(null)}
+          onConfirm={handleReject}
         />
       )}
 

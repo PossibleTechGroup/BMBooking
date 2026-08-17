@@ -209,9 +209,9 @@ export const DoctorProfileView = ({
 const styles: Record<string, React.CSSProperties> = {
   profileHeader: { marginBottom: '32px' },
   headerTop: { display: 'flex', gap: '24px', alignItems: 'center', marginBottom: '32px' },
-  avatarLarge: { width: '80px', height: '80px', borderRadius: '24px', backgroundColor: '#0F172A', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: '800' },
+  avatarLarge: { width: '80px', height: '80px', borderRadius: '24px', backgroundColor: 'var(--accent-secondary)', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: '800' },
   headerInfo: { flex: 1 },
-  name: { fontSize: '28px', fontWeight: '800', color: '#0F172A' },
+  name: { fontSize: '28px', fontWeight: '800', color: 'var(--text-primary)' },
   spec: { fontSize: '16px', color: '#3B82F6', fontWeight: '600', marginTop: '4px' },
   metrics: { display: 'flex', gap: '24px', marginTop: '16px' },
   metricItem: { display: 'flex', alignItems: 'center', gap: '8px' },

@@ -125,4 +125,33 @@ export const styles: Record<string, CSSProperties> = {
   emptyState: { textAlign: 'center', padding: '60px 0', color: 'var(--text-secondary)' },
   detailLabel: { fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.5px' },
   detailValue: { fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)', marginTop: '2px' },
+  statsRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' },
+  statCard: {
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-md)',
+    padding: '18px 20px',
+    boxShadow: 'var(--shadow-sm)',
+  },
+  statLabel: { fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' as const, letterSpacing: '0.5px' },
+  statValue: { fontSize: '28px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px' },
+  pendingSection: { marginBottom: '24px' },
+  pendingTitle: { fontSize: '16px', fontWeight: 600, margin: 0 },
+  pendingSubtitle: { fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 12px' },
+  approveBtn: {
+    display: 'flex', alignItems: 'center', gap: '6px',
+    padding: '8px 14px', borderRadius: '8px', border: 'none',
+    background: '#027A48', color: '#FFF', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
+  },
+  rejectBtn: {
+    display: 'flex', alignItems: 'center', gap: '6px',
+    padding: '8px 14px', borderRadius: '8px', border: '1px solid #FECDCA',
+    background: '#FFF', color: 'var(--status-error)', fontWeight: 600, fontSize: '13px', cursor: 'pointer',
+  },
+  rejectReason: {
+    fontSize: '13px', color: 'var(--status-error)',
+    background: '#FEF3F2', border: '1px solid #FECDCA',
+    padding: '10px 14px', borderRadius: '8px', marginBottom: '12px',
+  },
+  requestedAt: { fontSize: '12px', color: 'var(--text-secondary)' },
 };

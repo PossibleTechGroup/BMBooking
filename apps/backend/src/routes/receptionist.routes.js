@@ -52,6 +52,11 @@ router.post("/doctors/register", upload.fields([
 ]), validate(schemas.registerDoctorByReceptionist), receptionistController.registerDoctor);
 router.put("/doctors/:id", receptionistController.updateDoctor);
 router.delete("/doctors/:id", receptionistController.removeDoctor);
+router.patch(
+  "/doctors/:id/review",
+  validate(schemas.reviewDoctorByReceptionist),
+  receptionistController.reviewDoctor,
+);
 
 router.get("/equipment", receptionistController.getHospitalEquipment);
 router.post(

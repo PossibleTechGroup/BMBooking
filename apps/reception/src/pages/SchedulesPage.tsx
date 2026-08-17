@@ -450,7 +450,7 @@ function SchedulesPage() {
                             fontWeight: 600,
                             lineHeight: 1.3,
                             background: s.isActive ? '#ECFDF3' : '#F2F4F7',
-                            color: s.isActive ? '#027A48' : '#667085',
+                            color: s.isActive ? '#027A48' : '#5A6B80',
                             borderLeft: `3px solid ${docColor}`,
                             boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                             zIndex: 10,
@@ -642,7 +642,7 @@ function SchedulesPage() {
                       <span style={{ fontWeight: 600, fontSize: '16px', color: 'var(--text-primary)' }}>
                         {schedule.doctor.fullName}
                       </span>
-                      <span style={{ fontSize: '13px', color: 'var(--text-secondary)', background: '#F9F7F2', padding: '2px 8px', borderRadius: '4px' }}>
+                      <span style={{ fontSize: '13px', color: 'var(--text-secondary)', background: '#EAF2FB', padding: '2px 8px', borderRadius: '4px' }}>
                         {schedule.doctor.specialization}
                       </span>
                     </div>

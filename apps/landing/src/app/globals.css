@@ -1,14 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  --bg: #F9F7F2;
+  --bg: #EAF2FB;
   --surface: #FFFFFF;
-  --ink: #101828;
-  --ink-soft: #667085;
-  --accent: #1A1A1A;
-  --accent-soft: #EEF1F4;
-  --line: #E4E7EC;
-  --btn-ghost-bg: #F1F2F0;
+  --ink: #0B1E33;
+  --ink-soft: #5A6B80;
+  --accent: #1565C0;
+  --accent-soft: #E3EFFB;
+  --line: #D8E3F0;
+  --btn-ghost-bg: #EAF2FB;
   --success: #027A48;
 
   --bg-main: var(--bg);
@@ -17,7 +17,7 @@
   --text-main: var(--ink);
   --text-muted: var(--ink-soft);
   --border-main: var(--line);
-  --border-focus: rgba(26, 26, 26, 0.2);
+  --border-focus: rgba(21, 101, 192, 0.2);
   
   --font: 'Inter Tight', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;

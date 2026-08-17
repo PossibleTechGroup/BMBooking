@@ -3,25 +3,29 @@ const { formatEthiopianLocalDateTimeDual } = require('../utils/dateFormat');
 
 const SmsService = {
   /**
-   * Send SMS via AfroMessage
+   * Send SMS via GeezSMS
    */
   sendSms: async (to, message) => {
+    // GeezSMS expects an international format WITHOUT the leading "+"
+    const smsPhone = String(to).replace(/^\+/, "");
     try {
-      const response = await axios.get('https://api.afromessage.com/api/send', {
-        params: {
-          from: process.env.AFROMESSAGE_FROM,
-          sender: process.env.AFROMESSAGE_SENDER,
-          to: to,
-          message: message
+      const response = await axios.post(
+        'https://api.geezsms.com/api/v1/sms/send',
+        {
+          token: process.env.GEEZSMS_TOKEN,
+          phone: smsPhone,
+          msg: message
         },
-        headers: {
-          'Authorization': process.env.AFROMESSAGE_API_KEY
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
         }
-      });
-      console.log(`[SMS] Sent to ${to}: ${response.data.acknowledge}`);
+      );
+      console.log(`[SMS] Sent to ${smsPhone}:`, response.data);
       return response.data;
     } catch (error) {
-      console.error(`[SMS] Failed to send to ${to}:`, error.response?.data || error.message);
+      console.error(`[SMS] Failed to send to ${smsPhone}:`, error.response?.data || error.message);
       return null;
     }
   },

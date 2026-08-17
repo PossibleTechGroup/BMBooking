@@ -127,7 +127,7 @@ const styles: Record<string, CSSProperties> = {
 const cards = [
   {
     icon: Calendar,
-    color: '#3E5C76',
+    color: '#1E5A8A',
     title: 'Schedules',
     desc: 'View and manage daily appointment schedules for all doctors.',
     to: '/schedules',

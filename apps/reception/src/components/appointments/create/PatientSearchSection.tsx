@@ -57,7 +57,7 @@ export default function PatientSearchSection({
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-          background: '#F9F7F2',
+          background: '#EAF2FB',
         }}>
           <div>
             <span style={{ fontWeight: 500 }}>{selectedPatient.patientProfile?.fullName || 'Unknown'}</span>
@@ -190,7 +190,7 @@ export default function PatientSearchSection({
                     color: 'var(--text-primary)', fontSize: '14px',
                     borderBottom: '1px solid var(--border)',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#F9F7F2')}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#EAF2FB')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
                 >
                   <span style={{ fontWeight: 500 }}>{p.patientProfile?.fullName || 'Unknown'}</span>

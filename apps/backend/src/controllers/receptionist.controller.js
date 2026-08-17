@@ -420,16 +420,35 @@ const ReceptionistController = {
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
       const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
       const includeAll = req.query.includeAll === 'true';
+      const status = req.query.status || null;
       const result = await ReceptionistService.getHospitalDoctors(
         req.receptionistProfile.hospitalId,
         page,
         limit,
         includeAll,
+        status,
       );
       res.status(200).json({ status: "success", ...result });
     } catch (err) {
       console.error("❌ [RECEPTIONIST] Get doctors error:", err.message);
       res.status(400).json({ status: "fail", message: err.message });
+    }
+  },
+
+  reviewDoctor: async (req, res) => {
+    try {
+      const doctorId = parseInt(req.params.id, 10);
+      const { status, rejectionReason } = req.body;
+      const doctor = await ReceptionistService.reviewHospitalDoctor(
+        doctorId,
+        req.receptionistProfile.hospitalId,
+        status,
+        rejectionReason || null,
+      );
+      res.status(200).json({ status: "success", data: doctor });
+    } catch (err) {
+      const status = err.message === "Doctor not found" ? 404 : 400;
+      res.status(status).json({ status: "fail", message: err.message });
     }
   },
 

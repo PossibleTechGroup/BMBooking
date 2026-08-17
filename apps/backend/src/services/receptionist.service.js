@@ -1083,11 +1083,12 @@ const ReceptionistService = {
     });
   },
 
-  getHospitalDoctors: async (hospitalId, page = 1, limit = 20, includeAll = false) => {
+  getHospitalDoctors: async (hospitalId, page = 1, limit = 20, includeAll = false, status = null) => {
     const where = { hospitalId };
-    if (!includeAll) where.status = 'Approved';
+    if (status) where.status = status;
+    else if (!includeAll) where.status = 'Approved';
     const skip = (page - 1) * limit;
-    const [data, total] = await Promise.all([
+    const [data, total, counts] = await Promise.all([
       prisma.doctorProfile.findMany({
         where,
         select: {
@@ -1100,6 +1101,8 @@ const ReceptionistService = {
           bio: true,
           profilePicture: true,
           introVideo: true,
+          rejectionReason: true,
+          createdAt: true,
           user: { select: { id: true, phone: true, email: true } },
         },
         skip,
@@ -1107,8 +1110,52 @@ const ReceptionistService = {
         orderBy: { fullName: "asc" },
       }),
       prisma.doctorProfile.count({ where }),
+      prisma.doctorProfile.groupBy({
+        by: ["status"],
+        where: { hospitalId },
+        _count: { _all: true },
+      }),
     ]);
-    return { data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    const stats = { approved: 0, pending: 0, rejected: 0 };
+    counts.forEach((c) => {
+      if (c.status === "Approved") stats.approved = c._count._all;
+      else if (c.status === "PendingReview") stats.pending = c._count._all;
+      else if (c.status === "Rejected") stats.rejected = c._count._all;
+    });
+    return { data, stats, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  },
+
+  reviewHospitalDoctor: async (doctorId, hospitalId, status, rejectionReason = null) => {
+    if (!["Approved", "Rejected"].includes(status)) {
+      throw new Error("Status must be Approved or Rejected");
+    }
+    const doctor = await prisma.doctorProfile.findUnique({
+      where: { id: doctorId },
+    });
+    if (!doctor) throw new Error("Doctor not found");
+    if (doctor.hospitalId !== hospitalId) {
+      throw new Error("Doctor does not belong to receptionist's hospital");
+    }
+    if (doctor.status !== "PendingReview") {
+      throw new Error("Only pending doctors can be approved or rejected");
+    }
+    if (status === "Rejected" && !rejectionReason) {
+      throw new Error("Rejection reason is required");
+    }
+
+    return prisma.doctorProfile.update({
+      where: { id: doctorId },
+      data: {
+        status,
+        rejectionReason: status === "Rejected" ? rejectionReason : null,
+      },
+      select: {
+        id: true,
+        fullName: true,
+        status: true,
+        rejectionReason: true,
+      },
+    });
   },
 
   registerDoctor: async (data, hospitalId) => {

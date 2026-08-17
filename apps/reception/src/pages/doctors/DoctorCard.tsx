@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Phone, Mail, ChevronDown, ChevronUp, Edit3, Trash2, Calendar } from 'lucide-react';
+import { Phone, Mail, ChevronDown, ChevronUp, Edit3, Trash2, Calendar, Check, X } from 'lucide-react';
 import type { Doctor } from '../../store/slices/doctorsSlice';
 import { styles } from './styles';
 
@@ -9,17 +9,29 @@ interface DoctorCardProps {
   onToggle: (d: Doctor) => void;
   onEdit: (d: Doctor) => void;
   onDelete: (d: Doctor) => void;
+  onApprove: (d: Doctor) => void;
+  onReject: (d: Doctor) => void;
 }
 
 function statusLabel(s: string) {
   return s === 'PendingReview' ? 'Pending' : s;
 }
 
+function formatDate(iso?: string) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return '';
+  }
+}
+
 export default function DoctorCard({
   doctor, isExpanded,
-  onToggle, onEdit, onDelete,
+  onToggle, onEdit, onDelete, onApprove, onReject,
 }: DoctorCardProps) {
   const navigate = useNavigate();
+  const isPending = doctor.status === 'PendingReview';
   return (
     <div style={styles.card}>
       <div style={styles.cardHeader} onClick={() => onToggle(doctor)}>
@@ -37,6 +49,9 @@ export default function DoctorCard({
           <div style={{ display: 'flex', gap: '16px', marginTop: '6px', flexWrap: 'wrap' }}>
             <div style={styles.contactRow}><Phone size={12} />{doctor.user.phone}</div>
             {doctor.user.email && <div style={styles.contactRow}><Mail size={12} />{doctor.user.email}</div>}
+            {isPending && doctor.createdAt && (
+              <div style={styles.requestedAt}>Requested {formatDate(doctor.createdAt)}</div>
+            )}
           </div>
         </div>
         {isExpanded ? <ChevronUp size={18} color="var(--text-secondary)" /> : <ChevronDown size={18} color="var(--text-secondary)" />}
@@ -51,6 +66,12 @@ export default function DoctorCard({
             <div><div style={styles.detailLabel}>Specialization</div><div style={styles.detailValue}>{doctor.specialization || 'General Practice'}</div></div>
             <div><div style={styles.detailLabel}>Status</div><div style={styles.detailValue}>{statusLabel(doctor.status)}</div></div>
           </div>
+
+          {doctor.status === 'Rejected' && doctor.rejectionReason && (
+            <div style={styles.rejectReason}>
+              <strong>Rejection reason:</strong> {doctor.rejectionReason}
+            </div>
+          )}
 
           {/* Media */}
           {(doctor.profilePicture || doctor.introVideo) && (
@@ -79,11 +100,20 @@ export default function DoctorCard({
           )}
 
           <div style={styles.actions}>
-            <button style={styles.editBtn} onClick={() => navigate(`/schedules?doctorId=${doctor.id}`)}>
-              <Calendar size={14} /> View Schedule
-            </button>
-            <button style={styles.editBtn} onClick={() => onEdit(doctor)}><Edit3 size={14} /> Edit</button>
-            <button style={styles.deleteBtn} onClick={() => onDelete(doctor)}><Trash2 size={14} /> Remove</button>
+            {isPending ? (
+              <>
+                <button style={styles.approveBtn} onClick={() => onApprove(doctor)}><Check size={14} /> Approve</button>
+                <button style={styles.rejectBtn} onClick={() => onReject(doctor)}><X size={14} /> Reject</button>
+              </>
+            ) : (
+              <>
+                <button style={styles.editBtn} onClick={() => navigate(`/schedules?doctorId=${doctor.id}`)}>
+                  <Calendar size={14} /> View Schedule
+                </button>
+                <button style={styles.editBtn} onClick={() => onEdit(doctor)}><Edit3 size={14} /> Edit</button>
+                <button style={styles.deleteBtn} onClick={() => onDelete(doctor)}><Trash2 size={14} /> Remove</button>
+              </>
+            )}
           </div>
         </div>
       )}

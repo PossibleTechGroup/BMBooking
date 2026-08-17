@@ -17,9 +17,9 @@ interface KineticGridProps {
 
 const DEFAULTS = {
   background: "transparent",
-  dotColor: "#1A1A1A",
-  lineColor: "#3E5C76",
-  trailColor: "#3E5C76",
+  dotColor: "#1565C0",
+  lineColor: "#1E5A8A",
+  trailColor: "#1E5A8A",
   spacing: 30,
   radius: 400,
   strength: 4,

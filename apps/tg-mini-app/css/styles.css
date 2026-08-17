@@ -6,28 +6,28 @@
 }
 
 :root {
-  --bg: var(--tg-theme-bg-color, #F9F7F2);
-  --text: var(--tg-theme-text-color, #101828);
-  --hint: var(--tg-theme-hint-color, #667085);
-  --link: var(--tg-theme-link-color, #3E5C76);
-  --button: var(--tg-theme-button-color, #1A1A1A);
+  --bg: var(--tg-theme-bg-color, #EAF2FB);
+  --text: var(--tg-theme-text-color, #0B1E33);
+  --hint: var(--tg-theme-hint-color, #5A6B80);
+  --link: var(--tg-theme-link-color, #1565C0);
+  --button: var(--tg-theme-button-color, #1565C0);
   --button-text: var(--tg-theme-button-text-color, #ffffff);
   --secondary-bg: var(--tg-theme-secondary-bg-color, #F2F4F7);
   --section-bg: var(--tg-theme-section-bg-color, #ffffff);
-  --section-separator: var(--tg-theme-section-separator-color, #E4E7EC);
-  --accent: #3E5C76;
+  --section-separator: var(--tg-theme-section-separator-color, #D8E3F0);
+  --accent: #1565C0;
   --danger: #e53935;
   --success: #027A48;
   --warning: #fb8c00;
-  --border: #E4E7EC;
+  --border: #D8E3F0;
   --radius: 12px;
   --radius-sm: 8px;
   --shadow: 0 1px 3px rgba(0,0,0,0.08);
-  --text-primary: #101828;
-  --text-secondary: #667085;
+  --text-primary: #0B1E33;
+  --text-secondary: #5A6B80;
   --surface: #FFFFFF;
-  --primary-dark: #1A1A1A;
-  --secondary-accent: #3E5C76;
+  --primary-dark: #1565C0;
+  --secondary-accent: #1E5A8A;
 }
 
 html {
@@ -212,7 +212,7 @@ a {
 }
 
 .lang-btn:active {
-  background: var(--border, #E4E7EC);
+  background: var(--border, #D8E3F0);
 }
 
 .lang-btn svg {
@@ -256,7 +256,7 @@ a {
 }
 
 .lang-option.active {
-  color: var(--accent, #3E5C76);
+  color: var(--accent, #1565C0);
   font-weight: 700;
 }
 
@@ -651,7 +651,7 @@ html.dark .alert-info    { background: rgba(90,169,230,0.12); border-color: rgba
 .doctor-initials {
   font-size: 18px;
   font-weight: 700;
-  color: var(--text-secondary, #667085);
+  color: var(--text-secondary, #5A6B80);
 }
 
 .doctor-avatar img {
@@ -962,7 +962,7 @@ html.dark .alert-info    { background: rgba(90,169,230,0.12); border-color: rgba
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: var(--primary-dark, #1A1A1A);
+  background: var(--primary-dark, #1565C0);
   color: var(--button-text);
   margin: 0 auto 12px;
   display: flex;
@@ -976,11 +976,11 @@ html.dark .alert-info    { background: rgba(90,169,230,0.12); border-color: rgba
 .profile-name {
   font-size: 20px;
   font-weight: 700;
-  color: var(--text-primary, #101828);
+  color: var(--text-primary, #0B1E33);
 }
 
 .profile-phone {
-  color: var(--text-secondary, #667085);
+  color: var(--text-secondary, #5A6B80);
   font-size: 14px;
   margin-top: 2px;
 }

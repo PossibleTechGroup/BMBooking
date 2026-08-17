@@ -91,7 +91,7 @@ function Sidebar({ collapsed, onToggle }: SidebarProps) {
               fontSize: '14px',
               fontWeight: 500,
               color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
-              background: isActive ? '#F9F7F2' : 'transparent',
+              background: isActive ? '#E3EFFB' : 'transparent',
               justifyContent: collapsed ? 'center' : 'flex-start',
             })}
           >

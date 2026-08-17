@@ -9,7 +9,7 @@ export const statusColors: Record<string, { bg: string; text: string }> = {
   accepted:  { bg: '#ECFDF3', text: '#027A48' },
   declined:  { bg: '#FEF3F2', text: '#D92D20' },
   completed: { bg: '#EFF8FF', text: '#175CD3' },
-  cancelled: { bg: '#F2F4F7', text: '#667085' },
+  cancelled: { bg: '#F2F4F7', text: '#5A6B80' },
 };
 
 export const statusLabels: Record<string, string> = {
@@ -137,7 +137,7 @@ export default function AppointmentsListView({
                   <XCircle size={14} /> Decline
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); handleCancel(a); }} disabled={cancellingId === a.id}
-                  style={{ ...listStyles.btnBase, background: '#F2F4F7', color: '#667085', opacity: cancellingId === a.id ? 0.6 : 1 }}>
+                  style={{ ...listStyles.btnBase, background: '#F2F4F7', color: '#5A6B80', opacity: cancellingId === a.id ? 0.6 : 1 }}>
                   <XCircle size={14} />
                   {cancellingId === a.id ? 'Cancelling...' : 'Cancel'}
                 </button>

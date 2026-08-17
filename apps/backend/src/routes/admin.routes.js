@@ -77,6 +77,8 @@ router.get('/stats/equipment-utilization', AdminController.getEquipmentUtilizati
 
 // Hospitals & Receptionists
 router.get('/hospitals', AdminHospitalController.listHospitals);
+router.get('/hospital-registrations', AdminHospitalController.listHospitalRegistrations);
+router.patch('/hospital-registrations/:id', AdminHospitalController.updateHospitalRegistrationStatus);
 router.post('/hospitals', generalUpload.single('image'), validate(schemas.createHospital), AdminHospitalController.createHospital);
 router.put('/hospitals/:id', generalUpload.single('image'), validate(schemas.updateHospital), AdminHospitalController.updateHospital);
 router.delete('/hospitals/:id', AdminHospitalController.deleteHospital);

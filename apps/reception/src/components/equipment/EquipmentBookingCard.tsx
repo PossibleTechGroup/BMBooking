@@ -7,7 +7,7 @@ import { formatDateTime } from '../../utils/ethiopianDate';
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   confirmed: { bg: '#ECFDF3', text: '#027A48' },
   completed: { bg: '#EFF8FF', text: '#175CD3' },
-  cancelled: { bg: '#F2F4F7', text: '#667085' },
+  cancelled: { bg: '#F2F4F7', text: '#5A6B80' },
 };
 
 const STATUS_LABELS: Record<string, string> = {

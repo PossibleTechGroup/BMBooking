@@ -173,7 +173,7 @@ const styles: Record<string, React.CSSProperties> = {
     resize: 'none',
   },
   submitBtn: {
-    backgroundColor: '#0F172A',
+    backgroundColor: 'var(--accent-primary)',
     color: '#FFF',
     height: '48px',
     borderRadius: '8px',

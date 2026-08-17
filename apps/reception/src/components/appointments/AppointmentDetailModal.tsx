@@ -22,7 +22,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   accepted:  { bg: '#ECFDF3', text: '#027A48' },
   declined:  { bg: '#FEF3F2', text: '#D92D20' },
   completed: { bg: '#EFF8FF', text: '#175CD3' },
-  cancelled: { bg: '#F2F4F7', text: '#667085' },
+  cancelled: { bg: '#F2F4F7', text: '#5A6B80' },
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -261,7 +261,7 @@ export default function AppointmentDetailModal({
                         </button>
                         <button
                           onClick={() => setCancelConfirm(false)}
-                          style={{ ...btnBase, background: '#F2F4F7', color: '#667085' }}
+                          style={{ ...btnBase, background: '#F2F4F7', color: '#5A6B80' }}
                         >
                           No
                         </button>

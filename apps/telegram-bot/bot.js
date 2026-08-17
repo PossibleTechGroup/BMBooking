@@ -1,4 +1,5 @@
 const { Telegraf, Markup } = require("telegraf");
+const https = require("https");
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const WEBAPP_URL = process.env.WEBAPP_URL || "https://bmbookingtelegrambot.possibletechplc.com";
@@ -8,7 +9,9 @@ if (!BOT_TOKEN) {
   process.exit(1);
 }
 
-const bot = new Telegraf(BOT_TOKEN);
+// Force IPv4: the container has no IPv6 route and Node otherwise stalls on api.telegram.org AAAA lookups.
+const agent = new https.Agent({ family: 4, keepAlive: true });
+const bot = new Telegraf(BOT_TOKEN, { telegram: { agent } });
 
 bot.start(async (ctx) => {
   const firstName = ctx.from?.first_name || "there";
@@ -99,16 +102,19 @@ let running = false;
 const startBot = async (attempt = 1) => {
   try {
     await setBotInfo();
-    await bot.launch();
+    bot.launch().catch(async (err) => {
+      if (err.message.includes("409") && attempt < MAX_RETRIES) {
+        const delay = BASE_DELAY * Math.pow(2, attempt - 1);
+        console.warn(`Conflict detected (attempt ${attempt}/${MAX_RETRIES}). Retrying in ${delay / 1000}s...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return startBot(attempt + 1);
+      }
+      console.error("Failed to start bot:", err.message);
+      process.exit(1);
+    });
     running = true;
     console.log("Bot is running!");
   } catch (err) {
-    if (err.message.includes("409") && attempt < MAX_RETRIES) {
-      const delay = BASE_DELAY * Math.pow(2, attempt - 1);
-      console.warn(`Conflict detected (attempt ${attempt}/${MAX_RETRIES}). Retrying in ${delay / 1000}s...`);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      return startBot(attempt + 1);
-    }
     console.error("Failed to start bot:", err.message);
     process.exit(1);
   }

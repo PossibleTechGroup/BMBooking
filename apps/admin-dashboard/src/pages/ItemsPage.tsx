@@ -639,7 +639,7 @@ const styles: Record<string, React.CSSProperties> = {
   statusBadge: { display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '100px' },
   statusText: { fontSize: '11px', fontWeight: '800', textTransform: 'uppercase' },
   coords: { fontSize: '11px', color: '#94A3B8', fontFamily: 'monospace' },
-  toast: { position: 'fixed', bottom: '32px', right: '32px', backgroundColor: '#0F172A', color: '#FFF', padding: '12px 24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 2000 },
+  toast: { position: 'fixed', bottom: '32px', right: '32px', backgroundColor: 'var(--accent-primary)', color: '#FFF', padding: '12px 24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 2000 },
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
   modalContent: { backgroundColor: '#FFF', width: '900px', padding: '32px', borderRadius: '24px', maxHeight: '90vh', overflowY: 'auto' },
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
@@ -658,7 +658,7 @@ const styles: Record<string, React.CSSProperties> = {
   errorMsg: { color: '#EF4444', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' },
   modalActions: { display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '12px', borderTop: '1px solid #F1F5F9', paddingTop: '24px' },
   cancelBtn: { padding: '10px 20px', color: '#64748B', fontWeight: '600', border: 'none', background: 'none', cursor: 'pointer' },
-  confirmBtn: { backgroundColor: '#0F172A', color: '#FFF', minWidth: '120px', height: '44px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  confirmBtn: { backgroundColor: 'var(--accent-primary)', color: '#FFF', minWidth: '120px', height: '44px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   warningIcon: { marginBottom: '16px', display: 'flex', justifyContent: 'center' },
   secondaryBtn: {
     display: 'flex',

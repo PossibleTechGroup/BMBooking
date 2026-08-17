@@ -328,7 +328,7 @@ function AppointmentsPage() {
       {activeTab === 'upcoming' && (
         <div style={pageStyles.statsRow}>
           {[
-            { label: 'Upcoming', value: upcomingAppointments.length, color: '#1A1A1A', bg: '#F9F7F2' },
+            { label: 'Upcoming', value: upcomingAppointments.length, color: '#1565C0', bg: '#E3EFFB' },
             { label: 'Pending', value: upcomingAppointments.filter(a => a.status === 'pending').length, color: '#B54708', bg: '#FFFAEB' },
             { label: 'Accepted', value: upcomingAppointments.filter(a => a.status === 'accepted').length, color: '#027A48', bg: '#ECFDF3' },
           ].map((s) => (

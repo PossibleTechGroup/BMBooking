@@ -12,12 +12,22 @@ VPS IP: `157.180.114.86`
 | `A` | `tos-bm` | `157.180.114.86` | Proxied (orange cloud) | Terms of Service — `tos-bm.possibletechplc.com` → VPS port `80` |
 | `A` | `bmadmin` | `157.180.114.86` | Proxied (orange cloud) | Admin Dashboard — `bmadmin.possibletechplc.com` → VPS port `53400` |
 | `A` | `bmreception` | `157.180.114.86` | Proxied (orange cloud) | Reception — `bmreception.possibletechplc.com` → VPS port `53401` |
+| `A` | `bmbookingtelegrambot` | `157.180.114.86` | Proxied (orange cloud) | Telegram Mini App — `bmbookingtelegrambot.possibletechplc.com` → VPS port `53403` (used as the bot's `WEBAPP_URL`) |
 
 ## SSL/TLS Settings (Cloudflare Dashboard)
 
 1. Go to **SSL/TLS** → set mode to **Full (Strict)**
 2. Enable **Always Use HTTPS**
 3. Enable **Automatic HTTPS Rewrites**
+
+> **Full (Strict) requires the origin nginx to serve HTTPS on port 443 with a valid
+> certificate** (the wildcard cert from certbot covers `*.possibletechplc.com`). If the
+> `listen 443 ssl` server blocks below are not applied, every hostname behind Cloudflare
+> will either loop-redirect (`301 https://$host$request_uri`) or return a 522/526 error.
+> Symptom of a broken origin:
+> `curl -sI https://bmbookingtelegrambot.possibletechplc.com/` → infinite `301` to itself.
+> After fixing nginx, verify:
+> `curl -sI https://bmbookingtelegrambot.possibletechplc.com/` → `HTTP/2 200`.
 
 ## Nginx Config (on VPS)
 
@@ -129,6 +139,27 @@ server {
 
     location / {
         proxy_pass http://127.0.0.1:53401;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# Telegram Mini App (bot WEBAPP_URL)
+server {
+    listen 443 ssl;
+    server_name bmbookingtelegrambot.possibletechplc.com;
+
+    ssl_certificate     /etc/letsencrypt/live/possibletechplc.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/possibletechplc.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:53403;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
