@@ -91,6 +91,9 @@ services:
     build:
       context: ./apps/admin-dashboard
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+        VITE_API_PROXY_TARGET: http://backend:5000
     container_name: bm-admin-dashboard
     restart: unless-stopped
     ports:
@@ -108,6 +111,9 @@ services:
     build:
       context: ./apps/reception
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+        VITE_API_PROXY_TARGET: http://backend:5000
     container_name: bm-reception
     restart: unless-stopped
     ports:
@@ -156,12 +162,14 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://backend:5000
     container_name: bm-web
     restart: unless-stopped
     ports:
       - "${WEB_PORT:-53411}:3000"
     environment:
-      BACKEND_URL: http://backend:5000
+      NEXT_PUBLIC_API_URL: http://backend:5000
     depends_on:
       - backend
     networks:
