@@ -7,7 +7,7 @@ interface User {
   id: number;
   phone: string;
   fullName?: string;
-  role: 'patient' | 'doctor';
+  role: 'patient' | 'doctor' | 'hospital';
   isLocked: boolean;
   doctorProfile?: any;
   patientProfile?: any;
@@ -48,6 +48,10 @@ const mapErrorToKey = (message: string): string => {
   if (msg.includes('account locked')) return 'errorAccountLocked';
   if (msg.includes('network') || msg.includes('timeout')) return 'errorNetwork';
   if (msg.includes('role is required')) return 'errorRoleRequired';
+  if (msg.includes('pending') && msg.includes('hospital')) return 'errorHospitalPending';
+  if (msg.includes('rejected') && msg.includes('hospital')) return 'errorHospitalRejected';
+  if (msg.includes('registration form')) return 'errorHospitalFormRequired';
+  if (msg.includes('no hospital')) return 'errorHospitalNoProfile';
   return 'errorGeneric';
 };
 
@@ -174,6 +178,22 @@ export const verifyOtp = createAsyncThunk(
   }
 );
 
+export const hospitalLogin = createAsyncThunk(
+  'auth/hospitalLogin',
+  async ({ phone, password }: { phone: string; password: string }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/auth/hospital-login', { phone, password });
+      const { token, user } = response.data.data;
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('user_data', JSON.stringify(user));
+      return { token, user };
+    } catch (error: any) {
+      const rawMessage = error.response?.data?.message || error.response?.data?.data?.message || error.message;
+      return rejectWithValue(mapErrorToKey(rawMessage));
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -246,7 +266,14 @@ const authSlice = createSlice({
         state.user = state.user ? { ...state.user, patientProfile: action.payload } : state.user;
         state.patientProfileStatus = 'Complete';
       })
-      .addCase(submitPatientProfile.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
+      .addCase(submitPatientProfile.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
+      .addCase(hospitalLogin.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(hospitalLogin.fulfilled, (state, action) => {
+        state.token = action.payload.token;
+        state.user = action.payload.user;
+        state.loading = false;
+      })
+      .addCase(hospitalLogin.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
   },
 });
 

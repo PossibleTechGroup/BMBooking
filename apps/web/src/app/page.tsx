@@ -20,7 +20,9 @@ export default function HomePage() {
       router.push('/login');
       return;
     }
-    if (user.role === 'doctor') {
+    if (user.role === 'hospital') {
+      router.push('/hospital');
+    } else if (user.role === 'doctor') {
       if (doctorProfileStatus === 'None' || doctorProfileStatus === 'Rejected') {
         router.push('/doctor/onboarding');
       } else if (doctorProfileStatus === 'PendingReview') {

@@ -1,83 +1,93 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
-import { logout, fetchDoctorProfileStatus } from '@/lib/store/slices/authSlice';
+import { fetchDoctorProfileStatus, logout } from '@/lib/store/slices/authSlice';
 import { MedText } from '@/components/ui/med-text';
+import { MedCard } from '@/components/ui/med-card';
 import { MedButton } from '@/components/ui/med-button';
-import { LogOut, RefreshCw, Hourglass, Info } from 'lucide-react';
+import { Clock, CheckCircle, LogOut, RefreshCw } from 'lucide-react';
 
 export default function DoctorPendingPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { token, loading, doctorProfileStatus, rejectionReason } = useAppSelector((s) => s.auth);
+  const { doctorProfileStatus, loading } = useAppSelector((s) => s.auth);
+  const [approved, setApproved] = useState(false);
 
   useEffect(() => {
     if (doctorProfileStatus === 'Approved') {
-      router.replace('/doctor');
-    } else if (doctorProfileStatus === 'Rejected') {
-      router.replace('/doctor/setup');
-    } else if (doctorProfileStatus === 'None') {
-      router.replace('/doctor/setup');
+      setApproved(true);
+      const timer = setTimeout(() => router.push('/doctor'), 2500);
+      return () => clearTimeout(timer);
     }
   }, [doctorProfileStatus, router]);
 
   useEffect(() => {
-    if (!token && typeof window !== 'undefined') {
-      const stored = localStorage.getItem('auth_token');
-      if (!stored) router.push('/login');
-    }
-  }, [token, router]);
-
-  const handleLogout = () => { dispatch(logout()); router.push('/login'); };
+    const interval = setInterval(() => {
+      dispatch(fetchDoctorProfileStatus());
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [dispatch]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface">
-        <div className="flex items-center gap-2.5">
-          <Image src="/bm-booking-logo.png" alt="BM" width={36} height={36} className="w-9 h-9 rounded-[10px] object-cover" />
-          <h1 className="text-[16px] font-bold text-primary leading-tight">BM</h1>
+    <div className="min-h-screen bg-background">
+      <div className="lg:hidden sticky top-0 z-40 bg-surface border-b border-border px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Image src="/bm-booking-logo.png" alt="BM" width={32} height={32} className="w-8 h-8 rounded-[8px] object-cover" />
+          <div>
+            <h1 className="text-[16px] font-bold text-primary">BM</h1>
+            <p className="text-[10px] text-muted">Doctor Portal</p>
+          </div>
         </div>
-        <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 rounded-[10px] text-[13px] font-medium text-error hover:bg-error-bg transition-colors">
-          <LogOut size={16} /> Logout
+        <button onClick={() => { dispatch(logout()); router.push('/login'); }} className="p-2 text-error">
+          <LogOut size={20} />
         </button>
-      </header>
+      </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-        <div className="w-[100px] h-[100px] rounded-full bg-[#FAEEDA] flex items-center justify-center mb-8 animate-pulse">
-          <Hourglass size={58} className="text-[#B54708]" />
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[80vh] px-6">
+        {!approved ? (
+          <div className="text-center max-w-sm">
+            <div className="w-24 h-24 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-6">
+              <Clock size={48} className="text-amber-600" />
+            </div>
 
-        <MedText variant="h1" as="h2" className="text-[22px] mb-2">Under Review</MedText>
-        <MedText variant="body" className="text-muted max-w-sm mb-6">
-          Your profile has been submitted. The reception team is reviewing your application. You&apos;ll be able to use your
-          dashboard once approved.
-        </MedText>
+            <MedText variant="h1" as="h1" className="mb-3">Under Review</MedText>
+            <MedText variant="body" className="mb-8 text-center">
+              Your profile has been submitted and is being reviewed by our team. We&apos;ll notify you once it&apos;s approved.
+            </MedText>
 
-        <div className="flex items-start gap-3 w-full max-w-sm px-4 py-3.5 rounded-[12px] bg-primary/5 border border-primary/20 text-left mb-6">
-          <Info size={18} className="text-primary shrink-0 mt-0.5" />
-          <MedText variant="metadata">
-            You will be notified once your account is activated. Click below to refresh your status.
-          </MedText>
-        </div>
+            <MedCard className="mb-8 text-left">
+              <div className="flex items-start gap-3">
+                <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                </div>
+                <MedText variant="metadata" className="text-text-secondary">
+                  This usually takes 1-2 business days. You can refresh to check the status.
+                </MedText>
+              </div>
+            </MedCard>
 
-        {rejectionReason && (
-          <div className="w-full max-w-sm px-4 py-3.5 rounded-[12px] bg-[#FCEBEB] border border-[#FEE4E2] text-left mb-6">
-            <MedText variant="metadata" className="text-[#D92D20] font-bold">Correction Required</MedText>
-            <MedText variant="metadata" className="text-[#D92D20]">{rejectionReason}</MedText>
+            <MedButton
+              title="Refresh Status"
+              onPress={() => dispatch(fetchDoctorProfileStatus())}
+              loading={loading}
+              type="outline"
+            />
+          </div>
+        ) : (
+          <div className="text-center max-w-sm animate-in fade-in zoom-in duration-300">
+            <div className="w-24 h-24 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6">
+              <CheckCircle size={48} className="text-emerald-600" />
+            </div>
+
+            <MedText variant="h1" as="h1" className="mb-3 text-emerald-700">Approved!</MedText>
+            <MedText variant="body" className="text-center">
+              Your profile has been verified. Redirecting to your dashboard...
+            </MedText>
           </div>
         )}
-
-        <MedButton
-          title="Refresh Status"
-          onPress={() => dispatch(fetchDoctorProfileStatus())}
-          loading={loading}
-          type="outline"
-          icon={<RefreshCw size={16} />}
-          className="max-w-sm"
-        />
       </div>
     </div>
   );
