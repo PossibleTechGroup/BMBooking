@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
     preview: {
       host: '0.0.0.0',
       port: 3001,
-      allowedHosts: ['reception.possibletechplc.com'],
+      allowedHosts: true as any,
     },
   }
 })
