@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: '0.0.0.0',
       port: 53400,
-      allowedHosts: ['adminbmbooking.possibletechplc.com'],
+      allowedHosts: ['admin.possibletechplc.com'],
       proxy: {
         '/api': {
           target: proxyTarget,
@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
     preview: {
       host: '0.0.0.0',
       port: 3000,
-      allowedHosts: ['adminbmbooking.possibletechplc.com'],
+      allowedHosts: ['admin.possibletechplc.com'],
     },
   }
 })
