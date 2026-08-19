@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import client from '../api/client';
 import { assetUrl } from '../config/env';
 import { 
@@ -38,26 +39,21 @@ interface DoctorDetail {
   appointments: any[];
 }
 
-export const DoctorProfileView = ({
-  doctorId,
-  onBack,
-  backLabel = 'Back to Directory',
-}: {
-  doctorId: number;
-  onBack: () => void;
-  backLabel?: string;
-}) => {
+export const DoctorProfileView = () => {
+  const { doctorId } = useParams<{ doctorId: string }>();
+  const navigate = useNavigate();
+  const id = Number(doctorId);
   const [doctor, setDoctor] = useState<DoctorDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'overview' | 'reviews' | 'appointments'>('overview');
 
   useEffect(() => {
     fetchDoctorDetails();
-  }, [doctorId]);
+  }, [id]);
 
   const fetchDoctorDetails = async () => {
     try {
-      const response = await client.get(`/admin/doctors/${doctorId}`);
+      const response = await client.get(`/admin/doctors/${id}`);
       setDoctor(response.data.data);
     } catch (err) {
       console.error('Failed to fetch doctor details', err);
@@ -77,8 +73,8 @@ export const DoctorProfileView = ({
 
   return (
     <div style={adminPageStyles.page}>
-      <button onClick={onBack} style={adminPageStyles.backBtn}>
-        <ArrowLeft size={18} /> {backLabel}
+      <button onClick={() => navigate(-1)} style={adminPageStyles.backBtn}>
+        <ArrowLeft size={18} /> Back
       </button>
 
       <div style={styles.profileHeader}>

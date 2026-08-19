@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import client from '../api/client';
 import { formatNum } from '../utils/ethiopianDate';
 import {
@@ -141,7 +142,8 @@ const statusLabels: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
-const ReportsPage: React.FC<{ onNavigate?: (view: string, filter?: 'all' | 'active' | 'inactive') => void }> = ({ onNavigate }) => {
+const ReportsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [growth, setGrowth] = useState<GrowthItem[]>([]);
   const [activePatients, setActivePatients] = useState<ActivePatients | null>(null);
   const [apptStats, setApptStats] = useState<ApptStats | null>(null);
@@ -291,7 +293,7 @@ const ReportsPage: React.FC<{ onNavigate?: (view: string, filter?: 'all' | 'acti
                 return (
                   <button
                     key={item.label}
-                    onClick={() => onNavigate?.('patients', item.filter)}
+                    onClick={() => navigate(`/patients?filter=${item.filter}&from=reports`)}
                     style={{ ...s.statusCard, borderTop: `3px solid ${item.color}`, textAlign: 'left' as any, cursor: 'pointer', width: '100%' }}
                     title={item.label}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; (e.currentTarget as HTMLButtonElement).style.borderColor = item.color; }}

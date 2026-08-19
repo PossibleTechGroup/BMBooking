@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import client from '../api/client';
 import { 
   Users, 
@@ -36,7 +37,11 @@ interface Patient {
 
 const theme = { primary: '#0F172A', border: '#E2E8F0' };
 
-const PatientsPage: React.FC<{ initialFilter?: 'all' | 'active' | 'inactive'; onBack?: () => void }> = ({ initialFilter = 'all', onBack }) => {
+const PatientsPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const initialFilter = (searchParams.get('filter') as 'all' | 'active' | 'inactive') || 'all';
+
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,9 +100,9 @@ const PatientsPage: React.FC<{ initialFilter?: 'all' | 'active' | 'inactive'; on
 
   return (
     <div style={adminPageStyles.page}>
-      {onBack && (
-        <button onClick={onBack} style={adminPageStyles.backBtn}>
-          <ChevronLeft size={18} /> Back to Analysis
+      {searchParams.get('from') && (
+        <button onClick={() => navigate(searchParams.get('from') === 'reports' ? '/reports' : '/')} style={adminPageStyles.backBtn}>
+          <ChevronLeft size={18} /> Back
         </button>
       )}
       <PageHeader

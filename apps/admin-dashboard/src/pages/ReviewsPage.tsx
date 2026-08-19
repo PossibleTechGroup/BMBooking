@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import client from '../api/client';
 import { 
   Star, 
@@ -29,7 +30,8 @@ interface Review {
   };
 }
 
-export const ReviewsPage = ({ onViewProfile }: { onViewProfile: (id: number) => void }) => {
+export const ReviewsPage = () => {
+  const navigate = useNavigate();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -137,7 +139,7 @@ export const ReviewsPage = ({ onViewProfile }: { onViewProfile: (id: number) => 
                   </div>
                   <button 
                     style={styles.viewDocBtn}
-                    onClick={() => onViewProfile(review.doctorId)}
+                    onClick={() => navigate(`/doctor-profile/${review.doctorId}`)}
                   >
                     View Profile <ArrowRight size={14} />
                   </button>
