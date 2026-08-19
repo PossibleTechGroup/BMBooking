@@ -2,21 +2,40 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppSelector } from '@/lib/hooks';
+import { useAppDispatch, useAppSelector } from '@/lib/hooks';
+import { loadStoredAuth } from '@/lib/store/slices/authSlice';
 import { Loader2 } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, token } = useAppSelector((s) => s.auth);
+  const dispatch = useAppDispatch();
+  const { user, token, doctorProfileStatus, patientProfileStatus } = useAppSelector((s) => s.auth);
 
   useEffect(() => {
-    if (user && token) {
-      if (user.role === 'hospital') router.push('/hospital');
-      else router.push(user.role === 'doctor' ? '/doctor' : '/patient');
-    } else {
+    dispatch(loadStoredAuth());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!user || !token) {
       router.push('/login');
+      return;
     }
-  }, [user, token, router]);
+    if (user.role === 'doctor') {
+      if (doctorProfileStatus === 'None' || doctorProfileStatus === 'Rejected') {
+        router.push('/doctor/onboarding');
+      } else if (doctorProfileStatus === 'PendingReview') {
+        router.push('/doctor/pending');
+      } else {
+        router.push('/doctor');
+      }
+    } else {
+      if (patientProfileStatus === 'None') {
+        router.push('/patient/onboarding');
+      } else {
+        router.push('/patient');
+      }
+    }
+  }, [user, token, doctorProfileStatus, patientProfileStatus, router]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">

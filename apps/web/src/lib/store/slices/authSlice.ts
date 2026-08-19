@@ -7,11 +7,10 @@ interface User {
   id: number;
   phone: string;
   fullName?: string;
-  role: 'patient' | 'doctor' | 'hospital';
+  role: 'patient' | 'doctor';
   isLocked: boolean;
   doctorProfile?: any;
   patientProfile?: any;
-  hospitalProfile?: any;
 }
 
 interface AuthState {
@@ -36,19 +35,6 @@ const initialState: AuthState = {
   rejectionReason: null,
 };
 
-const deriveDoctorStatus = (user: User | null): ProfileStatus => {
-  const status = user?.doctorProfile?.status as ProfileStatus | undefined;
-  if (!status || status === 'None') return 'None';
-  if (status === 'PendingReview' || status === 'Approved' || status === 'Rejected' || status === 'Complete') {
-    return status;
-  }
-  return 'PendingReview';
-};
-
-const deriveRejectionReason = (user: User | null): string | null => {
-  return user?.doctorProfile?.rejectionReason ?? null;
-};
-
 const mapErrorToKey = (message: string): string => {
   if (!message) return 'errorGeneric';
   const msg = message.toLowerCase();
@@ -60,20 +46,91 @@ const mapErrorToKey = (message: string): string => {
   if (msg.includes('already been used')) return 'errorOtpUsed';
   if (msg.includes('failed to send otp')) return 'errorOtpSend';
   if (msg.includes('account locked')) return 'errorAccountLocked';
-  if (msg.includes('pending admin approval')) return 'errorHospitalPending';
-  if (msg.includes('registration was rejected')) return 'errorHospitalRejected';
-  if (msg.includes('hospital registration form')) return 'errorHospitalFormRequired';
-  if (msg.includes('no hospital linked')) return 'errorHospitalNoProfile';
+  if (msg.includes('network') || msg.includes('timeout')) return 'errorNetwork';
   if (msg.includes('role is required')) return 'errorRoleRequired';
   return 'errorGeneric';
 };
 
-export const loadStoredAuth = createAsyncThunk('auth/loadStoredAuth', async () => {
+export const fetchDoctorProfileStatus = createAsyncThunk(
+  'auth/fetchDoctorProfileStatus',
+  async (tokenOverride: string | undefined, { getState, rejectWithValue }) => {
+    const state = getState() as { auth: AuthState };
+    const token = tokenOverride || state.auth.token;
+    if (!token) return rejectWithValue('No token');
+    try {
+      const response = await api.get('/doctors/profile', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) return { status: 'None' };
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const fetchPatientProfileStatus = createAsyncThunk(
+  'auth/fetchPatientProfileStatus',
+  async (tokenOverride: string | undefined, { getState, rejectWithValue }) => {
+    const state = getState() as { auth: AuthState };
+    const token = tokenOverride || state.auth.token;
+    if (!token) return rejectWithValue('No token');
+    try {
+      const response = await api.get('/patients/profile', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) return { status: 'None' };
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const submitDoctorProfile = createAsyncThunk(
+  'auth/submitDoctorProfile',
+  async (data: any, { getState, rejectWithValue }) => {
+    const state = getState() as { auth: AuthState };
+    try {
+      const response = await api.post('/doctors/profile', data, {
+        headers: { Authorization: `Bearer ${state.auth.token}` },
+      });
+      return response.data.data;
+    } catch (error: any) {
+      const rawMessage = error.response?.data?.message || error.response?.data?.data?.message || error.message;
+      return rejectWithValue(rawMessage);
+    }
+  }
+);
+
+export const submitPatientProfile = createAsyncThunk(
+  'auth/submitPatientProfile',
+  async (data: any, { getState, rejectWithValue }) => {
+    const state = getState() as { auth: AuthState };
+    try {
+      const response = await api.post('/patients/profile', data, {
+        headers: { Authorization: `Bearer ${state.auth.token}` },
+      });
+      return response.data.data;
+    } catch (error: any) {
+      const rawMessage = error.response?.data?.message || error.response?.data?.data?.message || error.message;
+      return rejectWithValue(rawMessage);
+    }
+  }
+);
+
+export const loadStoredAuth = createAsyncThunk('auth/loadStoredAuth', async (_, { dispatch }) => {
   try {
     const token = localStorage.getItem('auth_token');
     const userData = localStorage.getItem('user_data');
     if (token && userData) {
-      return { token, user: JSON.parse(userData) as User };
+      const user = JSON.parse(userData) as User;
+      if (user.role === 'doctor') {
+        await dispatch(fetchDoctorProfileStatus(token));
+      } else if (user.role === 'patient') {
+        await dispatch(fetchPatientProfileStatus(token));
+      }
+      return { token, user };
     }
     return null;
   } catch {
@@ -102,54 +159,17 @@ export const verifyOtp = createAsyncThunk(
       const { token, user } = response.data.data;
       localStorage.setItem('auth_token', token);
       localStorage.setItem('user_data', JSON.stringify(user));
+
+      if (user.role === 'doctor') {
+        try { await dispatch(fetchDoctorProfileStatus(token)); } catch {}
+      } else if (user.role === 'patient') {
+        try { await dispatch(fetchPatientProfileStatus(token)); } catch {}
+      }
+
       return { token, user };
     } catch (error: any) {
       const rawMessage = error.response?.data?.message || error.response?.data?.data?.message || error.message;
       return rejectWithValue(mapErrorToKey(rawMessage));
-    }
-  }
-);
-
-export const fetchDoctorProfileStatus = createAsyncThunk(
-  'auth/fetchDoctorProfileStatus',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await api.get('/doctors/profile');
-      return response.data.data;
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        return { status: 'None' };
-      }
-      return rejectWithValue(error.response?.data?.message || error.message);
-    }
-  }
-);
-
-export const submitDoctorProfile = createAsyncThunk(
-  'auth/submitDoctorProfile',
-  async (formData: FormData, { rejectWithValue }) => {
-    try {
-      const response = await api.post('/doctors/profile', formData);
-      return response.data.data;
-    } catch (error: any) {
-      const rawMessage = error.response?.data?.message || error.response?.data?.data?.message || error.message;
-      return rejectWithValue(rawMessage);
-    }
-  }
-);
-
-export const hospitalLogin = createAsyncThunk(
-  'auth/hospitalLogin',
-  async ({ phone, password }: { phone: string; password: string }, { rejectWithValue }) => {
-    try {
-      const response = await api.post('/auth/hospital-login', { phone, password });
-      const { token, user } = response.data.data;
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('user_data', JSON.stringify(user));
-      return { token, user };
-    } catch (error: any) {
-      const rawMessage = error.response?.data?.message || error.response?.data?.data?.message || error.message;
-      return rejectWithValue(rawMessage);
     }
   }
 );
@@ -164,7 +184,6 @@ const authSlice = createSlice({
       state.otpSent = false;
       state.doctorProfileStatus = 'None';
       state.patientProfileStatus = 'None';
-      state.rejectionReason = null;
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user_data');
     },
@@ -177,57 +196,57 @@ const authSlice = createSlice({
         if (action.payload) {
           state.token = action.payload.token;
           state.user = action.payload.user;
-          state.doctorProfileStatus = deriveDoctorStatus(action.payload.user);
-          state.rejectionReason = deriveRejectionReason(action.payload.user);
         }
       })
       .addCase(requestOtp.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(requestOtp.fulfilled, (state) => {
-        state.loading = false;
-        state.otpSent = true;
-      })
+      .addCase(requestOtp.fulfilled, (state) => { state.loading = false; state.otpSent = true; })
       .addCase(requestOtp.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
       .addCase(verifyOtp.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(verifyOtp.fulfilled, (state, action) => {
         state.token = action.payload.token;
         state.user = action.payload.user;
         state.loading = false;
-        state.doctorProfileStatus = deriveDoctorStatus(action.payload.user);
-        state.rejectionReason = deriveRejectionReason(action.payload.user);
       })
       .addCase(verifyOtp.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
-      .addCase(fetchDoctorProfileStatus.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(fetchDoctorProfileStatus.fulfilled, (state, action) => {
-        state.loading = false;
-        const profile = action.payload as any;
-        state.doctorProfileStatus = (profile?.status as ProfileStatus) || 'PendingReview';
-        state.rejectionReason = profile?.rejectionReason ?? null;
-        if (state.user) {
-          state.user.doctorProfile = { ...(state.user.doctorProfile || {}), ...profile };
+        const profile = action.payload;
+        if (profile?.status) {
+          state.doctorProfileStatus = profile.status;
+          state.rejectionReason = profile.rejectionReason || null;
+          state.user = state.user ? { ...state.user, doctorProfile: profile } : state.user;
+        } else {
+          state.doctorProfileStatus = 'None';
         }
       })
-      .addCase(fetchDoctorProfileStatus.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
+      .addCase(fetchPatientProfileStatus.fulfilled, (state, action) => {
+        const profile = action.payload;
+        if (profile?.fullName) {
+          state.patientProfileStatus = 'Complete';
+          state.user = state.user ? { ...state.user, patientProfile: profile } : state.user;
+        } else {
+          state.patientProfileStatus = 'None';
+        }
+      })
+      .addCase(fetchDoctorProfileStatus.rejected, (state) => {
+        state.doctorProfileStatus = 'None';
+      })
+      .addCase(fetchPatientProfileStatus.rejected, (state) => {
+        state.patientProfileStatus = 'None';
       })
       .addCase(submitDoctorProfile.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(submitDoctorProfile.fulfilled, (state, action) => {
         state.loading = false;
-        const profile = action.payload as any;
-        state.doctorProfileStatus = (profile?.status as ProfileStatus) || 'PendingReview';
-        state.rejectionReason = profile?.rejectionReason ?? null;
-        if (state.user) {
-          state.user.doctorProfile = profile;
-        }
+        state.user = state.user ? { ...state.user, doctorProfile: action.payload } : state.user;
+        state.doctorProfileStatus = 'PendingReview';
       })
       .addCase(submitDoctorProfile.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
-      .addCase(hospitalLogin.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(hospitalLogin.fulfilled, (state, action) => {
-        state.token = action.payload.token;
-        state.user = action.payload.user;
+      .addCase(submitPatientProfile.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(submitPatientProfile.fulfilled, (state, action) => {
         state.loading = false;
+        state.user = state.user ? { ...state.user, patientProfile: action.payload } : state.user;
+        state.patientProfileStatus = 'Complete';
       })
-      .addCase(hospitalLogin.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
+      .addCase(submitPatientProfile.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
   },
 });
 
