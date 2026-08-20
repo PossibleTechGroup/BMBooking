@@ -44,25 +44,31 @@ echo "[4/6] Setting up environment..."
 # Root .env
 cat > .env << 'EOF'
 NODE_ENV=production
-DATABASE_URL=postgresql://postgres:postgres@db:5432/bmbooking
+PORT=52400
 JWT_SECRET=bmbooking-production-jwt-secret-2024
 OTP_SECRET=bmbooking-otp-secret
 GEEZSMS_TOKEN=iRdmmzzqzhEwp4bd3ILigG6emcwHDtp7
 GEEZSMS_API_URL=https://geezsms.com/api/v1
 SMS_SENDER=BMBooking
 MOCK_OTP=false
-PORT=52400
+
+# Database — must match docker-compose defaults
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=bm_booking_db
+DATABASE_URL=postgresql://postgres:postgres@db:5432/bm_booking_db?schema=public
 EOF
 
-# Web .env.local
+# Web .env.local — leave NEXT_PUBLIC_API_URL empty so client uses /api (relative)
+# and the Next.js server-side rewrites proxy to the backend
 mkdir -p apps/web
 cat > apps/web/.env.local << 'EOF'
-NEXT_PUBLIC_API_URL=http://77.42.25.202:52400
+NEXT_PUBLIC_API_URL=
 EOF
 
-# 5. Build and start
+# 5. Build and start (remove old volumes so DB is recreated with correct credentials)
 echo "[5/6] Building and starting containers..."
-docker compose down 2>/dev/null || true
+docker compose down -v 2>/dev/null || true
 docker compose up -d --build
 
 # 6. Wait for DB, seed, and run migrations

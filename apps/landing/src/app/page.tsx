@@ -204,7 +204,8 @@ export default function Home() {
     const handleFocus = (e: FocusEvent) => {
       const modal = document.querySelector(".modal-card, .step-modal");
       if (modal && !modal.contains(e.target as Node)) {
-        const focusables = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex="0"]');
+        if ((e.target as HTMLElement)?.tagName === 'BUTTON') return;
+        const focusables = modal.querySelectorAll('input, select, textarea, [tabindex="0"]');
         if (focusables.length > 0) {
           (focusables[0] as HTMLElement).focus();
         }

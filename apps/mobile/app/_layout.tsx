@@ -145,6 +145,8 @@ function AppContent() {
         <Stack.Screen name="doctor-list" options={{ headerShown: false }} />
         <Stack.Screen name="doctor/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="item-detail" options={{ headerShown: false }} />
+        <Stack.Screen name="announcements" options={{ headerShown: false }} />
+        <Stack.Screen name="hospital-detail" options={{ headerShown: false }} />
         <Stack.Screen
           name="modal"
           options={{ presentation: "modal", headerShown: false }}
