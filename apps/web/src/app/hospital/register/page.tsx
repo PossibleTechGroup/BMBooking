@@ -9,7 +9,7 @@ import { registerHospital, clearHospitalError } from '@/lib/store/slices/hospita
 import { MedText } from '@/components/ui/med-text';
 import { MedButton } from '@/components/ui/med-button';
 import { MedInput } from '@/components/ui/med-input';
-import { ArrowLeft, CheckCircle2, Building2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Building2, Eye, EyeOff } from 'lucide-react';
 
 export default function HospitalRegisterPage() {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function HospitalRegisterPage() {
   const [email, setEmail] = useState('');
   const [adminPhone, setAdminPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const isPhoneValid = /^[79]\d{8}$/.test(adminPhone);
@@ -132,15 +133,38 @@ export default function HospitalRegisterPage() {
               </MedText>
             </div>
 
-            <MedInput
-              label="Password"
-              type="password"
-              placeholder="Min. 8 characters"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); dispatch(clearHospitalError()); }}
-              error={!!password && !isPasswordValid}
-              errorText="Password must be at least 8 characters"
-            />
+            <div className="mb-5 w-full">
+              <label className={`block text-[12px] font-medium mb-2 ml-1 ${!!password && !isPasswordValid ? 'text-error' : 'text-muted'}`}>
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Min. 8 characters"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); dispatch(clearHospitalError()); }}
+                  className={`
+                    w-full h-14 px-4 pr-12 text-[16px] rounded-[12px]
+                    bg-surface border-[1.5px] text-text
+                    placeholder:text-muted
+                    focus:outline-none focus:border-border-focus
+                    transition-colors
+                    shadow-[0_2px_8px_rgba(0,0,0,0.02)]
+                    ${!!password && !isPasswordValid ? 'border-error' : 'border-border'}
+                  `}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-text transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {!!password && !isPasswordValid && (
+                <p className="text-error text-[12px] mt-1.5 ml-1">Password must be at least 8 characters</p>
+              )}
+            </div>
 
             {error && (
               <p className="text-error text-[14px] font-semibold text-center mb-4 animate-in fade-in">{error}</p>
