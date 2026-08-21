@@ -69,9 +69,10 @@ const AuthService = {
     } else {
       // GeezSMS expects an international format WITHOUT the leading "+"
       const smsPhone = phone.replace(/^\+/, "");
+      const geezsmsUrl = `${process.env.GEEZSMS_API_URL || "https://api.geezsms.com/api/v1"}/sms/send`;
       let smsResult;
       try {
-        const smsResponse = await fetch("https://api.geezsms.com/api/v1/sms/send", {
+        const smsResponse = await fetch(geezsmsUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -79,12 +80,28 @@ const AuthService = {
           body: JSON.stringify({
             token: process.env.GEEZSMS_TOKEN,
             phone: smsPhone,
-            msg: `Your OTP code is ${code}`,
+            msg: `Your BMBooking verification code is ${code}. Use this code to log in to BMBooking. If you did not request this, please ignore this message.`,
           }),
         });
 
-        smsResult = await smsResponse.json();
-        console.log(`[GeezSMS] Response for ${smsPhone}:`, smsResult);
+        const rawBody = await smsResponse.text();
+        console.log(
+          `[GeezSMS] HTTP ${smsResponse.status} for ${smsPhone}:`,
+          rawBody,
+        );
+
+        try {
+          smsResult = JSON.parse(rawBody);
+        } catch {
+          smsResult = {
+            error: true,
+            msg: `HTTP ${smsResponse.status}: ${rawBody.slice(0, 200)}`,
+          };
+        }
+
+        if (!smsResponse.ok && !smsResult.error) {
+          smsResult = { error: true, msg: `HTTP ${smsResponse.status}` };
+        }
       } catch (error) {
         smsResult = { error: true, msg: error.message };
       }

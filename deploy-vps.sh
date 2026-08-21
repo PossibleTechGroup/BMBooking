@@ -48,7 +48,7 @@ PORT=52400
 JWT_SECRET=bmbooking-production-jwt-secret-2024
 OTP_SECRET=bmbooking-otp-secret
 GEEZSMS_TOKEN=iRdmmzzqzhEwp4bd3ILigG6emcwHDtp7
-GEEZSMS_API_URL=https://geezsms.com/api/v1
+GEEZSMS_API_URL=https://api.geezsms.com/api/v1
 SMS_SENDER=BMBooking
 MOCK_OTP=false
 

@@ -55,6 +55,10 @@ services:
       TELEBIRR_SERVER_IP: ${TELEBIRR_SERVER_IP:-}
       BOT_TOKEN: ${BOT_TOKEN:-}
       CLOUDINARY_URL: ${CLOUDINARY_URL:-}
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     depends_on:
       db:
         condition: service_healthy
