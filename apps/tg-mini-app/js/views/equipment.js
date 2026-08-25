@@ -148,7 +148,7 @@ const EquipmentView = (() => {
   function renderDetail(container, item) {
     state.step = 'detail';
     state.selectedEquipment = item;
-    state.totalPayable = item.dailyRate ? parseFloat(item.dailyRate) : 0;
+    state.totalPayable = item.price ? parseFloat(item.price) : (item.dailyRate ? parseFloat(item.dailyRate) : 0);
 
     container.innerHTML = `
       <div class="view-header">
@@ -171,10 +171,10 @@ const EquipmentView = (() => {
           <span class="text-hint">Status</span>
           <span class="badge ${item.isOperational ? 'badge-completed' : 'badge-declined'}">${item.isOperational ? 'Operational' : 'Unavailable'}</span>
         </div>
-        ${item.dailyRate ? `
+        ${(item.price || item.dailyRate) ? `
         <div class="card-row">
-          <span class="text-hint">Daily Rate</span>
-          <span><strong>${item.dailyRate} ETB</strong></span>
+          <span class="text-hint">Price</span>
+          <span><strong>${item.price || item.dailyRate} ETB</strong></span>
         </div>` : ''}
         ${item.hospital?.address ? `
         <div class="card-row">

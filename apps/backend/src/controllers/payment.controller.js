@@ -1,8 +1,6 @@
 const PaymentService = require('../services/payment.service');
 const prisma = require('../lib/prisma');
-
-// Completed Telebirr orders (from telebirr-h5 notify webhook)
-const telebirrPaidOrders = new Map();
+const TelebirrLedger = require('../lib/telebirrLedger');
 
 const PaymentController = {
   /**
@@ -100,10 +98,11 @@ const PaymentController = {
       const { txRef } = req.params;
 
       // Telebirr (BM Booking appointment flow)
-      if (txRef.startsWith('TX') && telebirrPaidOrders.has(txRef)) {
+      const telebirrEntry = TelebirrLedger.findByOrderId(txRef);
+      if (telebirrEntry) {
         return res.status(200).json({
           status: 'success',
-          data: { paid: true, provider: 'telebirr', details: telebirrPaidOrders.get(txRef) },
+          data: { paid: true, provider: 'telebirr', details: telebirrEntry },
         });
       }
 
@@ -128,14 +127,7 @@ const PaymentController = {
     const { orderId, status, amount, transactionId } = req.body;
     console.log('🔔 [TELEBIRR] Notify:', orderId, status, amount);
 
-    if (orderId && (status === 'Completed' || status === 'SUCCESS')) {
-      telebirrPaidOrders.set(orderId, {
-        orderId,
-        amount: String(amount),
-        transactionId,
-        paidAt: new Date().toISOString(),
-      });
-    }
+    TelebirrLedger.record({ orderId, status, amount, transactionId });
 
     res.status(200).json({ status: 'success' });
   },
@@ -146,11 +138,8 @@ const PaymentController = {
    */
   verifyTelebirr: async (req, res) => {
     const { amount } = req.body;
-    const target = String(Number(amount));
 
-    const paid = [...telebirrPaidOrders.values()].find(
-      (o) => String(Number(o.amount)) === target
-    );
+    const paid = TelebirrLedger.findByAmount(amount);
 
     if (paid) {
       return res.status(200).json({

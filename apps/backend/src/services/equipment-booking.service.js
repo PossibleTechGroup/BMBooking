@@ -1,6 +1,7 @@
 const prisma = require("../lib/prisma");
 const { NotificationService } = require("./notification.service");
 const SmsService = require("./sms.service");
+const TelebirrLedger = require("../lib/telebirrLedger");
 const { generateConfirmationCode } = require("../utils/confirmationCode");
 
 const DAY_MAP = {
@@ -156,15 +157,20 @@ const EquipmentBookingService = {
       );
     }
 
-    // Payment enforcement
-    const equipmentPrice = equipment.price ? Number(equipment.price) : 0;
-    const expectedFee = equipmentPrice > 0 ? equipmentPrice : 0;
+    // Payment enforcement — the fee is always derived server-side from the
+    // equipment price, and a verified Telebirr payment must exist for that
+    // amount before the booking can be created (same flow as doctor bookings).
+    const expectedFee = equipment.price ? Math.round(Number(equipment.price) * 100) / 100 : 0;
 
-    const fee = data.fee != null ? Math.round(Number(data.fee) * 100) / 100 : expectedFee;
-
-    if (expectedFee > 0 && fee !== expectedFee) {
-      throw new Error(
-        `Payment of ${expectedFee} ETB is required for this booking.`,
+    if (expectedFee > 0) {
+      const paidOrder = TelebirrLedger.consumeByAmount(expectedFee);
+      if (!paidOrder) {
+        throw new Error(
+          `Payment of ${expectedFee} ETB is required before booking. Please complete the Telebirr payment first.`,
+        );
+      }
+      console.log(
+        `💳 [EQUIPMENT BOOKING] Payment verified: order ${paidOrder.orderId} (${expectedFee} ETB, tx: ${paidOrder.transactionId})`,
       );
     }
 
@@ -175,7 +181,7 @@ const EquipmentBookingService = {
         equipmentId: equipment.id,
         hospitalId: equipment.hospitalId,
         dateTime: requestedDate,
-        fee: fee > 0 ? fee : null,
+        fee: expectedFee > 0 ? expectedFee : null,
         notes: data.notes || null,
         confirmationCode: code,
         status: "confirmed",
