@@ -53,10 +53,10 @@ SMS_SENDER=BMBooking
 MOCK_OTP=false
 
 # Database — must match docker-compose defaults
-DB_USER=postgres
-DB_PASSWORD=postgres
+DB_USER=postgresbmbooking
+DB_PASSWORD=vy6H6f9j81c2g0UVdjgjBFyU
 DB_NAME=bm_booking_db
-DATABASE_URL=postgresql://postgres:postgres@db:5432/bm_booking_db?schema=public
+DATABASE_URL=postgresql://postgresbmbooking:vy6H6f9j81c2g0UVdjgjBFyU@db:5432/bm_booking_db?schema=public
 EOF
 
 # Web .env.local — leave NEXT_PUBLIC_API_URL empty so client uses /api (relative)

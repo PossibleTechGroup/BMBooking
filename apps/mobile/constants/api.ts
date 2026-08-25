@@ -11,7 +11,7 @@ const getBaseUrl = () => {
   if (API_URL) return API_URL.replace(/\/$/, '');
   if (__DEV__) {
     if (Platform.OS === 'android') {
-      return `http://${LOCAL_IP}:52400`;
+      return `http://${LOCAL_IP || '10.0.2.2'}:52400`;
     }
     return 'http://localhost:52400';
   }
@@ -19,7 +19,7 @@ const getBaseUrl = () => {
 };
 
 export const TELEBIRR_URL =
-  (__DEV__ ? `http://${LOCAL_IP}:53402` : TELEBIRR || PRODUCTION_TELEBIRR);
+  (__DEV__ ? `http://${LOCAL_IP || '10.0.2.2'}:53402` : TELEBIRR || PRODUCTION_TELEBIRR);
 
 export const BASE_URL = getBaseUrl();
 

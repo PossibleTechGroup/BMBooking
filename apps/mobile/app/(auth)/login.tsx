@@ -360,9 +360,6 @@ export default function LoginScreen() {
         exiting={FadeOut.duration(200)}
         style={styles.stepContainer}
       >
-        <View style={{ marginBottom: 20, alignSelf: 'flex-end' }}>
-          <LanguagePicker />
-        </View>
         <MedText variant="h1" style={styles.heading}>{t("otp")}</MedText>
         <MedText variant="body" style={[styles.subtitle, { color: theme.muted }]}>
           {t("otpSubtitle")}

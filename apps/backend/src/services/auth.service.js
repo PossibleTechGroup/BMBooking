@@ -209,7 +209,7 @@ const AuthService = {
       );
     }
 
-    if (new Date() > new Date(latestOTP.expires_at)) {
+    if (new Date() > new Date(latestOTP.expiresAt)) {
       throw new Error("OTP expired");
     }
 

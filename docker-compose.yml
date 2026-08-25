@@ -10,15 +10,15 @@ services:
     container_name: bm-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_USER: ${DB_USER:-postgresbmbooking}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-vy6H6f9j81c2g0UVdjgjBFyU}
       POSTGRES_DB: ${DB_NAME:-bm_booking_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "${DB_EXTERNAL_PORT:-5433}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-bm_booking_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgresbmbooking} -d ${DB_NAME:-bm_booking_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -42,10 +42,10 @@ services:
       PORT: 5000
       DB_HOST: db
       DB_PORT: 5432
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_USER: ${DB_USER:-postgresbmbooking}
+      DB_PASSWORD: ${DB_PASSWORD:-vy6H6f9j81c2g0UVdjgjBFyU}
       DB_NAME: ${DB_NAME:-bm_booking_db}
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-bm_booking_db}?schema=public
+      DATABASE_URL: postgresql://${DB_USER:-postgresbmbooking}:${DB_PASSWORD:-vy6H6f9j81c2g0UVdjgjBFyU}@db:5432/${DB_NAME:-bm_booking_db}?schema=public
       JWT_SECRET: ${JWT_SECRET}
       BASE_URL: ${PUBLIC_API_URL:-http://localhost:5000}
       CHAPA_SECRET_KEY: ${CHAPA_SECRET_KEY:-}
