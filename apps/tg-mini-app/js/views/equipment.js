@@ -356,7 +356,7 @@ const EquipmentView = (() => {
       </div>
 
       <button class="btn btn-primary mt-16" id="eq-book-btn" ${!state.date || !item.isOperational ? 'disabled' : ''}>
-        ${!item.isOperational ? 'Currently Unavailable' : 'Book Now'}
+        ${!item.isOperational ? 'Currently Unavailable' : 'Continue to Payment'}
       </button>
     `;
 
@@ -375,11 +375,7 @@ const EquipmentView = (() => {
     }
 
     container.querySelector('#eq-book-btn').addEventListener('click', () => {
-      if (state.totalPayable > 0) {
-        renderPayment(container);
-      } else {
-        confirmBooking(container);
-      }
+      renderPayment(container);
     });
   }
 
@@ -408,7 +404,7 @@ const EquipmentView = (() => {
       </div>
       <p class="text-hint mt-8" style="font-size:13px">You will be redirected to Telebirr to complete payment</p>
       <button class="btn btn-primary mt-16" id="eq-pay-btn">
-        Pay ${state.totalPayable} ETB via Telebirr
+        Pay ${state.totalPayable > 0 ? state.totalPayable + ' ETB' : ''} via Telebirr
       </button>
     `;
 
