@@ -51,7 +51,7 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     if (!user || user.role !== 'doctor') return;
-    if (pathname.startsWith('/doctor/onboarding') || pathname.startsWith('/doctor/pending')) return;
+    if (pathname.startsWith('/doctor/onboarding') || pathname.startsWith('/doctor/setup') || pathname.startsWith('/doctor/pending')) return;
     if (doctorProfileStatus === 'None' || doctorProfileStatus === 'Rejected') {
       router.push('/doctor/onboarding');
     } else if (doctorProfileStatus === 'PendingReview') {
