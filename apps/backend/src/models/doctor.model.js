@@ -19,7 +19,9 @@ const Doctor = {
       status: 'PendingReview'
     };
     if (profileData.specializations) {
-      data.specializations = JSON.parse(profileData.specializations);
+      data.specializations = typeof profileData.specializations === 'string'
+        ? JSON.parse(profileData.specializations)
+        : profileData.specializations;
     }
     return await prisma.doctorProfile.create({ data });
   },
