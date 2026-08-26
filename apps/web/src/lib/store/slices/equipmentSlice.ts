@@ -15,6 +15,7 @@ export interface MedicalEquipment {
   isOperational: boolean;
   description: string;
   photo: string | null;
+  price: number | null;
 }
 
 interface EquipmentState {
@@ -42,6 +43,7 @@ const flattenEquipment = (item: any): MedicalEquipment => ({
   isOperational: item.isOperational,
   description: item.description || '',
   photo: item.photo || null,
+  price: item.price ? parseFloat(item.price) : null,
   hospitalName: item.hospital?.name || '',
   hospitalPhone: item.hospital?.phone || '',
   address: item.hospital?.address || '',
@@ -110,7 +112,7 @@ export const fetchEquipmentAvailability = createAsyncThunk(
 
 export const createEquipmentBooking = createAsyncThunk(
   'equipment/createBooking',
-  async (data: { equipmentId: number; dateTime: string; notes?: string }, { getState, rejectWithValue }) => {
+  async (data: { equipmentId: number; dateTime: string; notes?: string; fee?: number }, { getState, rejectWithValue }) => {
     const state = getState() as { auth: { token: string | null } };
     try {
       const response = await api.post('/equipment/book', data, {
