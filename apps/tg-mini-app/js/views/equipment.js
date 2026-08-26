@@ -1,4 +1,6 @@
 const EquipmentView = (() => {
+  const PENDING_KEY = 'eq_pending_payment';
+
   let state = {
     step: 'list',
     searchQuery: '',
@@ -40,10 +42,159 @@ const EquipmentView = (() => {
     };
   }
 
-  function render(container) {
+  function savePending() {
+    try {
+      localStorage.setItem(PENDING_KEY, JSON.stringify({
+        equipmentId: state.selectedEquipment?.id,
+        date: state.date,
+        notes: state.notes,
+        totalPayable: state.totalPayable,
+        slot: state.selectedSlot,
+      }));
+    } catch {}
+  }
+
+  function loadPending() {
+    try {
+      const raw = localStorage.getItem(PENDING_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch { return null; }
+  }
+
+  function clearPending() {
+    try { localStorage.removeItem(PENDING_KEY); } catch {}
+  }
+
+  async function render(container) {
     reset();
     TG.hideMainButton();
+
+    const pending = loadPending();
+    if (pending && pending.equipmentId) {
+      clearPending();
+      await resumePendingPayment(container, pending);
+      return;
+    }
+
     renderList(container);
+  }
+
+  async function resumePendingPayment(container, pending) {
+    container.innerHTML = '<div class="loading"><div class="spinner"></div><p style="margin-top:12px;color:var(--hint)">Verifying payment...</p></div>';
+
+    try {
+      const equipment = await API.getEquipmentDetail(pending.equipmentId);
+      if (!equipment) { renderList(container); return; }
+      state.selectedEquipment = equipment;
+      state.date = pending.date;
+      state.notes = pending.notes || '';
+      state.totalPayable = pending.totalPayable;
+
+      const verifyRes = await API.verifyTelebirr(pending.totalPayable);
+      if (verifyRes?.paid) {
+        state.paymentDone = true;
+        confirmBooking(container);
+      } else {
+        container.innerHTML = `
+          <div class="view-header">
+            <button class="view-header-back" id="eq-resume-back">${ICON.back} Back</button>
+            <h1 class="view-header-title">Payment</h1>
+            <div class="view-header-spacer"></div>
+          </div>
+          <div class="card">
+            <div class="payment-row">
+              <span>Equipment</span>
+              <span><strong>${equipment.name}</strong></span>
+            </div>
+            <div class="payment-row">
+              <span>Date</span>
+              <span>${new Date(pending.date + 'T12:00:00').toLocaleDateString('en-US')}</span>
+            </div>
+            <div class="payment-row total">
+              <span>Total</span>
+              <span>${pending.totalPayable} ETB</span>
+            </div>
+          </div>
+          <p style="color:var(--hint);font-size:13px;margin:12px 0">Complete the Telebirr payment, then press the button below.</p>
+          <button class="btn btn-primary mt-8" id="eq-resume-retry">
+            Retry — Open Payment Again
+          </button>
+          <button class="btn btn-outline mt-8" id="eq-resume-verify">
+            I Already Paid — Verify Now
+          </button>
+        `;
+        container.querySelector('#eq-resume-back').addEventListener('click', () => renderDetail(container, equipment));
+        container.querySelector('#eq-resume-retry').addEventListener('click', () => {
+          openPaymentUrl(pending.totalPayable);
+          savePending();
+          renderResumeVerify(container, pending);
+        });
+        container.querySelector('#eq-resume-verify').addEventListener('click', async () => {
+          const btn = container.querySelector('#eq-resume-verify');
+          btn.textContent = 'Checking...';
+          btn.disabled = true;
+          const r = await API.verifyTelebirr(pending.totalPayable);
+          if (r?.paid) {
+            state.paymentDone = true;
+            confirmBooking(container);
+          } else {
+            btn.textContent = 'I Already Paid — Verify Now';
+            btn.disabled = false;
+            TG.showAlert('Payment not detected yet. Please wait a moment and try again.');
+          }
+        });
+      }
+    } catch (err) {
+      container.innerHTML = `<div class="card" style="padding:24px;text-align:center"><h2>Something went wrong</h2><p style="color:var(--hint);margin:12px 0">${err.message}</p><button class="btn btn-primary mt-16" onclick="Router.navigate('home')">Go Home</button></div>`;
+    }
+  }
+
+  function renderResumeVerify(container, pending) {
+    container.innerHTML = `
+      <div class="view-header">
+        <button class="view-header-back" id="eq-rv-back">${ICON.back} Back</button>
+        <h1 class="view-header-title">Payment</h1>
+        <div class="view-header-spacer"></div>
+      </div>
+      <div class="card" style="text-align:center;padding:24px">
+        <div class="spinner" style="margin:0 auto"></div>
+        <h3 style="margin-top:16px">Waiting for payment...</h3>
+        <p style="color:var(--hint);margin-top:8px;font-size:13px">Complete payment in the Telebirr page, then come back here.</p>
+        <p style="color:var(--hint);margin-top:4px;font-size:13px">Amount: <strong>${pending.totalPayable} ETB</strong></p>
+      </div>
+      <button class="btn btn-primary mt-16" id="eq-rv-verify">
+        I Completed Payment — Verify
+      </button>
+    `;
+    container.querySelector('#eq-rv-back').addEventListener('click', () => {
+      clearPending();
+      renderDetail(container, state.selectedEquipment);
+    });
+    container.querySelector('#eq-rv-verify').addEventListener('click', async () => {
+      const btn = container.querySelector('#eq-rv-verify');
+      btn.textContent = 'Checking...';
+      btn.disabled = true;
+      const r = await API.verifyTelebirr(pending.totalPayable);
+      if (r?.paid) {
+        clearPending();
+        state.paymentDone = true;
+        confirmBooking(container);
+      } else {
+        btn.textContent = 'I Completed Payment — Verify';
+        btn.disabled = false;
+        TG.showAlert('Payment not detected yet. Make sure you completed the payment, then try again in a few seconds.');
+      }
+    });
+  }
+
+  function openPaymentUrl(amount) {
+    const url = `${API.TELEBIRR}/?amount=${encodeURIComponent(String(amount))}`;
+    if (TG.webapp) {
+      TG.openLink(url);
+    } else {
+      window.open(url, '_blank');
+    }
   }
 
   async function renderList(container) {
@@ -232,7 +383,7 @@ const EquipmentView = (() => {
     });
   }
 
-  async function renderPayment(container) {
+  function renderPayment(container) {
     state.step = 'payment';
 
     container.innerHTML = `
@@ -257,58 +408,15 @@ const EquipmentView = (() => {
       </div>
       <p class="text-hint mt-8" style="font-size:13px">You will be redirected to Telebirr to complete payment</p>
       <button class="btn btn-primary mt-16" id="eq-pay-btn">
-        Pay ${state.totalPayable} ETB
+        Pay ${state.totalPayable} ETB via Telebirr
       </button>
     `;
 
     container.querySelector('#eq-pay-back').addEventListener('click', () => renderDetail(container, state.selectedEquipment));
     container.querySelector('#eq-pay-btn').addEventListener('click', async () => {
-      const payBtn = container.querySelector('#eq-pay-btn');
-      payBtn.textContent = 'Opening Telebirr...';
-      payBtn.disabled = true;
-
-      try {
-        const checkoutUrl = `${API.TELEBIRR}/?amount=${encodeURIComponent(String(state.totalPayable))}`;
-        TG.openLink(checkoutUrl);
-
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        const verifyRes = await API.verifyTelebirr(state.totalPayable);
-        state.paymentDone = verifyRes?.paid === true;
-
-        if (state.paymentDone) {
-          confirmBooking(container);
-        } else {
-          payBtn.textContent = `Pay ${state.totalPayable} ETB`;
-          payBtn.disabled = false;
-          const verifyAgain = document.createElement('button');
-          verifyAgain.className = 'btn btn-outline mt-8';
-          verifyAgain.textContent = 'Verify Payment Again';
-          verifyAgain.addEventListener('click', async () => {
-            verifyAgain.textContent = 'Checking...';
-            verifyAgain.disabled = true;
-            try {
-              const r = await API.verifyTelebirr(state.totalPayable);
-              if (r?.paid) {
-                state.paymentDone = true;
-                confirmBooking(container);
-              }
-            } catch {} finally {
-              verifyAgain.textContent = 'Verify Payment Again';
-              verifyAgain.disabled = false;
-            }
-          });
-          container.querySelector('#eq-pay-btn').parentNode.insertBefore(verifyAgain, payBtn.nextSibling);
-        }
-      } catch (err) {
-        payBtn.textContent = `Pay ${state.totalPayable} ETB`;
-        payBtn.disabled = false;
-        state.error = err.message;
-        const errEl = document.createElement('div');
-        errEl.className = 'alert alert-error mt-8';
-        errEl.textContent = err.message;
-        container.querySelector('#eq-pay-btn').parentNode.insertBefore(errEl, payBtn);
-      }
+      savePending();
+      openPaymentUrl(state.totalPayable);
+      renderResumeVerify(container, { totalPayable: state.totalPayable });
     });
   }
 
