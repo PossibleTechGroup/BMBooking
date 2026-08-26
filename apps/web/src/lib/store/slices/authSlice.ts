@@ -11,6 +11,7 @@ interface User {
   isLocked: boolean;
   doctorProfile?: any;
   patientProfile?: any;
+  hospitalProfile?: any;
 }
 
 interface AuthState {
