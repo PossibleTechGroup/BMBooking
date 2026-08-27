@@ -386,10 +386,16 @@ export const HospitalsPage = () => {
                 ) : (
                   <>
                     <span style={{ flex: 1 }}>
-                      Service fee: <strong>{h.serviceFee ? `${formatNum(Number(h.serviceFee))} ETB` : 'Not set'}</strong>
+                      <span style={styles.feeLabel}>Service fee</span>
+                      <strong style={styles.feeValue}>{h.serviceFee ? `${formatNum(Number(h.serviceFee))} ETB` : 'Not set'}</strong>
                     </span>
-                    <button type="button" style={styles.editFeeBtn} onClick={() => { setEditingFeeId(h.id); setFeeInputValue(h.serviceFee ? String(h.serviceFee) : ''); }} title="Edit service fee">
-                      <Edit3 size={12} />
+                    <button
+                      type="button"
+                      style={styles.editFeeBtn}
+                      onClick={() => { setEditingFeeId(h.id); setFeeInputValue(h.serviceFee ? String(h.serviceFee) : ''); }}
+                      title="Edit service fee"
+                    >
+                      <Edit3 size={13} /> Edit Fee
                     </button>
                   </>
                 )}
@@ -749,8 +755,10 @@ const styles: Record<string, React.CSSProperties> = {
   cardTitle: { flex: 1, fontSize: 16, fontWeight: 600, margin: 0 },
   iconBtn: { background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', padding: 4, borderRadius: 6 },
   meta: { fontSize: 13, color: '#475569', display: 'flex', alignItems: 'center', gap: 6, margin: '6px 0', lineHeight: 1.5 },
-  feeRow: { fontSize: 13, color: '#475569', display: 'flex', alignItems: 'center', gap: 6, margin: '6px 0', lineHeight: 1.5, padding: '6px 10px', backgroundColor: '#F0FDF4', borderRadius: 8, border: '1px solid #DCFCE7' },
-  editFeeBtn: { background: 'none', border: '1px solid #A7F3D0', borderRadius: 6, cursor: 'pointer', color: '#059669', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  feeRow: { fontSize: 13, color: '#475569', display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0 6px', lineHeight: 1.5, padding: '10px 12px', backgroundColor: '#F0FDF4', borderRadius: 10, border: '1px solid #DCFCE7' },
+  feeLabel: { display: 'block', fontSize: 11, fontWeight: 600, color: '#059669', textTransform: 'uppercase', letterSpacing: 0.4 },
+  feeValue: { display: 'block', fontSize: 16, fontWeight: 700, color: '#065F46', marginTop: 2 },
+  editFeeBtn: { background: 'none', border: '1.5px solid #059669', borderRadius: 8, cursor: 'pointer', color: '#059669', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' },
   smallBtn: { padding: '4px 10px', borderRadius: 6, background: '#059669', color: '#FFF', fontWeight: 600, border: 'none', cursor: 'pointer', fontSize: 12 },
   counts: { fontSize: 12, color: '#94A3B8', marginTop: 12 },
   receptionAvatar: {
