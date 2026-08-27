@@ -368,8 +368,6 @@ function DashboardPage() {
         </div>
       </div>
 
-      </div>
-
       {dashStats && (
         <>
           <div
