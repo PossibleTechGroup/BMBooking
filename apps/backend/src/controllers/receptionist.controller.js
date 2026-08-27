@@ -641,6 +641,17 @@ const ReceptionistController = {
     }
   },
 
+  getDashboardStats: async (req, res) => {
+    try {
+      const stats = await ReceptionistService.getDashboardStats(
+        req.receptionistProfile.hospitalId,
+      );
+      res.status(200).json({ status: "success", data: stats });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  },
+
   createFollowUp: async (req, res) => {
     try {
       const appointmentId = parseInt(req.params.id);

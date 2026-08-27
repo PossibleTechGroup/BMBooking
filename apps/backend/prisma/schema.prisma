@@ -103,8 +103,21 @@ model Hospital {
   cards         Card[]
   cardTemplates CardTemplate[]
   serviceFee    ServiceFee?
+  services      HospitalService[]
 
   @@map("hospitals")
+}
+
+model HospitalService {
+  id         Int      @id @default(autoincrement())
+  hospitalId Int      @map("hospital_id")
+  hospital   Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  name       String
+  category   String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([hospitalId])
+  @@map("hospital_services")
 }
 
 model ReceptionistProfile {
@@ -113,6 +126,7 @@ model ReceptionistProfile {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   hospitalId Int      @map("hospital_id")
   hospital   Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  fullName   String?  @map("full_name")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 

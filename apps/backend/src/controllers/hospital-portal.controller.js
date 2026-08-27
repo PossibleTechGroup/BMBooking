@@ -3,7 +3,7 @@ const HospitalPortalService = require("../services/hospital-portal.service");
 const HospitalPortalController = {
   register: async (req, res) => {
     try {
-      const { name, address, phone, email, adminPhone, password } = req.body;
+      const { name, address, phone, email, adminPhone, password, services, image, logo, latitude, longitude } = req.body;
       if (!name || !adminPhone || !password) {
         return res.status(400).json({
           status: "fail",
@@ -17,6 +17,11 @@ const HospitalPortalController = {
         email,
         adminPhone,
         password,
+        services,
+        image,
+        logo,
+        latitude,
+        longitude,
       });
       res.status(201).json({ status: "success", data: result });
     } catch (err) {
@@ -133,6 +138,36 @@ const HospitalPortalController = {
     }
   },
 
+  registerDoctor: async (req, res) => {
+    try {
+      const ReceptionistService = require("../services/receptionist.service");
+      const { handleCloudinaryUpload } = require("../lib/cloudinary");
+      let profilePictureUrl = null;
+      let introVideoUrl = null;
+      if (req.files) {
+        if (req.files.profilePicture) {
+          profilePictureUrl = await handleCloudinaryUpload(req.files.profilePicture[0], 'doctor_profiles');
+        }
+        if (req.files.introVideo) {
+          introVideoUrl = await handleCloudinaryUpload(req.files.introVideo[0], 'doctor_profiles');
+        }
+      }
+      const data = {
+        ...req.body,
+        profilePicture: profilePictureUrl,
+        introVideo: introVideoUrl,
+      };
+      const result = await ReceptionistService.registerDoctor(
+        data,
+        req.hospital.id,
+      );
+      res.status(201).json({ status: "success", data: result });
+    } catch (err) {
+      const status = err.message.includes("already in use") ? 409 : 400;
+      res.status(status).json({ status: "fail", message: err.message });
+    }
+  },
+
   listReceptionists: async (req, res) => {
     try {
       const receptionists = await HospitalPortalService.listReceptionists(
@@ -239,6 +274,66 @@ const HospitalPortalController = {
     } catch (err) {
       const status = err.message === "Card template not found" ? 404 : 400;
       res.status(status).json({ status: "fail", message: err.message });
+    }
+  },
+
+  listServices: async (req, res) => {
+    try {
+      const services = await HospitalPortalService.listServices(req.hospital.id);
+      res.status(200).json({ status: "success", data: services });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  },
+
+  addService: async (req, res) => {
+    try {
+      const service = await HospitalPortalService.addService(
+        req.hospital.id,
+        req.body,
+      );
+      res.status(201).json({ status: "success", data: service });
+    } catch (err) {
+      const status = err.message.includes("already") ? 409 : 400;
+      res.status(status).json({ status: "fail", message: err.message });
+    }
+  },
+
+  setServices: async (req, res) => {
+    try {
+      const { services } = req.body;
+      await HospitalPortalService.setServices(req.hospital.id, services);
+      const updated = await HospitalPortalService.listServices(req.hospital.id);
+      res.status(200).json({ status: "success", data: updated });
+    } catch (err) {
+      res.status(400).json({ status: "fail", message: err.message });
+    }
+  },
+
+  removeService: async (req, res) => {
+    try {
+      await HospitalPortalService.removeService(
+        req.hospital.id,
+        req.params.id,
+      );
+      res.status(200).json({ status: "success", message: "Service removed" });
+    } catch (err) {
+      const status = err.message === "Service not found" ? 404 : 400;
+      res.status(status).json({ status: "fail", message: err.message });
+    }
+  },
+
+  setLogo: async (req, res) => {
+    try {
+      const { handleCloudinaryUpload } = require("../lib/cloudinary");
+      let image = req.body.image;
+      if (req.file) {
+        image = await handleCloudinaryUpload(req.file, "hospital_logos");
+      }
+      const hospital = await HospitalPortalService.setLogo(req.hospital.id, image);
+      res.status(200).json({ status: "success", data: hospital });
+    } catch (err) {
+      res.status(400).json({ status: "fail", message: err.message });
     }
   },
 };

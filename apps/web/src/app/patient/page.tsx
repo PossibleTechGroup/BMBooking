@@ -6,15 +6,15 @@ import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { fetchHospitals } from '@/lib/store/slices/hospitalSlice';
 import { MedText } from '@/components/ui/med-text';
 import { MedCard } from '@/components/ui/med-card';
-import { Search, ArrowRight, MapPin, Phone, Heart, Stethoscope, Brain, Baby, Bone, Eye, Cpu, Hospital } from 'lucide-react';
+import { Search, ArrowRight, MapPin, Phone, Heart, Stethoscope, Brain, Baby, Bone, Eye, Cpu, Hospital, Navigation } from 'lucide-react';
 
 const SERVICES = [
-  { label: 'Cardiology', icon: Heart, category: 'cardiology' },
-  { label: 'Dermatology', icon: Stethoscope, category: 'dermatology' },
-  { label: 'Neurology', icon: Brain, category: 'neurology' },
-  { label: 'Pediatrics', icon: Baby, category: 'pediatrics' },
-  { label: 'Orthopedics', icon: Bone, category: 'orthopedics' },
-  { label: 'Ophthalmology', icon: Eye, category: 'ophthalmology' },
+  { label: 'Cardiology', icon: Heart, service: 'Cardiology / Heart' },
+  { label: 'Dermatology', icon: Stethoscope, service: 'Dermatology / Skin' },
+  { label: 'Neurology', icon: Brain, service: 'Neurology / Brain & Nerves' },
+  { label: 'Pediatrics', icon: Baby, service: 'Pediatrics / Children' },
+  { label: 'Orthopedics', icon: Bone, service: 'Orthopedics / Bone & Joint' },
+  { label: 'Eye Care', icon: Eye, service: 'Eye Care / Ophthalmology' },
 ];
 
 export default function PatientHomePage() {
@@ -67,22 +67,36 @@ export default function PatientHomePage() {
         />
       </div>
 
-      {/* Services Grid */}
-      <div className="mb-8">
-        <MedText variant="metadata" className="text-text-secondary text-[13px] tracking-[0.3px] mb-4">Services</MedText>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
+      {/* Services - compact horizontal */}
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-3">
+          <MedText variant="metadata" className="text-text-secondary text-[13px] tracking-[0.3px]">Services</MedText>
+          <Link href="/patient/services" className="text-[13px] text-primary font-medium flex items-center gap-0.5">
+            View All Services <ArrowRight size={13} />
+          </Link>
+        </div>
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
           {SERVICES.map((s) => (
             <Link
-              key={s.category}
-              href={`/patient/doctors?specialty=${s.category}`}
-              className="flex flex-col items-center gap-2"
+              key={s.service}
+              href={`/patient/services?service=${encodeURIComponent(s.service)}`}
+              className="flex flex-col items-center gap-1.5 flex-shrink-0"
             >
-              <div className="w-16 h-16 rounded-[20px] bg-surface flex items-center justify-center shadow-sm border border-border/50 hover:scale-105 transition-transform">
-                <s.icon size={24} className="text-primary" />
+              <div className="w-14 h-14 rounded-[18px] bg-surface flex items-center justify-center shadow-sm border border-border/50 hover:scale-105 transition-transform">
+                <s.icon size={22} className="text-primary" />
               </div>
-              <MedText variant="metadata" className="text-center">{s.label}</MedText>
+              <MedText variant="metadata" className="text-center text-[12px] leading-tight">{s.label}</MedText>
             </Link>
           ))}
+          <Link
+            href="/patient/services"
+            className="flex flex-col items-center justify-center gap-1.5 flex-shrink-0"
+          >
+            <div className="w-14 h-14 rounded-[18px] bg-primary/10 flex items-center justify-center border border-dashed border-primary/40 hover:scale-105 transition-transform">
+              <Search size={22} className="text-primary" />
+            </div>
+            <MedText variant="metadata" className="text-center text-[12px] leading-tight">More</MedText>
+          </Link>
         </div>
       </div>
 
@@ -90,7 +104,13 @@ export default function PatientHomePage() {
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <MedText variant="metadata" className="text-text-secondary text-[13px] tracking-[0.3px]">Hospitals</MedText>
-          <MedText variant="metadata" className="text-muted">{filteredHospitals.length} available</MedText>
+          <div className="flex items-center gap-2">
+            <Link href="/patient/services" className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium bg-surface border border-primary/40 text-primary hover:border-primary/70">
+              <Navigation size={13} />
+              Near Me
+            </Link>
+            <MedText variant="metadata" className="text-muted">{filteredHospitals.length} available</MedText>
+          </div>
         </div>
 
         {loading && hospitals.length === 0 ? (

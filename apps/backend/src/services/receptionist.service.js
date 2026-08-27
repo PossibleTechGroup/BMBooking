@@ -1643,6 +1643,104 @@ const ReceptionistService = {
 
     return result;
   },
+
+  getDashboardStats: async (hospitalId) => {
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(now);
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const [
+      todaysAppointments,
+      todaysApprovedAppointments,
+      totalBookings,
+      pendingBookings,
+      activeCards,
+      expiredCards,
+      recentCards,
+      recentVisitingCards,
+      unreadNotifications,
+    ] = await Promise.all([
+      prisma.appointment.count({
+        where: { doctor: { hospitalId }, dateTime: { gte: startOfToday, lte: endOfToday } },
+      }),
+      prisma.appointment.count({
+        where: {
+          doctor: { hospitalId },
+          dateTime: { gte: startOfToday, lte: endOfToday },
+          status: "approved",
+        },
+      }),
+      prisma.appointment.count({
+        where: { doctor: { hospitalId } },
+      }),
+      prisma.appointment.count({
+        where: { doctor: { hospitalId }, status: "pending" },
+      }),
+      prisma.card.count({
+        where: { hospitalId, isActive: true, expiresAt: { gt: now } },
+      }),
+      prisma.card.count({
+        where: { hospitalId, OR: [{ isActive: false }, { expiresAt: { lte: now } }] },
+      }),
+      prisma.card.findMany({
+        where: { hospitalId },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        include: {
+          patient: {
+            select: {
+              id: true,
+              phone: true,
+              patientProfile: { select: { fullName: true } },
+            },
+          },
+        },
+      }),
+      prisma.card.findMany({
+        where: { hospitalId },
+        orderBy: { issuedAt: "desc" },
+        take: 5,
+        include: {
+          patient: {
+            select: {
+              id: true,
+              phone: true,
+              patientProfile: { select: { fullName: true, gender: true, dateOfBirth: true } },
+            },
+          },
+        },
+      }),
+      prisma.notification.count({
+        where: {
+          receiver: { receptionistProfile: { hospitalId } },
+          isRead: false,
+        },
+      }),
+    ]);
+
+    const cardPackages = await prisma.cardTemplate.findMany({
+      where: { hospitalId },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    });
+
+    return {
+      todaysAppointments,
+      todaysApprovedAppointments,
+      totalBookings,
+      pendingBookings,
+      cardPackages: {
+        active: activeCards,
+        expired: expiredCards,
+        recent: recentCards,
+        templates: cardPackages,
+      },
+      visitingCards: recentVisitingCards,
+      unreadNotifications,
+    };
+  },
 };
 
 module.exports = ReceptionistService;

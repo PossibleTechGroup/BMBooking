@@ -284,19 +284,6 @@ function HospitalSettingsPage() {
               </form>
             </div>
 
-
-
-            <div style={styles.card}>
-              <h2 style={styles.cardTitle}><DollarSign size={18} color="#D97706" /> Service Fee</h2>
-              <div style={{ ...styles.priceDisplay, background: '#FFFBEB', borderColor: '#FDE68A' }}>
-                <span style={{ ...styles.priceValue, color: '#B45309' }}>{hospital.serviceFee ? formatNum(Number(hospital.serviceFee.amount)) : 'Not set'}</span>
-                <span style={styles.priceLabel}>{hospital.serviceFee ? 'ETB per appointment' : ''}</span>
-              </div>
-              <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>
-                Service fee is configured by the admin. This fee is charged per appointment as a booking fee.
-              </p>
-            </div>
-
             <div style={{ ...styles.card, gridColumn: '1 / -1' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <h2 style={styles.cardTitle}><CreditCard size={18} color="#0D9488" /> Card Packages</h2>

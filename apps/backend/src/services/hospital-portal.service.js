@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const prisma = require("../lib/prisma");
+const { resolveServiceLabel } = require("../config/services.config");
 
 const HospitalPortalService = {
   register: async (data) => {
@@ -19,6 +20,11 @@ const HospitalPortalService = {
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
+    const services =
+      Array.isArray(data.services) && data.services.length > 0
+        ? data.services.map((s) => ({ name: resolveServiceLabel(s) || String(s) }))
+        : [];
+
     return prisma.$transaction(async (tx) => {
       const hospital = await tx.hospital.create({
         data: {
@@ -26,7 +32,11 @@ const HospitalPortalService = {
           address: data.address || null,
           phone: data.phone || null,
           email: data.email || null,
+          image: data.image || data.logo || null,
           cardPrice: 0,
+          latitude: data.latitude || null,
+          longitude: data.longitude || null,
+          services: services.length > 0 ? { create: services } : undefined,
         },
       });
 
@@ -52,7 +62,11 @@ const HospitalPortalService = {
 
       return {
         profile,
-        hospital: { id: hospital.id, name: hospital.name },
+        hospital: {
+          id: hospital.id,
+          name: hospital.name,
+          services: services.map((s) => s.name),
+        },
         adminPhone: user.phone,
         status: "PENDING",
       };
@@ -73,6 +87,7 @@ const HospitalPortalService = {
         image: true,
         cardPrice: true,
         createdAt: true,
+        services: { select: { id: true, name: true, category: true }, orderBy: { id: "asc" } },
         serviceFee: { select: { amount: true } },
       },
     });
@@ -98,6 +113,8 @@ const HospitalPortalService = {
     if (data.email !== undefined) updateData.email = data.email;
     if (data.latitude !== undefined) updateData.latitude = data.latitude;
     if (data.longitude !== undefined) updateData.longitude = data.longitude;
+    if (data.image !== undefined) updateData.image = data.image;
+    else if (data.logo !== undefined) updateData.image = data.logo;
 
     if (Object.keys(updateData).length === 0) {
       throw new Error("No fields to update");
@@ -556,6 +573,7 @@ const HospitalPortalService = {
         data: {
           userId: user.id,
           hospitalId,
+          fullName: data.fullName || null,
         },
         include: {
           user: {
@@ -597,6 +615,11 @@ const HospitalPortalService = {
           data: updateUserData,
         });
       }
+
+      await tx.receptionistProfile.update({
+        where: { id: receptionistId },
+        data: { fullName: data.fullName || null },
+      });
 
       return tx.receptionistProfile.findUnique({
         where: { id: receptionistId },
@@ -667,6 +690,55 @@ const HospitalPortalService = {
     if (template.hospitalId !== hospitalId) throw new Error("Card template does not belong to this hospital");
 
     return prisma.cardTemplate.delete({ where: { id: cardId } });
+  },
+
+  listServices: async (hospitalId) => {
+    return prisma.hospitalService.findMany({
+      where: { hospitalId },
+      orderBy: { id: "asc" },
+      select: { id: true, name: true, category: true },
+    });
+  },
+
+  addService: async (hospitalId, data) => {
+    const name = resolveServiceLabel(data.name) || String(data.name || "").trim();
+    if (!name) throw new Error("Service name is required");
+    const category = data.category || null;
+    const existing = await prisma.hospitalService.findFirst({
+      where: { hospitalId, name: { equals: name, mode: "insensitive" } },
+    });
+    if (existing) throw new Error("This service is already added to the hospital");
+    return prisma.hospitalService.create({
+      data: { hospitalId, name, category },
+    });
+  },
+
+  setServices: async (hospitalId, names) => {
+    if (!Array.isArray(names)) throw new Error("services must be an array of names");
+    const resolved = names.map((n) => resolveServiceLabel(n) || String(n).trim()).filter(Boolean);
+    const unique = [...new Set(resolved.map((n) => n.toLowerCase()))].map((k) => resolved.find((n) => n.toLowerCase() === k));
+    return prisma.$transaction(async (tx) => {
+      await tx.hospitalService.deleteMany({ where: { hospitalId } });
+      return tx.hospitalService.createMany({
+        data: unique.map((name) => ({ hospitalId, name })),
+      });
+    });
+  },
+
+  removeService: async (hospitalId, serviceId) => {
+    const service = await prisma.hospitalService.findUnique({ where: { id: Number(serviceId) } });
+    if (!service) throw new Error("Service not found");
+    if (service.hospitalId !== hospitalId) throw new Error("Service does not belong to this hospital");
+    return prisma.hospitalService.delete({ where: { id: service.id } });
+  },
+
+  setLogo: async (hospitalId, imageUrl) => {
+    if (!imageUrl) throw new Error("image is required");
+    return prisma.hospital.update({
+      where: { id: hospitalId },
+      data: { image: imageUrl },
+      select: { id: true, name: true, image: true },
+    });
   },
 };
 

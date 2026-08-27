@@ -4,6 +4,7 @@ const HospitalController = require('../controllers/hospital.controller');
 const router = express.Router();
 
 router.get('/', HospitalController.listHospitals);
+router.get('/search', HospitalController.searchServices);
 router.get('/:id', HospitalController.getHospitalById);
 
 module.exports = router;

@@ -6,6 +6,7 @@ import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import {
   fetchHospitalOverview,
   fetchHospitalAppointments,
+  fetchHospitalServices,
 } from '@/lib/store/slices/hospitalSlice';
 import { api } from '@/lib/api/client';
 import { MedText } from '@/components/ui/med-text';
@@ -13,6 +14,7 @@ import { MedCard } from '@/components/ui/med-card';
 import {
   Bell, ClipboardList, BarChart3, CreditCard, Stethoscope, Users,
   Clock, CheckCircle2, CalendarDays, UserPlus, Wallet, CalendarClock, Ticket,
+  Building2, MapPin,
 } from 'lucide-react';
 
 interface NotificationItem {
@@ -46,13 +48,14 @@ const moduleCards = [
 export default function HospitalDashboardPage() {
   const dispatch = useAppDispatch();
   const { user, token } = useAppSelector((s) => s.auth);
-  const { profile, overview, appointments } = useAppSelector((s) => s.hospital);
+  const { profile, overview, appointments, services } = useAppSelector((s) => s.hospital);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [tab, setTab] = useState<'pending' | 'all'>('pending');
 
   const loadOverview = () => {
     dispatch(fetchHospitalOverview());
+    dispatch(fetchHospitalServices());
     dispatch(fetchHospitalAppointments({ status: tab === 'pending' ? 'pending' : undefined, limit: 10 }));
   };
 
@@ -126,6 +129,39 @@ export default function HospitalDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Hospital profile + services */}
+      <MedCard className="mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-[14px] bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+            {profile?.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.image} alt={profile.name} className="w-full h-full object-cover" />
+            ) : (
+              <Building2 size={28} className="text-primary" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <MedText variant="h2" as="span" className="text-[18px] block">{profile?.name || 'My Hospital'}</MedText>
+            {profile?.address && (
+              <div className="flex items-center gap-1 mt-0.5">
+                <MapPin size={13} className="text-muted flex-shrink-0" />
+                <MedText variant="metadata" className="truncate">{profile.address}</MedText>
+              </div>
+            )}
+            {services.length > 0 && (
+              <div className="flex gap-1.5 mt-2 flex-wrap">
+                {services.map((s) => (
+                  <span key={s.id} className="text-[11px] bg-foreground/5 text-text-secondary px-2 py-0.5 rounded-full">{s.name}</span>
+                ))}
+              </div>
+            )}
+          </div>
+          <Link href="/hospital/profile" className="text-[13px] text-primary font-medium flex-shrink-0">
+            Edit
+          </Link>
+        </div>
+      </MedCard>
 
       {/* Overview stat tiles */}
       <MedText variant="body" className="text-[15px] font-medium mb-3">Overview</MedText>

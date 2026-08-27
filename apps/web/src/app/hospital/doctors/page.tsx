@@ -5,11 +5,37 @@ import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import {
   fetchHospitalDoctors,
   updateDoctorStatus,
+  registerHospitalDoctor,
   clearHospitalError,
 } from '@/lib/store/slices/hospitalSlice';
 import { MedText } from '@/components/ui/med-text';
 import { MedCard } from '@/components/ui/med-card';
-import { Stethoscope, Check, X, Clock, Mail, Phone, Award } from 'lucide-react';
+import { MedInput } from '@/components/ui/med-input';
+import { Stethoscope, Check, X, Clock, Mail, Phone, Award, Plus, Loader2, Image as ImageIcon, Video as VideoIcon, Trash } from 'lucide-react';
+
+interface RegisterForm {
+  fullName: string;
+  phone: string;
+  email: string;
+  specialization: string;
+  licenseNumber: string;
+  experienceYears: string;
+  bio: string;
+  profilePicture: File | null;
+  introVideo: File | null;
+}
+
+const emptyRegister: RegisterForm = {
+  fullName: '',
+  phone: '',
+  email: '',
+  specialization: '',
+  licenseNumber: '',
+  experienceYears: '',
+  bio: '',
+  profilePicture: null,
+  introVideo: null,
+};
 
 export default function HospitalDoctorsPage() {
   const dispatch = useAppDispatch();
@@ -20,6 +46,10 @@ export default function HospitalDoctorsPage() {
   const [actioningId, setActioningId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState<number | null>(null);
+  const [showRegister, setShowRegister] = useState(false);
+  const [registerForm, setRegisterForm] = useState<RegisterForm>(emptyRegister);
+  const [registerSaving, setRegisterSaving] = useState(false);
+  const [registerResult, setRegisterResult] = useState<string | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -50,6 +80,35 @@ export default function HospitalDoctorsPage() {
     setActioningId(null);
   };
 
+  const closeRegister = () => {
+    setShowRegister(false);
+    setRegisterForm(emptyRegister);
+    setRegisterResult(null);
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!registerForm.fullName || !registerForm.phone) return;
+    setRegisterSaving(true);
+    dispatch(clearHospitalError());
+    const fd = new FormData();
+    fd.append('fullName', registerForm.fullName.trim());
+    fd.append('phone', `+251${registerForm.phone.replace(/[^0-9]/g, '')}`);
+    if (registerForm.email) fd.append('email', registerForm.email.trim());
+    if (registerForm.specialization) fd.append('specialization', registerForm.specialization.trim());
+    if (registerForm.licenseNumber) fd.append('licenseNumber', registerForm.licenseNumber.trim());
+    if (registerForm.experienceYears) fd.append('experienceYears', registerForm.experienceYears);
+    if (registerForm.bio) fd.append('bio', registerForm.bio);
+    if (registerForm.profilePicture) fd.append('profilePicture', registerForm.profilePicture);
+    if (registerForm.introVideo) fd.append('introVideo', registerForm.introVideo);
+    const res = await dispatch(registerHospitalDoctor(fd));
+    if (registerHospitalDoctor.fulfilled.match(res)) {
+      setRegisterResult((res.payload as any)?.tempPassword ?? '');
+      dispatch(fetchHospitalDoctors());
+    }
+    setRegisterSaving(false);
+  };
+
   const tabs = [
     { key: 'pending' as const, label: 'Pending', count: pendingDoctors.length },
     { key: 'approved' as const, label: 'Approved', count: approvedDoctors.length },
@@ -58,11 +117,19 @@ export default function HospitalDoctorsPage() {
 
   return (
     <div className="p-5 max-w-3xl mx-auto">
-      <div className="mb-6">
-        <MedText variant="h2" as="h2" className="text-[20px]">Doctors</MedText>
-        <MedText variant="body" className="text-text-secondary mt-1">
-          View and manage doctors at your hospital.
-        </MedText>
+      <div className="mb-6 flex justify-between items-start">
+        <div>
+          <MedText variant="h2" as="h2" className="text-[20px]">Doctors</MedText>
+          <MedText variant="body" className="text-text-secondary mt-1">
+            View and manage doctors at your hospital.
+          </MedText>
+        </div>
+        <button
+          onClick={() => setShowRegister(true)}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-[12px] bg-primary text-white text-[13px] font-medium hover:bg-primary/90 transition-all"
+        >
+          <Plus size={16} /> Add Doctor
+        </button>
       </div>
 
       {error && (
@@ -121,6 +188,175 @@ export default function HospitalDoctorsPage() {
                 {actioningId === showRejectModal ? 'Rejecting...' : 'Reject'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Register Doctor Modal */}
+      {showRegister && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-5">
+          <div className="bg-surface rounded-[16px] p-6 w-full max-w-lg shadow-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <MedText variant="h2" as="h3" className="text-[18px]">Add Doctor</MedText>
+              <button onClick={closeRegister} className="p-1.5 text-muted hover:text-text-secondary">
+                <X size={18} />
+              </button>
+            </div>
+
+            {registerResult !== null ? (
+              <div className="text-center py-6">
+                <Check size={36} className="text-success mx-auto mb-3" />
+                <MedText variant="h2" as="h3" className="text-[16px] mb-1">Doctor registered successfully!</MedText>
+                <MedText variant="body" className="text-text-secondary text-[13px] mb-3">
+                  Status: <strong>Pending Review</strong> — awaiting admin approval.
+                </MedText>
+                <div className="mb-5 text-text-secondary text-[13px]">
+                  Temp password: <code className="bg-foreground/5 px-2 py-0.5 rounded-[6px]">{registerResult}</code>
+                </div>
+                <button
+                  onClick={closeRegister}
+                  className="px-6 py-2.5 rounded-[12px] bg-primary text-white text-[13px] font-medium hover:bg-primary/90 transition-all"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleRegister}>
+                <MedInput
+                  label="Full Name *"
+                  placeholder="Dr. John Doe"
+                  value={registerForm.fullName}
+                  onChange={(e) => setRegisterForm({ ...registerForm, fullName: e.target.value })}
+                />
+                <MedInput
+                  label="Phone *"
+                  placeholder="912 345 678"
+                  value={registerForm.phone}
+                  maxLength={9}
+                  onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value.replace(/[^0-9]/g, '') })}
+                />
+                <MedInput
+                  label="Email"
+                  type="email"
+                  placeholder="doctor@hospital.com"
+                  value={registerForm.email}
+                  onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+                />
+                <MedInput
+                  label="Specialization"
+                  placeholder="Cardiology"
+                  value={registerForm.specialization}
+                  onChange={(e) => setRegisterForm({ ...registerForm, specialization: e.target.value })}
+                />
+                <MedInput
+                  label="License Number"
+                  placeholder="LIC-12345"
+                  value={registerForm.licenseNumber}
+                  onChange={(e) => setRegisterForm({ ...registerForm, licenseNumber: e.target.value })}
+                />
+                <MedInput
+                  label="Experience (years)"
+                  type="number"
+                  placeholder="5"
+                  value={registerForm.experienceYears}
+                  onChange={(e) => setRegisterForm({ ...registerForm, experienceYears: e.target.value })}
+                />
+                <div className="mb-5 w-full">
+                  <label className="block text-[12px] font-medium mb-2 ml-1 text-muted">Bio</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Brief professional background..."
+                    value={registerForm.bio}
+                    onChange={(e) => setRegisterForm({ ...registerForm, bio: e.target.value })}
+                    className="w-full p-3 text-[16px] rounded-[12px] bg-surface border-[1.5px] border-border text-text placeholder:text-muted focus:outline-none focus:border-border-focus transition-colors resize-none"
+                  />
+                </div>
+
+                <div className="mb-5 w-full">
+                  <label className="block text-[12px] font-medium mb-2 ml-1 text-muted">Profile Picture</label>
+                  <div
+                    onClick={() => document.getElementById('hosp-doctor-pic')?.click()}
+                    className="border-2 border-dashed border-border rounded-[12px] p-4 text-center cursor-pointer bg-transparent hover:border-primary transition-colors"
+                  >
+                    <input
+                      id="hosp-doctor-pic"
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      className="hidden"
+                      onChange={(e) => setRegisterForm({ ...registerForm, profilePicture: e.target.files?.[0] || null })}
+                    />
+                    {registerForm.profilePicture ? (
+                      <div className="flex items-center justify-center gap-3 text-[13px] text-text-secondary">
+                        <ImageIcon size={20} /> {registerForm.profilePicture.name}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setRegisterForm({ ...registerForm, profilePicture: null }); }}
+                          className="text-error"
+                        >
+                          <Trash size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-muted">
+                        <ImageIcon size={28} className="mx-auto mb-2 opacity-50" />
+                        <p className="text-[13px]">Click to upload profile picture</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mb-6 w-full">
+                  <label className="block text-[12px] font-medium mb-2 ml-1 text-muted">Intro Video</label>
+                  <div
+                    onClick={() => document.getElementById('hosp-doctor-video')?.click()}
+                    className="border-2 border-dashed border-border rounded-[12px] p-4 text-center cursor-pointer bg-transparent hover:border-primary transition-colors"
+                  >
+                    <input
+                      id="hosp-doctor-video"
+                      type="file"
+                      accept="video/mp4,video/quicktime"
+                      className="hidden"
+                      onChange={(e) => setRegisterForm({ ...registerForm, introVideo: e.target.files?.[0] || null })}
+                    />
+                    {registerForm.introVideo ? (
+                      <div className="flex items-center justify-center gap-3 text-[13px] text-text-secondary">
+                        <VideoIcon size={20} /> {registerForm.introVideo.name}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setRegisterForm({ ...registerForm, introVideo: null }); }}
+                          className="text-error"
+                        >
+                          <Trash size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-muted">
+                        <VideoIcon size={28} className="mx-auto mb-2 opacity-50" />
+                        <p className="text-[13px]">Click to upload intro video</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={closeRegister}
+                    className="flex-1 py-3 rounded-[12px] bg-foreground/5 text-text-secondary text-[13px] font-medium hover:bg-foreground/10 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={registerSaving || !registerForm.fullName || !registerForm.phone}
+                    className="flex-1 py-3 rounded-[12px] bg-primary text-white text-[13px] font-medium hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {registerSaving && <Loader2 size={16} className="animate-spin" />}
+                    {registerSaving ? 'Adding...' : 'Add Doctor'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

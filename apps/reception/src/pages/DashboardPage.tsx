@@ -1,9 +1,10 @@
-import { useState, type CSSProperties, type FormEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Stethoscope, Wrench, Building2, UserPlus, Clock, X, Loader2, CheckCircle, Image as ImageIcon, Video as VideoIcon, Trash } from 'lucide-react';
+import { Calendar, Stethoscope, Wrench, Building2, UserPlus, Clock, X, Loader2, CheckCircle, Image as ImageIcon, Video as VideoIcon, Trash, CreditCard, BadgeCheck, CalendarCheck, Bell, UsersRound, FileText } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../store';
 import { registerDoctor, clearRegisterResult } from '../store/slices/doctorsSlice';
+import { fetchDashboardStats } from '../store/slices/dashboardSlice';
 import { useTimeFormat, setTimeFormat, setCalendarFormat } from '../utils/timeFormat';
 
 const styles: Record<string, CSSProperties> = {
@@ -122,6 +123,54 @@ const styles: Record<string, CSSProperties> = {
     justifyContent: 'flex-end',
     marginTop: '8px',
   },
+  priorityGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gap: '16px',
+    marginBottom: '32px',
+  },
+  priorityCard: {
+    padding: '20px',
+    borderRadius: 'var(--radius-lg)',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    boxShadow: 'var(--shadow-sm)',
+    cursor: 'pointer',
+    position: 'relative',
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    transition: 'transform 0.15s, box-shadow 0.15s',
+  },
+  priorityValue: {
+    fontFamily: 'var(--font-heading)',
+    fontSize: '30px',
+    fontWeight: 700,
+    lineHeight: 1.1,
+  },
+  priorityLabel: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: 'var(--text-secondary)',
+  },
+  previewPanel: {
+    padding: '20px',
+    borderRadius: 'var(--radius-lg)',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    boxShadow: 'var(--shadow-sm)',
+    marginBottom: '24px',
+  },
+  previewRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+    padding: '12px 0',
+    borderBottom: '1px solid var(--border)',
+    cursor: 'pointer',
+  },
 };
 
 const cards = [
@@ -166,6 +215,7 @@ function DashboardPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { saving: registerLoading, registerResult: registerSuccess, error: registerError } = useSelector((state: RootState) => state.doctors);
+  const { stats: dashStats } = useSelector((state: RootState) => state.dashboard);
   const { isEthiopian, isEthiopianCalendar } = useTimeFormat();
   const [showTimePopover, setShowTimePopover] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -181,6 +231,10 @@ function DashboardPage() {
     profilePicture: null as File | null,
     introVideo: null as File | null,
   });
+
+  useEffect(() => {
+    dispatch(fetchDashboardStats());
+  }, [dispatch]);
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -314,6 +368,152 @@ function DashboardPage() {
         </div>
       </div>
 
+      </div>
+
+      {dashStats && (
+        <>
+          <div
+            onClick={() => navigate('/appointments')}
+            style={{
+              ...styles.grid,
+              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+              marginBottom: '28px',
+            }}
+          >
+            <div style={styles.priorityCard}>
+              <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', background: '#175CD314', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CalendarCheck size={20} color="#175CD3" />
+              </div>
+              <span style={styles.priorityValue}>{dashStats.todaysAppointments}</span>
+              <span style={styles.priorityLabel}>Today's Appointments</span>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                {dashStats.todaysApprovedAppointments} approved today
+              </span>
+            </div>
+            <div
+              onClick={() => navigate('/appointments')}
+              style={styles.priorityCard}
+            >
+              <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', background: '#B5470814', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <UsersRound size={20} color="#B54708" />
+              </div>
+              <span style={styles.priorityValue}>{dashStats.pendingBookings}</span>
+              <span style={styles.priorityLabel}>Pending Bookings</span>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                of {dashStats.totalBookings} total
+              </span>
+            </div>
+            <div
+              onClick={() => navigate('/hospital')}
+              style={styles.priorityCard}
+            >
+              <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', background: '#027A4814', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CreditCard size={20} color="#027A48" />
+              </div>
+              <span style={styles.priorityValue}>{dashStats.cardPackages.active}</span>
+              <span style={styles.priorityLabel}>Active Cards</span>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                {dashStats.cardPackages.expired} expired
+              </span>
+            </div>
+            <div
+              onClick={() => navigate('/hospital')}
+              style={styles.priorityCard}
+            >
+              <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', background: '#6941C614', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BadgeCheck size={20} color="#6941C6" />
+              </div>
+              <span style={styles.priorityValue}>{dashStats.visitingCards.length}</span>
+              <span style={styles.priorityLabel}>Visiting Cards</span>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                recent issuances
+              </span>
+            </div>
+            <div
+              onClick={() => navigate('/notifications')}
+              style={styles.priorityCard}
+            >
+              <div style={{ position: 'absolute', top: 16, right: 16 }}>
+                <Bell size={18} color="#98A2B3" />
+                {dashStats.unreadNotifications > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -8, right: -8, minWidth: 18, height: 18,
+                    borderRadius: '50%', background: 'var(--status-error)', color: '#FFF',
+                    fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', padding: '0 4px',
+                  }}>
+                    {dashStats.unreadNotifications > 99 ? '99+' : dashStats.unreadNotifications}
+                  </span>
+                )}
+              </div>
+              <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', background: '#06305B14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FileText size={20} color="#06305B" />
+              </div>
+              <span style={styles.priorityValue}>{dashStats.unreadNotifications}</span>
+              <span style={styles.priorityLabel}>Notifications</span>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>unread alerts</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '28px' }}>
+            <div style={styles.previewPanel}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '16px', fontWeight: 600, margin: 0 }}>Card Packages</h3>
+                <button
+                  onClick={() => navigate('/hospital')}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--accent-primary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Manage
+                </button>
+              </div>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 8px' }}>
+                {dashStats.cardPackages.templates.length} templates · {dashStats.cardPackages.active} active · {dashStats.cardPackages.expired} expired
+              </p>
+              {dashStats.cardPackages.templates.slice(0, 4).map((t) => (
+                <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500 }}>{t.name}</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-primary)' }}>ETB {Number(t.price).toLocaleString()}</span>
+                </div>
+              ))}
+              {dashStats.cardPackages.templates.length === 0 && (
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '8px 0' }}>No card packages configured yet.</p>
+              )}
+            </div>
+
+            <div style={styles.previewPanel}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '16px', fontWeight: 600, margin: 0 }}>Recent Visiting Cards</h3>
+                <button
+                  onClick={() => navigate('/hospital')}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--accent-primary)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  View all
+                </button>
+              </div>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 8px' }}>
+                Latest card issuances
+              </p>
+              {dashStats.visitingCards.length === 0 && (
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '8px 0' }}>No visiting cards issued yet.</p>
+              )}
+              {dashStats.visitingCards.slice(0, 4).map((vc) => (
+                <div key={vc.id} style={styles.previewRow}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {vc.patient?.patientProfile?.fullName || vc.patient?.phone || 'Unknown patient'}
+                    </p>
+                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      {new Date(vc.issuedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <BadgeCheck size={18} color="#027A48" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
       <div style={styles.grid}>
         {cards.map((card) => (
           <div key={card.title} style={styles.card} onClick={() => handleCardClick(card)}>
@@ -325,7 +525,6 @@ function DashboardPage() {
           </div>
         ))}
       </div>
-
       {showRegisterModal && (
         <div style={styles.overlay} onClick={() => setShowRegisterModal(false)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>

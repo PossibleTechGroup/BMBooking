@@ -35,6 +35,7 @@ const attachReceptionistProfile = async (req, res, next) => {
 
 router.use(attachReceptionistProfile);
 
+router.get("/stats/dashboard", receptionistController.getDashboardStats);
 router.get("/hospital", receptionistController.getHospital);
 router.patch(
   "/hospital/card-price",

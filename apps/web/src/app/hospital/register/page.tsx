@@ -9,7 +9,15 @@ import { registerHospital, clearHospitalError } from '@/lib/store/slices/hospita
 import { MedText } from '@/components/ui/med-text';
 import { MedButton } from '@/components/ui/med-button';
 import { MedInput } from '@/components/ui/med-input';
-import { ArrowLeft, CheckCircle2, Building2, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Building2, Eye, EyeOff, CloudUpload, X } from 'lucide-react';
+
+const SERVICES = [
+  'General Checkup', 'Dental', 'Orthopedics / Bone & Joint', 'Cardiology / Heart',
+  'Dermatology / Skin', 'Eye Care / Ophthalmology', 'Neurology / Brain & Nerves',
+  'ENT / Ear, Nose & Throat', 'Gastroenterology / Digestive', 'Pediatrics / Children',
+  "Gynecology / Women's Health", 'Urology', 'Psychiatry / Mental Health',
+  'Pulmonology / Lungs', 'Laboratory / Lab Tests', 'Pharmacy', 'Emergency / 24/7',
+];
 
 export default function HospitalRegisterPage() {
   const router = useRouter();
@@ -23,7 +31,31 @@ export default function HospitalRegisterPage() {
   const [adminPhone, setAdminPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [logo, setLogo] = useState('');
+  const [logoError, setLogoError] = useState('');
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
+
+  const toggleService = (s: string) => {
+    setSelectedServices((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoError('');
+    if (!file.type.startsWith('image/')) {
+      setLogoError('Please select an image file');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError('Logo must be 2MB or smaller');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setLogo(reader.result as string);
+    reader.readAsDataURL(file);
+  };
 
   const isPhoneValid = /^[79]\d{8}$/.test(adminPhone);
   const isEmailValid = !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -41,6 +73,8 @@ export default function HospitalRegisterPage() {
         email: email.trim() || undefined,
         adminPhone: `+251${adminPhone}`,
         password,
+        image: logo || undefined,
+        services: selectedServices.length ? selectedServices : undefined,
       })
     );
     if (registerHospital.fulfilled.match(result)) {
@@ -131,6 +165,51 @@ export default function HospitalRegisterPage() {
               <MedText variant="metadata" className="text-muted mb-4 ml-1">
                 This number will be used to log in to your hospital dashboard.
               </MedText>
+            </div>
+
+            {/* Logo upload */}
+            <div className="mb-5">
+              <MedText variant="metadata" className="text-muted mb-2 ml-1">Hospital Logo (optional)</MedText>
+              {logo ? (
+                <div className="flex items-center gap-3 bg-surface border border-border rounded-[12px] p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={logo} alt="Logo preview" className="w-14 h-14 rounded-[10px] object-cover" />
+                  <div className="flex-1 min-w-0">
+                    <MedText variant="body" className="text-[14px] text-text truncate">Logo ready</MedText>
+                    <MedText variant="metadata" className="text-muted">Shown on your profile &amp; dashboard</MedText>
+                  </div>
+                  <button type="button" onClick={() => setLogo('')} className="p-1.5 text-muted hover:text-error">
+                    <X size={18} />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2 h-14 rounded-[12px] border-[1.5px] border-dashed border-border bg-surface cursor-pointer hover:border-primary/50 transition-colors">
+                  <CloudUpload size={18} className="text-primary" />
+                  <span className="text-[14px] text-text-secondary">Upload logo</span>
+                  <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+                </label>
+              )}
+              {logoError && <p className="text-error text-[12px] mt-1.5 ml-1">{logoError}</p>}
+            </div>
+
+            {/* Services selector */}
+            <div className="mb-5">
+              <MedText variant="metadata" className="text-muted mb-2 ml-1">Services Provided (optional)</MedText>
+              <div className="bg-surface border border-border rounded-[12px] p-3 flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                {SERVICES.map((s) => {
+                  const active = selectedServices.includes(s);
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => toggleService(s)}
+                      className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${active ? 'bg-primary text-white' : 'bg-foreground/5 text-text-secondary hover:border-primary/40 border border-border/50'}`}
+                    >
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="mb-5 w-full">

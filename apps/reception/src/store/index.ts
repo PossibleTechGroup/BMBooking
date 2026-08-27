@@ -6,6 +6,7 @@ import scheduleReducer from './slices/scheduleSlice';
 import equipmentReducer from './slices/equipmentSlice';
 import doctorsReducer from './slices/doctorsSlice';
 import notificationReducer from './slices/notificationSlice';
+import dashboardReducer from './slices/dashboardSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     equipment: equipmentReducer,
     doctors: doctorsReducer,
     notifications: notificationReducer,
+    dashboard: dashboardReducer,
   },
 });
 

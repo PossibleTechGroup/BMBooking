@@ -13,16 +13,66 @@ import { MedText } from '@/components/ui/med-text';
 import { MedCard } from '@/components/ui/med-card';
 import { MedButton } from '@/components/ui/med-button';
 import { MedInput } from '@/components/ui/med-input';
-import { Users, Plus, Pencil, Trash2, X } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, X, Eye, EyeOff } from 'lucide-react';
 
 interface FormState {
+  fullName: string;
   username: string;
   phone: string;
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
-const emptyForm: FormState = { username: '', phone: '', email: '', password: '' };
+const emptyForm: FormState = { fullName: '', username: '', phone: '', email: '', password: '', confirmPassword: '' };
+
+function PasswordField({
+  label,
+  value,
+  show,
+  onToggle,
+  onChange,
+  error,
+  errorText,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  show: boolean;
+  onToggle: () => void;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  error?: boolean;
+  errorText?: string;
+  placeholder?: string;
+}) {
+  return (
+    <div className="mb-5 w-full">
+      <label className={`block text-[12px] font-medium mb-2 ml-1 ${error ? 'text-error' : 'text-muted'}`}>
+        {label}
+      </label>
+      <div className={`relative flex items-center h-14 rounded-[12px] bg-surface border-[1.5px] shadow-[0_2px_8px_rgba(0,0,0,0.02)] focus-within:border-border-focus transition-colors ${error ? 'border-error' : 'border-border'}`}>
+        <input
+          type={show ? 'text' : 'password'}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          className="w-full h-full px-4 pr-12 text-[16px] bg-transparent text-text placeholder:text-muted focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={show ? 'Hide password' : 'Show password'}
+          className="absolute right-3 text-muted hover:text-text-secondary transition-colors"
+        >
+          {show ? <EyeOff size={20} /> : <Eye size={20} />}
+        </button>
+      </div>
+      {error && errorText && (
+        <p className="text-error text-[12px] mt-1.5 ml-1">{errorText}</p>
+      )}
+    </div>
+  );
+}
 
 export default function HospitalReceptionistsPage() {
   const dispatch = useAppDispatch();
@@ -34,6 +84,8 @@ export default function HospitalReceptionistsPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -49,9 +101,16 @@ export default function HospitalReceptionistsPage() {
 
   const isPhoneValid = !form.phone || /^[79]\d{8}$/.test(form.phone);
   const isEmailValid = !form.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
+  const passwordOk =
+    editingId !== null
+      ? form.password.length === 0 || form.password.length >= 8
+      : form.password.length >= 8;
+  const passwordsMatch = form.password === form.confirmPassword;
   const canSubmit =
+    form.fullName.trim().length > 0 &&
     form.username.trim().length > 0 &&
-    (editingId !== null ? form.password.length === 0 || form.password.length >= 8 : form.password.length >= 8) &&
+    passwordOk &&
+    passwordsMatch &&
     isPhoneValid &&
     isEmailValid;
 
@@ -60,6 +119,7 @@ export default function HospitalReceptionistsPage() {
     dispatch(clearHospitalError());
     setSubmitting(true);
     const payload = {
+      fullName: form.fullName.trim(),
       username: form.username.trim(),
       phone: form.phone ? `+251${form.phone}` : undefined,
       email: form.email.trim() || undefined,
@@ -68,7 +128,7 @@ export default function HospitalReceptionistsPage() {
     if (editingId !== null) {
       await dispatch(updateReceptionist({ id: editingId, data: payload }));
     } else {
-      await dispatch(createReceptionist(payload as { username: string; phone?: string; email?: string; password: string }));
+      await dispatch(createReceptionist(payload as { fullName: string; username: string; phone?: string; email?: string; password: string }));
     }
     setSubmitting(false);
     resetForm();
@@ -85,10 +145,12 @@ export default function HospitalReceptionistsPage() {
   const startEdit = (r: (typeof receptionists)[number]) => {
     setEditingId(r.id);
     setForm({
+      fullName: r.fullName || '',
       username: r.user.username || '',
       phone: r.user.phone ? r.user.phone.replace(/^\+251/, '') : '',
       email: r.user.email || '',
       password: '',
+      confirmPassword: '',
     });
     setShowForm(true);
   };
@@ -126,6 +188,12 @@ export default function HospitalReceptionistsPage() {
           </div>
 
           <MedInput
+            label="Full Name"
+            placeholder="Receptionist full name"
+            value={form.fullName}
+            onChange={(e) => { setForm({ ...form, fullName: e.target.value }); dispatch(clearHospitalError()); }}
+          />
+          <MedInput
             label="Username"
             placeholder="Receptionist username"
             value={form.username}
@@ -149,14 +217,25 @@ export default function HospitalReceptionistsPage() {
             error={!!form.email && !isEmailValid}
             errorText="Enter a valid email address"
           />
-          <MedInput
+          <PasswordField
             label={editingId !== null ? 'New Password (leave blank to keep current)' : 'Password'}
-            type="password"
             placeholder="At least 8 characters"
             value={form.password}
+            show={showPassword}
+            onToggle={() => setShowPassword((v) => !v)}
             onChange={(e) => { setForm({ ...form, password: e.target.value }); dispatch(clearHospitalError()); }}
             error={form.password.length > 0 && form.password.length < 8}
             errorText="Password must be at least 8 characters"
+          />
+          <PasswordField
+            label="Confirm Password"
+            placeholder="Re-enter password"
+            value={form.confirmPassword}
+            show={showConfirm}
+            onToggle={() => setShowConfirm((v) => !v)}
+            onChange={(e) => { setForm({ ...form, confirmPassword: e.target.value }); dispatch(clearHospitalError()); }}
+            error={editingId === null && form.confirmPassword !== '' && !passwordsMatch}
+            errorText="Passwords do not match"
           />
 
           <MedButton
@@ -185,9 +264,10 @@ export default function HospitalReceptionistsPage() {
             <MedCard key={r.id}>
               <div className="flex justify-between items-center">
                 <div className="min-w-0">
-                  <MedText variant="body" className="text-[14px] font-medium truncate">{r.user.username || 'Receptionist'}</MedText>
+                  <MedText variant="body" className="text-[14px] font-medium truncate">{r.fullName || r.user.username || 'Receptionist'}</MedText>
                   <MedText variant="metadata">
-                    {r.user.phone || 'No phone'}
+                    @{r.user.username || '—'}
+                    {r.user.phone ? ` · ${r.user.phone}` : ''}
                     {r.user.email ? ` · ${r.user.email}` : ''}
                   </MedText>
                 </div>

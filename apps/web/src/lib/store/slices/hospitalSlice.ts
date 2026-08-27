@@ -11,6 +11,9 @@ export interface HospitalProfile {
   image?: string | null;
   cardPrice?: string;
   serviceFee?: { amount: string } | null;
+  services?: { id: number; name: string; category: string | null }[];
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface DoctorItem {
@@ -26,6 +29,7 @@ export interface DoctorItem {
 export interface ReceptionistItem {
   id: number;
   userId: number;
+  fullName: string | null;
   user: {
     id: number;
     username: string | null;
@@ -184,6 +188,7 @@ interface HospitalState {
   overview: HospitalOverview | null;
   analytics: HospitalAnalytics | null;
   cardTemplates: CardTemplate[];
+  services: { id: number; name: string; category: string | null }[];
   loading: boolean;
   error: string | null;
 }
@@ -201,6 +206,7 @@ const initialState: HospitalState = {
   overview: null,
   analytics: null,
   cardTemplates: [],
+  services: [],
   loading: false,
   error: null,
 };
@@ -340,7 +346,7 @@ export const deleteCardTemplate = createAsyncThunk(
 
 export const registerHospital = createAsyncThunk(
   'hospital/register',
-  async (data: { name: string; address?: string; phone?: string; email?: string; adminPhone: string; password: string }, { rejectWithValue }) => {
+  async (data: { name: string; address?: string; phone?: string; email?: string; adminPhone: string; password: string; image?: string; services?: string[] }, { rejectWithValue }) => {
     try {
       const response = await api.post('/hospital/register', data);
       return response.data.data;
@@ -410,6 +416,20 @@ export const updateDoctorStatus = createAsyncThunk(
   }
 );
 
+export const registerHospitalDoctor = createAsyncThunk(
+  'hospital/registerDoctor',
+  async (data: FormData, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/hospital/doctors/register', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to register doctor');
+    }
+  }
+);
+
 export const fetchHospitalReceptionists = createAsyncThunk(
   'hospital/fetchReceptionists',
   async (_, { rejectWithValue }) => {
@@ -424,7 +444,7 @@ export const fetchHospitalReceptionists = createAsyncThunk(
 
 export const createReceptionist = createAsyncThunk(
   'hospital/createReceptionist',
-  async (data: { username: string; phone?: string; email?: string; password: string }, { rejectWithValue }) => {
+  async (data: { fullName?: string; username: string; phone?: string; email?: string; password: string }, { rejectWithValue }) => {
     try {
       const response = await api.post('/hospital/receptionists', data);
       return response.data.data;
@@ -436,7 +456,7 @@ export const createReceptionist = createAsyncThunk(
 
 export const updateReceptionist = createAsyncThunk(
   'hospital/updateReceptionist',
-  async ({ id, data }: { id: number; data: { username?: string; phone?: string; email?: string; password?: string } }, { rejectWithValue }) => {
+  async ({ id, data }: { id: number; data: { fullName?: string; username?: string; phone?: string; email?: string; password?: string } }, { rejectWithValue }) => {
     try {
       const response = await api.patch(`/hospital/receptionists/${id}`, data);
       return response.data.data;
@@ -454,6 +474,66 @@ export const deleteReceptionist = createAsyncThunk(
       return id;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete receptionist');
+    }
+  }
+);
+
+export const fetchHospitalServices = createAsyncThunk(
+  'hospital/fetchServices',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/hospital/services');
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch services');
+    }
+  }
+);
+
+export const addHospitalService = createAsyncThunk(
+  'hospital/addService',
+  async (data: { name: string; category?: string }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/hospital/services', data);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to add service');
+    }
+  }
+);
+
+export const setHospitalServices = createAsyncThunk(
+  'hospital/setServices',
+  async (services: string[], { rejectWithValue }) => {
+    try {
+      const response = await api.put('/hospital/services', { services });
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update services');
+    }
+  }
+);
+
+export const removeHospitalService = createAsyncThunk(
+  'hospital/removeService',
+  async (id: number, { rejectWithValue }) => {
+    try {
+      await api.delete(`/hospital/services/${id}`);
+      return id;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to remove service');
+    }
+  }
+);
+
+export const setHospitalLogo = createAsyncThunk(
+  'hospital/setLogo',
+  async (image: string, { rejectWithValue }) => {
+    try {
+      const response = await api.patch('/hospital/profile', { image });
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update logo');
     }
   }
 );
@@ -541,6 +621,18 @@ const hospitalSlice = createSlice({
         state.receptionists = state.receptionists.filter((r) => r.id !== action.payload);
       })
       .addCase(deleteReceptionist.rejected, (state, action) => { state.error = action.payload as string; })
+      .addCase(fetchHospitalServices.fulfilled, (state, action) => { state.services = action.payload; })
+      .addCase(fetchHospitalServices.rejected, (state, action) => { state.error = action.payload as string; })
+      .addCase(addHospitalService.fulfilled, (state, action) => { state.services = [...state.services, action.payload]; })
+      .addCase(addHospitalService.rejected, (state, action) => { state.error = action.payload as string; })
+      .addCase(setHospitalServices.fulfilled, (state, action) => { state.services = action.payload; })
+      .addCase(setHospitalServices.rejected, (state, action) => { state.error = action.payload as string; })
+      .addCase(removeHospitalService.fulfilled, (state, action) => {
+        state.services = state.services.filter((s) => s.id !== action.payload);
+      })
+      .addCase(removeHospitalService.rejected, (state, action) => { state.error = action.payload as string; })
+      .addCase(setHospitalLogo.fulfilled, (state, action) => { state.profile = action.payload; })
+      .addCase(setHospitalLogo.rejected, (state, action) => { state.error = action.payload as string; })
       .addCase(logout, () => initialState);
   },
 });
