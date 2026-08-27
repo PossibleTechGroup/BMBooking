@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useAppSelector } from '@/lib/hooks';
+import { useAppDispatch, useAppSelector } from '@/lib/hooks';
+import { fetchHospitals } from '@/lib/store/slices/hospitalSlice';
 import { MedText } from '@/components/ui/med-text';
 import { MedCard } from '@/components/ui/med-card';
-import { MedButton } from '@/components/ui/med-button';
-import { Search, Star, ArrowRight, User, Heart, Stethoscope, Brain, Baby, Bone, Eye, Cpu } from 'lucide-react';
+import { Search, ArrowRight, MapPin, Phone, Heart, Stethoscope, Brain, Baby, Bone, Eye, Cpu, Hospital } from 'lucide-react';
 
 const SERVICES = [
   { label: 'Cardiology', icon: Heart, category: 'cardiology' },
@@ -18,10 +18,27 @@ const SERVICES = [
 ];
 
 export default function PatientHomePage() {
+  const dispatch = useAppDispatch();
   const { user } = useAppSelector((s) => s.auth);
-  const { doctors } = useAppSelector((s) => s.doctors);
+  const { hospitals, loading } = useAppSelector((s) => s.hospital);
+  const [query, setQuery] = useState('');
 
-  const featuredDoctors = useMemo(() => doctors.slice(0, 3), [doctors]);
+  useEffect(() => {
+    if (!hospitals.length) {
+      dispatch(fetchHospitals());
+    }
+  }, [dispatch, hospitals.length]);
+
+  const filteredHospitals = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return hospitals;
+    return hospitals.filter(
+      (h) =>
+        h.name?.toLowerCase().includes(q) ||
+        h.address?.toLowerCase().includes(q) ||
+        (h.phone ?? '').toLowerCase().includes(q)
+    );
+  }, [hospitals, query]);
 
   return (
     <div className="p-5 max-w-3xl mx-auto">
@@ -40,12 +57,15 @@ export default function PatientHomePage() {
       </div>
 
       {/* Search Bar */}
-      <Link href="/patient/doctors">
-        <div className="flex items-center gap-3 bg-surface border border-border rounded-[12px] py-3 px-4 mb-8 hover:shadow-md transition-shadow cursor-pointer">
-          <Search size={20} className="text-muted" />
-          <MedText variant="body" className="text-muted">Search doctors, clinics...</MedText>
-        </div>
-      </Link>
+      <div className="flex items-center gap-3 bg-surface border border-border rounded-[12px] py-3 px-4 mb-8 hover:shadow-md transition-shadow">
+        <Search size={20} className="text-muted" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search hospitals by name, location..."
+          className="w-full bg-transparent outline-none text-[15px] text-text placeholder:text-muted"
+        />
+      </div>
 
       {/* Services Grid */}
       <div className="mb-8">
@@ -66,45 +86,67 @@ export default function PatientHomePage() {
         </div>
       </div>
 
+      {/* Hospitals Grid */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <MedText variant="metadata" className="text-text-secondary text-[13px] tracking-[0.3px]">Hospitals</MedText>
+          <MedText variant="metadata" className="text-muted">{filteredHospitals.length} available</MedText>
+        </div>
 
-
-      {/* Featured Doctors */}
-      {featuredDoctors.length > 0 && (
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <MedText variant="metadata" className="text-text-secondary text-[13px] tracking-[0.3px]">Top Rated Doctors</MedText>
-            <Link href="/patient/doctors" className="text-[12px] text-primary font-medium hover:underline flex items-center gap-1">
-              View all <ArrowRight size={12} />
-            </Link>
+        {loading && hospitals.length === 0 ? (
+          <div className="flex justify-center py-12">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
-          <div className="space-y-3">
-            {featuredDoctors.map((doctor) => (
-              <MedCard key={doctor.id}>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 min-w-0">
-                    <MedText variant="body" className="text-[16px] font-medium text-text truncate">{doctor.fullName}</MedText>
-                    <MedText variant="metadata" className="truncate">
-                      {doctor.specializations?.length ? doctor.specializations.join(', ') : doctor.specialization} • {doctor.clinicName || 'Clinic'}
-                    </MedText>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Star size={14} className="text-star fill-star" />
-                      <MedText variant="metadata">{doctor.rating || '0.0'} ({doctor.totalReviews || 0} reviews)</MedText>
+        ) : filteredHospitals.length === 0 ? (
+          <div className="text-center py-12">
+            <Hospital size={40} className="text-border mx-auto mb-3" />
+            <MedText variant="body" className="text-text-secondary">No hospitals found</MedText>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {filteredHospitals.map((h) => (
+              <Link key={h.id} href={`/patient/hospitals/${h.id}`}>
+                <MedCard className="h-full hover:shadow-md transition-shadow">
+                  <div className="flex gap-3">
+                    <div className="w-16 h-16 rounded-[12px] bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {h.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={h.image} alt={h.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Hospital size={28} className="text-primary" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <MedText variant="body" className="text-[16px] font-medium text-text truncate">{h.name}</MedText>
+                      {h.address && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <MapPin size={12} className="text-muted flex-shrink-0" />
+                          <MedText variant="metadata" className="truncate">{h.address}</MedText>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1 mt-1">
+                        <Stethoscope size={12} className="text-muted" />
+                        <MedText variant="metadata">{h.doctorCount || 0} doctors</MedText>
+                      </div>
                     </div>
                   </div>
-                  <div className="w-16 h-16 rounded-[12px] bg-foreground/5 flex items-center justify-center ml-4 flex-shrink-0">
-                    <User size={24} className="text-border" />
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-[12px] text-primary font-medium flex items-center gap-1">
+                      View hospital <ArrowRight size={12} />
+                    </div>
+                    {h.phone && (
+                      <div className="flex items-center gap-1 text-muted">
+                        <Phone size={12} />
+                        <MedText variant="metadata">{h.phone}</MedText>
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div className="mt-4">
-                  <Link href={`/patient/doctors/${doctor.id}`}>
-                    <MedButton title="View Profile" onPress={() => {}} type="outline" />
-                  </Link>
-                </div>
-              </MedCard>
+                </MedCard>
+              </Link>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

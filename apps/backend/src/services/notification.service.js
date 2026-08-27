@@ -272,6 +272,38 @@ const NotificationService = {
       `Your booking for ${equipmentName || 'equipment'} has been confirmed.${codeLine}`,
       { bookingId, confirmationCode }
     );
+  },
+
+  /**
+   * Notify hospital admin(s) when a patient books an appointment at their hospital
+   */
+  notifyHospitalAppointmentBooked: async (hospitalId, patientName, doctorName, appointmentId) => {
+    const profiles = await prisma.hospitalProfile.findMany({
+      where: { hospitalId, status: 'APPROVED' },
+      select: { userId: true },
+    });
+
+    if (!profiles.length) return null;
+
+    const msg = `${patientName || 'A patient'} has booked an appointment with Dr. ${doctorName || 'a doctor'} at your hospital.`;
+
+    const results = [];
+    for (const p of profiles) {
+      try {
+        results.push(
+          await NotificationService.create(
+            p.userId,
+            NOTIFICATION_TYPES.APPOINTMENT_BOOKED,
+            'New Patient Booking',
+            msg,
+            { appointmentId, hospitalId }
+          )
+        );
+      } catch (err) {
+        console.error('[NOTIFICATION] Failed to notify hospital admin:', err.message);
+      }
+    }
+    return results;
   }
 };
 

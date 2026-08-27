@@ -58,6 +58,19 @@ const HospitalPortalController = {
     }
   },
 
+  listAppointments: async (req, res) => {
+    try {
+      const status = req.query.status;
+      const appointments = await HospitalPortalService.listAppointments(
+        req.hospital.id,
+        status,
+      );
+      res.status(200).json({ status: "success", data: appointments });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  },
+
   listDoctors: async (req, res) => {
     try {
       const includeAll = req.query.includeAll === "true";

@@ -36,6 +36,68 @@ export interface ReceptionistItem {
   createdAt: string;
 }
 
+export interface HospitalListItem {
+  id: number;
+  name: string;
+  address: string | null;
+  image: string | null;
+  phone: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  cardPrice?: string;
+  serviceFee?: { amount: string } | null;
+  doctorCount?: number;
+  rating?: number | null;
+}
+
+export interface HospitalDetail {
+  id: number;
+  name: string;
+  address: string | null;
+  image: string | null;
+  phone: string | null;
+  email: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  cardPrice?: string;
+  serviceFee?: { amount: string } | null;
+  doctors: DoctorDetail[];
+}
+
+export interface DoctorDetail {
+  id: number;
+  fullName: string | null;
+  profilePicture: string | null;
+  specialization: string | null;
+  specializations: string[] | null;
+  bio: string | null;
+  experienceYears: number | null;
+  rating: number | null;
+  totalReviews: number;
+  clinicName: string | null;
+  clinicAddress: string | null;
+  baseHourlyRate: string | null;
+}
+
+export interface HospitalAppointment {
+  id: number;
+  doctorId?: number | null;
+  doctorName?: string | null;
+  specialization?: string | null;
+  patientId?: number | null;
+  patientPhone?: string | null;
+  patientName: string;
+  dateTime: string;
+  status: string;
+  fee?: string | number;
+  isPaid?: boolean;
+  paymentMethod?: string | null;
+  reason?: string | null;
+  confirmationCode?: string | null;
+  slotStart?: string | null;
+  createdAt: string;
+}
+
 interface HospitalState {
   profile: HospitalProfile | null;
   stats: {
@@ -47,7 +109,9 @@ interface HospitalState {
   } | null;
   doctors: DoctorItem[];
   receptionists: ReceptionistItem[];
-  hospitals: { id: number; name: string; address: string | null }[];
+  hospitals: HospitalListItem[];
+  selectedHospital: HospitalDetail | null;
+  appointments: HospitalAppointment[];
   loading: boolean;
   error: string | null;
 }
@@ -58,6 +122,8 @@ const initialState: HospitalState = {
   doctors: [],
   receptionists: [],
   hospitals: [],
+  selectedHospital: null,
+  appointments: [],
   loading: false,
   error: null,
 };
@@ -70,6 +136,31 @@ export const fetchHospitals = createAsyncThunk(
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch hospitals');
+    }
+  }
+);
+
+export const fetchHospitalById = createAsyncThunk(
+  'hospital/fetchById',
+  async (id: number, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/hospitals/${id}?t=${Date.now()}`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch hospital');
+    }
+  }
+);
+
+export const fetchHospitalAppointments = createAsyncThunk(
+  'hospital/fetchAppointments',
+  async (status: string | undefined, { rejectWithValue }) => {
+    try {
+      const query = status ? `?status=${status}` : '';
+      const response = await api.get(`/hospital/appointments${query}${query ? '&' : '?'}t=${Date.now()}`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch appointments');
     }
   }
 );
@@ -205,6 +296,12 @@ const hospitalSlice = createSlice({
       .addCase(fetchHospitals.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(fetchHospitals.fulfilled, (state, action) => { state.loading = false; state.hospitals = action.payload; })
       .addCase(fetchHospitals.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
+      .addCase(fetchHospitalById.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchHospitalById.fulfilled, (state, action) => { state.loading = false; state.selectedHospital = action.payload; })
+      .addCase(fetchHospitalById.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
+      .addCase(fetchHospitalAppointments.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchHospitalAppointments.fulfilled, (state, action) => { state.loading = false; state.appointments = action.payload; })
+      .addCase(fetchHospitalAppointments.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
       .addCase(registerHospital.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(registerHospital.fulfilled, (state) => { state.loading = false; })
       .addCase(registerHospital.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })

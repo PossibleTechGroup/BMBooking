@@ -15,6 +15,7 @@ router.use(hospitalMiddleware);
 router.get("/profile", HospitalPortalController.getProfile);
 router.patch("/profile", HospitalPortalController.updateProfile);
 router.get("/stats", HospitalPortalController.getStats);
+router.get("/appointments", HospitalPortalController.listAppointments);
 
 router.get("/doctors", HospitalPortalController.listDoctors);
 router.patch("/doctors/:id/status", HospitalPortalController.updateDoctorStatus);

@@ -241,6 +241,32 @@ const AppointmentService = {
       );
     }
 
+    // Notify the hospital admin(s) when a patient books (non-blocking)
+    try {
+      if (feeDoctor?.hospitalId) {
+        const doctorInfo = await prisma.doctorProfile.findUnique({
+          where: { id: data.doctorId },
+          select: { fullName: true },
+        });
+        const notifyPatientId = data.otherPatientDetails ? actualPatientId : patientId;
+        const patient = await prisma.patientProfile.findUnique({
+          where: { userId: notifyPatientId },
+          select: { fullName: true },
+        });
+        await NotificationService.notifyHospitalAppointmentBooked(
+          feeDoctor.hospitalId,
+          patient?.fullName,
+          doctorInfo?.fullName,
+          appointment.id,
+        );
+      }
+    } catch (err) {
+      console.error(
+        "[NOTIFICATION] Failed to notify hospital on appointment create:",
+        err.message,
+      );
+    }
+
     // Notify the patient (non-blocking) - every time an appointment is created
     try {
       const doctor = await prisma.doctorProfile.findUnique({

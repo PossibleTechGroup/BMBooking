@@ -133,6 +133,58 @@ const HospitalPortalService = {
     };
   },
 
+  listAppointments: async (hospitalId, status) => {
+    const where = { doctor: { hospitalId } };
+    if (status) where.status = status;
+
+    const appointments = await prisma.appointment.findMany({
+      where,
+      include: {
+        doctor: {
+          select: {
+            id: true,
+            fullName: true,
+            specialization: true,
+          },
+        },
+        patient: {
+          select: {
+            id: true,
+            phone: true,
+            patientProfile: { select: { fullName: true } },
+          },
+        },
+        slot: {
+          select: {
+            startTime: true,
+            endTime: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return appointments.map((a) => ({
+      id: a.id,
+      doctorId: a.doctor?.id,
+      doctorName: a.doctor?.fullName,
+      specialization: a.doctor?.specialization,
+      patientId: a.patient?.id,
+      patientPhone: a.patient?.phone,
+      patientName:
+        a.patient?.patientProfile?.fullName || a.patient?.phone || "Patient",
+      dateTime: a.dateTime,
+      status: a.status,
+      fee: Number(a.fee),
+      isPaid: a.isPaid,
+      paymentMethod: a.paymentMethod,
+      reason: a.reason,
+      confirmationCode: a.confirmationCode,
+      slotStart: a.slot?.startTime || null,
+      createdAt: a.createdAt,
+    }));
+  },
+
   listDoctors: async (hospitalId, includeAll = false) => {
     const where = { hospitalId };
     if (!includeAll) where.status = "Approved";
