@@ -38,6 +38,7 @@ function AppointmentsPage() {
   const [bookingDoctorName, setBookingDoctorName] = useState('');
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
+  const [bookingSlotId, setBookingSlotId] = useState<number | null>(null);
   const [bookingReason, setBookingReason] = useState('');
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
   const [modalError, setModalError] = useState('');
@@ -80,6 +81,7 @@ function AppointmentsPage() {
       setModalError('');
       setBookingStep('details');
       setIncludeCardFee(false);
+      setBookingSlotId(null);
       setShowBookingModal(true);
     }
   }, [searchParams]);
@@ -125,6 +127,7 @@ function AppointmentsPage() {
         dateTime,
         fee: doctorFee,
         reason: bookingReason,
+        slotId: bookingSlotId ?? undefined,
         paymentMethod: includeCardFee ? 'card' : 'service_fee',
         paidCardFee: includeCardFee,
       }));
@@ -133,6 +136,7 @@ function AppointmentsPage() {
         setBookingDoctorId(null);
         setBookingDate('');
         setBookingTime('');
+        setBookingSlotId(null);
         setBookingReason('');
         setAvailableSlots([]);
         setBookingStep('details');
@@ -219,7 +223,7 @@ function AppointmentsPage() {
               <>
                 <div className="mb-4">
                   <MedText variant="metadata" className="mb-2">Date</MedText>
-                  <input type="date" value={bookingDate} onChange={(e) => { setBookingDate(e.target.value); setBookingTime(''); }}
+                  <input type="date" value={bookingDate} onChange={(e) => { setBookingDate(e.target.value); setBookingTime(''); setBookingSlotId(null); }}
                     className="w-full h-12 px-4 rounded-[12px] border border-border bg-surface text-text text-[16px] outline-none focus:border-border-focus" />
                 </div>
 
@@ -228,7 +232,7 @@ function AppointmentsPage() {
                     <MedText variant="metadata" className="mb-2">Available Slots</MedText>
                     <div className="flex flex-wrap gap-2">
                       {availableSlots.map((slot, i) => (
-                        <button key={i} onClick={() => setBookingTime(slot.startTime?.slice(11, 16) || '')}
+                        <button key={i} onClick={() => { setBookingTime(slot.startTime?.slice(11, 16) || ''); setBookingSlotId(slot.id ?? null); }}
                           className={`px-3 py-1.5 rounded-full text-[13px] font-medium transition-all ${
                             bookingTime === slot.startTime?.slice(11, 16) ? 'bg-primary text-white' : 'bg-foreground/5 text-text-secondary hover:bg-foreground/10'
                           }`}>
