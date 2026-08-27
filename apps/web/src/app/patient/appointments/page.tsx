@@ -291,7 +291,7 @@ function AppointmentsPage() {
                   </div>
                   <div className="p-4 space-y-3">
                     <div className="flex justify-between items-center">
-                      <MedText variant="metadata" className="text-[13px]">Service Charge</MedText>
+                      <MedText variant="metadata" className="text-[13px]">App Fee</MedText>
                       <MedText variant="metadata" className="font-medium">{serviceFeeAmount.toFixed(2)} ETB</MedText>
                     </div>
 

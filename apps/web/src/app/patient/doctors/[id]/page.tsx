@@ -185,13 +185,22 @@ export default function DoctorDetailPage() {
         )}
       </MedCard>
 
-      {/* Hospital Card Price */}
-      {doctor.hospital?.cardPrice && (
+      {/* Fees */}
+      {(doctor.hospital?.serviceFee?.amount || doctor.hospital?.cardPrice) && (
         <MedCard className="mb-4">
-          <div className="flex justify-between items-center">
-            <MedText variant="body" className="text-text-secondary">Hospital Card Price</MedText>
-            <MedText variant="h2" as="span" className="text-success">ETB {doctor.hospital.cardPrice}</MedText>
-          </div>
+          <MedText variant="h2" as="h3" className="mb-3">Fees</MedText>
+          {doctor.hospital?.serviceFee?.amount && (
+            <div className="flex justify-between items-center mb-3">
+              <MedText variant="body" className="text-text-secondary">App Fee</MedText>
+              <MedText variant="h2" as="span" className="text-success">ETB {doctor.hospital.serviceFee.amount}</MedText>
+            </div>
+          )}
+          {doctor.hospital?.cardPrice && (
+            <div className="flex justify-between items-center">
+              <MedText variant="body" className="text-text-secondary">Hospital Card Price</MedText>
+              <MedText variant="h2" as="span" className="text-success">ETB {doctor.hospital.cardPrice}</MedText>
+            </div>
+          )}
         </MedCard>
       )}
 
