@@ -30,19 +30,32 @@
     return true;
   });
 
+  function resumeOrHome() {
+    let pending = null;
+    try {
+      const raw = localStorage.getItem('bk_pending_payment');
+      if (raw) pending = JSON.parse(raw);
+    } catch {}
+    if (pending && pending.doctorId) {
+      Router.navigate('booking', { doctorId: pending.doctorId });
+      return;
+    }
+    Router.navigate('home');
+  }
+
   const token = Store.getToken();
   const user = Store.getUser();
   const onboarded = localStorage.getItem('bm_onboarded');
 
   if (token && user) {
     if (user.patientProfile) {
-      Router.navigate('home');
+      resumeOrHome();
     } else {
       API.getPatientProfile()
         .then(profile => {
           if (profile) {
             Store.setProfile(profile);
-            Router.navigate('home');
+            resumeOrHome();
           } else {
             Router.navigate('setup');
           }

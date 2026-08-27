@@ -1,4 +1,6 @@
 const BookingView = (() => {
+  const PENDING_KEY = 'bk_pending_payment';
+
   let state = {
     step: 0,
     doctor: null,
@@ -49,6 +51,43 @@ const BookingView = (() => {
     };
   }
 
+  function savePending() {
+    try {
+      localStorage.setItem(PENDING_KEY, JSON.stringify({
+        doctorId: state.doctorId,
+        bookingFor: state.bookingFor,
+        otherPatient: state.otherPatient,
+        selectedCategory: state.selectedCategory,
+        categories: state.categories,
+        selectedSchedule: state.selectedSchedule,
+        totalPayable: state.totalPayable,
+        cardFee: state.cardFee,
+        includeCardFee: state.includeCardFee,
+      }));
+    } catch {}
+  }
+
+  function loadPending() {
+    try {
+      const raw = localStorage.getItem(PENDING_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch { return null; }
+  }
+
+  function clearPending() {
+    try { localStorage.removeItem(PENDING_KEY); } catch {}
+  }
+
+  function openPaymentUrl(amount) {
+    const url = `${API.TELEBIRR}/?amount=${encodeURIComponent(String(amount))}`;
+    if (TG.webapp) {
+      TG.openLink(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  }
+
   function renderDots(container) {
     const total = STEPS.length - 1;
     container.querySelector('#step-dots').innerHTML = Array.from({ length: total }, (_, i) =>
@@ -64,13 +103,7 @@ const BookingView = (() => {
     TG.expand();
   }
 
-  async function render(container, params) {
-    reset();
-    state.doctorId = params.doctorId;
-    state.doctor = params.doctor || null;
-
-    TG.hideMainButton();
-
+  function buildSkeleton(container) {
     container.innerHTML = `
       <div class="header">
         <div class="header-back" id="booking-back">&larr; ${t('cancel')}</div>
@@ -96,9 +129,110 @@ const BookingView = (() => {
         Router.goBack();
       }
     });
+  }
+
+  async function render(container, params) {
+    TG.hideMainButton();
+
+    const pending = loadPending();
+    if (pending && pending.doctorId) {
+      clearPending();
+      const resumed = await resumePendingPayment(container, params, pending);
+      if (resumed) return;
+    }
+
+    reset();
+    state.doctorId = params.doctorId;
+    state.doctor = params.doctor || null;
+
+    buildSkeleton(container);
 
     renderSponsor(container);
     showStep(container);
+  }
+
+  // ─── Resume after Telebirr redirect ───
+  async function resumePendingPayment(container, params, pending) {
+    state.doctorId = pending.doctorId || params.doctorId;
+    state.bookingFor = pending.bookingFor || 'myself';
+    state.otherPatient = pending.otherPatient || { fullName: '', phone: '', gender: 'male', dateOfBirth: '', bloodType: '' };
+    state.selectedCategory = pending.selectedCategory || null;
+    state.categories = pending.categories || [];
+    state.selectedSchedule = pending.selectedSchedule || null;
+    state.totalPayable = pending.totalPayable || 0;
+    state.cardFee = pending.cardFee || 0;
+    state.includeCardFee = pending.includeCardFee || false;
+    state.step = 4;
+
+    try {
+      state.doctor = params.doctor || await API.getDoctorDetail(state.doctorId);
+    } catch {}
+
+    buildSkeleton(container);
+
+    try {
+      const r = await API.verifyTelebirr(state.totalPayable);
+      if (r?.paid) {
+        state.paymentDone = true;
+        state.step = 4;
+        renderConfirm(container);
+        showStep(container);
+        return true;
+      }
+    } catch {}
+
+    state.paymentDone = false;
+    state.loading = false;
+    state.step = 3;
+    renderPaymentWaiting(container);
+    showStep(container);
+    return true;
+  }
+
+  function renderPaymentWaiting(container) {
+    const el = container.querySelector('#step-payment');
+    el.innerHTML = `
+      <h3 style="margin-bottom:16px">${t('payment')}</h3>
+      <div class="card">
+        <div class="payment-row total">
+          <span>${t('total')}</span>
+          <span><strong>${state.totalPayable} ${t('etb')}</strong></span>
+        </div>
+      </div>
+      <p class="text-hint mt-8" style="font-size:13px">${t('waitingPayment')}</p>
+      <button class="btn btn-primary mt-16" id="pay-verify-btn">${t('verifyPaymentAgain')}</button>
+      <button class="btn btn-outline mt-8" id="pay-retry-btn">${t('openingTelebirr')}</button>
+    `;
+
+    el.querySelector('#pay-verify-btn').addEventListener('click', async () => {
+      const btn = el.querySelector('#pay-verify-btn');
+      btn.textContent = t('booking');
+      btn.disabled = true;
+      try {
+        const r = await API.verifyTelebirr(state.totalPayable);
+        if (r?.paid) {
+          state.paymentDone = true;
+          state.step = 4;
+          renderConfirm(container);
+          showStep(container);
+        } else {
+          btn.textContent = t('verifyPaymentAgain');
+          btn.disabled = false;
+          TG.showAlert(t('waitingPayment'));
+        }
+      } catch (err) {
+        btn.textContent = t('verifyPaymentAgain');
+        btn.disabled = false;
+        state.error = err.message;
+        showError(container);
+      }
+    });
+
+    el.querySelector('#pay-retry-btn').addEventListener('click', () => {
+      savePending();
+      openPaymentUrl(state.totalPayable);
+      TG.showAlert(t('waitingPayment'));
+    });
   }
 
   // ─── Step 0: Sponsor ───
@@ -372,59 +506,10 @@ const BookingView = (() => {
       return;
     }
 
-    state.loading = true;
-    const payBtn = container.querySelector('#payment-pay-btn');
-    if (payBtn) payBtn.textContent = t('openingTelebirr');
-
-    try {
-      const checkoutUrl = `${API.TELEBIRR}/?amount=${encodeURIComponent(String(state.totalPayable))}`;
-      TG.openLink(checkoutUrl);
-
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      const verifyRes = await API.verifyTelebirr(state.totalPayable);
-      state.paymentDone = verifyRes?.paid === true;
-
-      if (state.paymentDone) {
-        state.step = 4;
-        renderConfirm(container);
-        showStep(container);
-      } else {
-        state.loading = false;
-        if (payBtn) payBtn.textContent = `Pay ${state.totalPayable} ${t('etb')}`;
-        const el = container.querySelector('#step-payment');
-        const alert = document.createElement('div');
-        alert.className = 'alert alert-info mt-8';
-        alert.textContent = t('waitingPayment');
-        el.insertBefore(alert, payBtn);
-
-        const verifyAgain = document.createElement('button');
-        verifyAgain.className = 'btn btn-outline mt-8';
-        verifyAgain.textContent = t('verifyPaymentAgain');
-        verifyAgain.addEventListener('click', async () => {
-          verifyAgain.textContent = '...';
-          verifyAgain.disabled = true;
-          try {
-            const r = await API.verifyTelebirr(state.totalPayable);
-            if (r?.paid) {
-              state.paymentDone = true;
-              state.step = 4;
-              renderConfirm(container);
-              showStep(container);
-            }
-          } catch {} finally {
-            verifyAgain.textContent = t('verifyPaymentAgain');
-            verifyAgain.disabled = false;
-          }
-        });
-        el.insertBefore(verifyAgain, payBtn.nextSibling);
-      }
-    } catch (err) {
-      state.loading = false;
-      if (payBtn) payBtn.textContent = `Pay ${state.totalPayable} ${t('etb')}`;
-      state.error = err.message;
-      showError(container);
-    }
+    savePending();
+    openPaymentUrl(state.totalPayable);
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    renderPaymentWaiting(container);
   }
 
   // ─── Step 4: Confirm ───
