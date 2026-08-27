@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { fetchMyAppointments, createAppointment, cancelAppointment, fetchDoctorScheduleSlots } from '@/lib/store/slices/appointmentSlice';
 import { fetchDoctors } from '@/lib/store/slices/doctorSlice';
@@ -29,6 +29,7 @@ export default function AppointmentsPageWrapper() {
 
 function AppointmentsPage() {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { appointments, loading } = useAppSelector((s) => s.appointment);
   const { doctors } = useAppSelector((s) => s.doctors);
@@ -141,6 +142,7 @@ function AppointmentsPage() {
         setAvailableSlots([]);
         setBookingStep('details');
         setIncludeCardFee(false);
+        router.push('/patient');
       } else {
         setModalError((result.payload as string) || 'Failed to book. Please try again.');
       }
