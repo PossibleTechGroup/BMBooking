@@ -15,6 +15,7 @@ import {
   Clock,
   FileBadge,
   Briefcase,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { logout } from '../store/slices/authSlice';
 import { useTimeFormat, setTimeFormat, setCalendarFormat } from '../utils/timeFormat';
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
   { to: '/medical-tools', icon: Package, label: 'Medical Tools' },
   { to: '/announcements', icon: Volume2, label: 'Announcements' },
   { to: '/reviews', icon: Star, label: 'Reviews' },
+  { to: '/settings', icon: SettingsIcon, label: 'Settings' },
 ];
 
 interface SidebarProps {

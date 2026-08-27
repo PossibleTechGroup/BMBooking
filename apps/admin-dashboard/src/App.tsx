@@ -14,6 +14,7 @@ import { AnnouncementsPage } from './pages/AnnouncementsPage';
 import { ReviewsPage } from './pages/ReviewsPage';
 import { DoctorProfileView } from './pages/DoctorProfileView';
 import AnalysisPage from './pages/AnalysisPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 function App() {
   const { token } = useSelector((state: RootState) => state.auth);
@@ -36,6 +37,7 @@ function App() {
           <Route path="medical-tools" element={<ItemsPage />} />
           <Route path="announcements" element={<AnnouncementsPage />} />
           <Route path="reviews" element={<ReviewsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
           <Route path="doctor-profile/:doctorId" element={<DoctorProfileView />} />
         </Route>
         <Route path="*" element={
