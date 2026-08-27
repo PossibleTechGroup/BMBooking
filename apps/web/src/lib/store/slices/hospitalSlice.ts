@@ -87,6 +87,8 @@ export interface HospitalAppointment {
   patientId?: number | null;
   patientPhone?: string | null;
   patientName: string;
+  patientGender?: string | null;
+  patientBloodType?: string | null;
   dateTime: string;
   status: string;
   fee?: string | number;
@@ -95,6 +97,71 @@ export interface HospitalAppointment {
   reason?: string | null;
   confirmationCode?: string | null;
   slotStart?: string | null;
+  slotEnd?: string | null;
+  slotMaxPatients?: number | null;
+  card?: HospitalCardInfo | null;
+  createdAt: string;
+}
+
+export interface HospitalCardInfo {
+  id: number;
+  code: string;
+  name: string | null;
+  price: string | number;
+  isPaid: boolean;
+  issuedAt: string;
+  activatedAt: string | null;
+  expiresAt: string;
+  isActive: boolean;
+}
+
+export interface HospitalOverview {
+  todayAppointments: number;
+  newBookings: number;
+  newPatients: number;
+  pending: number;
+  confirmed: number;
+  completed: number;
+  cancelled: number;
+  totalAppointments: number;
+  doctors: number;
+  revenue: number;
+  availableSlots: number;
+  fullSlots: number;
+  totalSlots: number;
+  activeCards: number;
+  expiredCards: number;
+}
+
+export interface HospitalAnalytics {
+  status: { pending: number; confirmed: number; completed: number; cancelled: number };
+  payments: { paid: number; unpaid: number; revenue: number };
+  byDay: { date: string; count: number }[];
+  period: string;
+  byDoctor: { doctorId: number; doctorName: string; bookings: number }[];
+  byService: { service: string; count: number }[];
+  cards: { total: number; issuedValue: number; active: number; expired: number };
+}
+
+export interface HospitalPatient {
+  id: number;
+  phone: string | null;
+  fullName: string;
+  gender: string | null;
+  bloodType: string | null;
+  dateOfBirth: string | null;
+  emergencyContact: string | null;
+  joinedAt: string;
+  bookings: number;
+  cards: number;
+}
+
+export interface CardTemplate {
+  id: number;
+  name: string;
+  price?: string | number;
+  validityDays?: number | null;
+  isActive: boolean;
   createdAt: string;
 }
 
@@ -112,6 +179,11 @@ interface HospitalState {
   hospitals: HospitalListItem[];
   selectedHospital: HospitalDetail | null;
   appointments: HospitalAppointment[];
+  appointmentsTotal: number;
+  patients: HospitalPatient[];
+  overview: HospitalOverview | null;
+  analytics: HospitalAnalytics | null;
+  cardTemplates: CardTemplate[];
   loading: boolean;
   error: string | null;
 }
@@ -124,6 +196,11 @@ const initialState: HospitalState = {
   hospitals: [],
   selectedHospital: null,
   appointments: [],
+  appointmentsTotal: 0,
+  patients: [],
+  overview: null,
+  analytics: null,
+  cardTemplates: [],
   loading: false,
   error: null,
 };
@@ -154,13 +231,109 @@ export const fetchHospitalById = createAsyncThunk(
 
 export const fetchHospitalAppointments = createAsyncThunk(
   'hospital/fetchAppointments',
-  async (status: string | undefined, { rejectWithValue }) => {
+  async (
+    filters: { status?: string; search?: string; doctorId?: number; from?: string; to?: string; page?: number; limit?: number } = {},
+    { rejectWithValue }
+  ) => {
     try {
-      const query = status ? `?status=${status}` : '';
-      const response = await api.get(`/hospital/appointments${query}${query ? '&' : '?'}t=${Date.now()}`);
+      const params = new URLSearchParams();
+      if (filters.status) params.set('status', filters.status);
+      if (filters.search) params.set('search', filters.search);
+      if (filters.doctorId) params.set('doctorId', String(filters.doctorId));
+      if (filters.from) params.set('from', filters.from);
+      if (filters.to) params.set('to', filters.to);
+      if (filters.page) params.set('page', String(filters.page));
+      if (filters.limit) params.set('limit', String(filters.limit));
+      params.set('t', String(Date.now()));
+      const qs = params.toString();
+      const response = await api.get(`/hospital/appointments?${qs}`);
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch appointments');
+    }
+  }
+);
+
+export const fetchHospitalOverview = createAsyncThunk(
+  'hospital/fetchOverview',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/hospital/overview?t=${Date.now()}`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch overview');
+    }
+  }
+);
+
+export const fetchHospitalAnalytics = createAsyncThunk(
+  'hospital/fetchAnalytics',
+  async (period: string = 'month', { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/hospital/analytics?period=${period}&t=${Date.now()}`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch analytics');
+    }
+  }
+);
+
+export const fetchHospitalPatients = createAsyncThunk(
+  'hospital/fetchPatients',
+  async (search: string = '', { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/hospital/patients?search=${encodeURIComponent(search)}&t=${Date.now()}`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch patients');
+    }
+  }
+);
+
+export const fetchHospitalCardTemplates = createAsyncThunk(
+  'hospital/fetchCardTemplates',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/hospital/card-templates?t=${Date.now()}`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch card templates');
+    }
+  }
+);
+
+export const createCardTemplate = createAsyncThunk(
+  'hospital/createCardTemplate',
+  async (data: { name: string; price: number; validityDays?: number | null }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/hospital/card-templates', data);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create card template');
+    }
+  }
+);
+
+export const updateCardTemplate = createAsyncThunk(
+  'hospital/updateCardTemplate',
+  async ({ id, data }: { id: number; data: { name?: string; price?: number; validityDays?: number | null; isActive?: boolean } }, { rejectWithValue }) => {
+    try {
+      const response = await api.patch(`/hospital/card-templates/${id}`, data);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update card template');
+    }
+  }
+);
+
+export const deleteCardTemplate = createAsyncThunk(
+  'hospital/deleteCardTemplate',
+  async (id: number, { rejectWithValue }) => {
+    try {
+      await api.delete(`/hospital/card-templates/${id}`);
+      return id;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete card template');
     }
   }
 );
@@ -300,8 +473,38 @@ const hospitalSlice = createSlice({
       .addCase(fetchHospitalById.fulfilled, (state, action) => { state.loading = false; state.selectedHospital = action.payload; })
       .addCase(fetchHospitalById.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
       .addCase(fetchHospitalAppointments.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(fetchHospitalAppointments.fulfilled, (state, action) => { state.loading = false; state.appointments = action.payload; })
+      .addCase(fetchHospitalAppointments.fulfilled, (state, action) => {
+        state.loading = false;
+        const payload = action.payload as any;
+        state.appointments = Array.isArray(payload) ? payload : (payload?.items ?? []);
+        state.appointmentsTotal = (payload && !Array.isArray(payload)) ? (payload.total ?? state.appointments.length) : state.appointments.length;
+      })
       .addCase(fetchHospitalAppointments.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
+      .addCase(fetchHospitalOverview.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchHospitalOverview.fulfilled, (state, action) => { state.loading = false; state.overview = action.payload; })
+      .addCase(fetchHospitalOverview.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
+      .addCase(fetchHospitalAnalytics.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchHospitalAnalytics.fulfilled, (state, action) => { state.loading = false; state.analytics = action.payload; })
+      .addCase(fetchHospitalAnalytics.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
+      .addCase(fetchHospitalPatients.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchHospitalPatients.fulfilled, (state, action) => { state.loading = false; state.patients = action.payload; })
+      .addCase(fetchHospitalPatients.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
+      .addCase(fetchHospitalCardTemplates.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchHospitalCardTemplates.fulfilled, (state, action) => { state.loading = false; state.cardTemplates = action.payload; })
+      .addCase(fetchHospitalCardTemplates.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
+      .addCase(createCardTemplate.fulfilled, (state, action) => {
+        state.cardTemplates = [action.payload as CardTemplate, ...state.cardTemplates];
+      })
+      .addCase(createCardTemplate.rejected, (state, action) => { state.error = action.payload as string; })
+      .addCase(updateCardTemplate.fulfilled, (state, action) => {
+        const updated = action.payload as CardTemplate;
+        state.cardTemplates = state.cardTemplates.map((t) => (t.id === updated.id ? { ...t, ...updated } : t));
+      })
+      .addCase(updateCardTemplate.rejected, (state, action) => { state.error = action.payload as string; })
+      .addCase(deleteCardTemplate.fulfilled, (state, action) => {
+        state.cardTemplates = state.cardTemplates.filter((t) => t.id !== action.payload);
+      })
+      .addCase(deleteCardTemplate.rejected, (state, action) => { state.error = action.payload as string; })
       .addCase(registerHospital.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(registerHospital.fulfilled, (state) => { state.loading = false; })
       .addCase(registerHospital.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })

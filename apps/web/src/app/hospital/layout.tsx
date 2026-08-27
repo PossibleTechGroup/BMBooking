@@ -10,10 +10,13 @@ import { fetchHospitalProfile, fetchHospitalStats } from '@/lib/store/slices/hos
 import { TopNav } from '@/components/layout/top-nav';
 import { DesktopLayout } from '@/components/layout/desktop-layout';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
-import { Gauge, Stethoscope, Users, User, LogOut, Menu, X } from 'lucide-react';
+import { Gauge, Stethoscope, Users, User, ClipboardList, BarChart3, CreditCard, LogOut, Menu, X } from 'lucide-react';
 
 const navItems = [
   { href: '/hospital', label: 'Dashboard', icon: Gauge },
+  { href: '/hospital/appointments', label: 'Appointments', icon: ClipboardList },
+  { href: '/hospital/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/hospital/packages', label: 'Packages', icon: CreditCard },
   { href: '/hospital/doctors', label: 'Doctors', icon: Stethoscope },
   { href: '/hospital/receptionists', label: 'Receptionists', icon: Users },
   { href: '/hospital/profile', label: 'Profile', icon: User },

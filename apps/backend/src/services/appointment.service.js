@@ -97,7 +97,24 @@ const AppointmentService = {
       status,
       paymentMethod: isReceptionist ? 'none' : (data.paymentMethod || "service_fee"),
     };
-    if (data.slotId) createData.slotId = data.slotId;
+    if (data.slotId) {
+      createData.slotId = data.slotId;
+      if (!isReceptionist) {
+        try {
+          await ReceptionistService.validateSlotCapacity(
+            data.slotId,
+            data.doctorId,
+            data.dateTime,
+          );
+        } catch (err) {
+          throw new Error(
+            err.message === "This slot is already full"
+              ? "This slot is already full"
+              : err.message,
+          );
+        }
+      }
+    }
 
     if (!isReceptionist) {
       if (feeDoctor?.hospitalId) {
@@ -160,9 +177,11 @@ const AppointmentService = {
 
             let cardPrice = Number(hospital?.cardPrice || 0);
             let cardName = "Hospital Visit Card";
+            let validityDays = hospital?.cardTemplates?.[0]?.validityDays ?? 365;
             if (hospital?.cardTemplates && hospital.cardTemplates.length > 0) {
               cardPrice = Number(hospital.cardTemplates[0].price);
               cardName = hospital.cardTemplates[0].name || cardName;
+              validityDays = hospital.cardTemplates[0].validityDays ?? 365;
             }
 
             let code;
@@ -175,8 +194,10 @@ const AppointmentService = {
             }
 
             if (code) {
-              const expiresAt = new Date();
-              expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+              const isPaid = data.paidCardFee === true || data.paidCardFee === 'true';
+              const issuedAt = new Date();
+              const expiresAt = new Date(issuedAt);
+              expiresAt.setDate(expiresAt.getDate() + validityDays);
 
               const newCard = await prisma.card.create({
                 data: {
@@ -185,7 +206,10 @@ const AppointmentService = {
                   hospitalId: doctor.hospitalId,
                   patientId,
                   price: cardPrice,
-                  isPaid: data.paidCardFee === true || data.paidCardFee === 'true',
+                  isPaid,
+                  validityDays,
+                  issuedAt,
+                  activatedAt: isPaid ? issuedAt : null,
                   expiresAt,
                 },
               });
@@ -263,6 +287,36 @@ const AppointmentService = {
     } catch (err) {
       console.error(
         "[NOTIFICATION] Failed to notify hospital on appointment create:",
+        err.message,
+      );
+    }
+
+    // Notify receptionist(s) of the hospital (non-blocking)
+    try {
+      if (feeDoctor?.hospitalId) {
+        const doctorInfo = await prisma.doctorProfile.findUnique({
+          where: { id: data.doctorId },
+          select: { fullName: true, specialization: true },
+        });
+        const notifyPatientId = data.otherPatientDetails ? actualPatientId : patientId;
+        const patient = await prisma.patientProfile.findUnique({
+          where: { userId: notifyPatientId },
+          select: { fullName: true },
+        });
+        await NotificationService.notifyReceptionistsAppointmentBooked({
+          hospitalId: feeDoctor.hospitalId,
+          patientName: patient?.fullName,
+          doctorName: doctorInfo?.fullName,
+          specialization: doctorInfo?.specialization,
+          dateTime: appointment.dateTime,
+          isPaid: appointment.isPaid,
+          status: appointment.status,
+          appointmentId: appointment.id,
+        });
+      }
+    } catch (err) {
+      console.error(
+        "[NOTIFICATION] Failed to notify receptionist on appointment create:",
         err.message,
       );
     }

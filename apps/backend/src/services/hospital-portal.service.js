@@ -133,55 +133,318 @@ const HospitalPortalService = {
     };
   },
 
-  listAppointments: async (hospitalId, status) => {
-    const where = { doctor: { hospitalId } };
-    if (status) where.status = status;
+  getOverview: async (hospitalId) => {
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(now);
+    endOfToday.setHours(23, 59, 59, 999);
 
-    const appointments = await prisma.appointment.findMany({
+    const baseWhere = { doctor: { hospitalId } };
+
+    const [
+      todayAppointments,
+      newBookings30,
+      newPatients30,
+      pending,
+      confirmed,
+      completed,
+      cancelled,
+      doctorsApproved,
+      receiptsSum,
+      activeCards,
+      expiredCards,
+    ] = await Promise.all([
+      prisma.appointment.count({ where: { ...baseWhere, createdAt: { gte: startOfToday, lte: endOfToday } } }),
+      prisma.appointment.count({ where: { ...baseWhere, createdAt: { gte: new Date(Date.now() - 30 * 24 * 3600 * 1000) } } }),
+      prisma.appointment.count({
+        where: { ...baseWhere, createdAt: { gte: new Date(Date.now() - 30 * 24 * 3600 * 1000) } },
+      }),
+      prisma.appointment.count({ where: { ...baseWhere, status: "pending" } }),
+      prisma.appointment.count({ where: { ...baseWhere, status: "accepted" } }),
+      prisma.appointment.count({ where: { ...baseWhere, status: "completed" } }),
+      prisma.appointment.count({ where: { ...baseWhere, status: "cancelled" } }),
+      prisma.doctorProfile.count({ where: { hospitalId, status: "Approved" } }),
+      prisma.appointment.aggregate({
+        where: { ...baseWhere, isPaid: true },
+        _sum: { fee: true },
+      }),
+      prisma.card.count({ where: { hospitalId, isActive: true, expiresAt: { gt: now }, isPaid: true } }),
+      prisma.card.count({ where: { hospitalId, OR: [{ expiresAt: { lte: now } }, { isActive: false }] } }),
+    ]);
+
+    const [slotsWithCount, allSlots] = await Promise.all([
+      prisma.scheduleSlot.findMany({
+        where: { schedule: { hospitalId } },
+        include: { _count: { select: { bookings: true } } },
+      }),
+      prisma.scheduleSlot.count({ where: { schedule: { hospitalId } } }),
+    ]);
+
+    const fullSlots = slotsWithCount.filter((s) => s._count.bookings >= s.maxPatients).length;
+    const availableSlots = allSlots - fullSlots;
+
+    return {
+      todayAppointments,
+      newBookings: newBookings30,
+      newPatients: newPatients30,
+      pending,
+      confirmed,
+      completed,
+      cancelled,
+      totalAppointments: pending + confirmed + completed + cancelled,
+      doctors: doctorsApproved,
+      revenue: Number(receiptsSum?._sum?.fee || 0),
+      availableSlots,
+      fullSlots,
+      totalSlots: allSlots,
+      activeCards,
+      expiredCards,
+    };
+  },
+
+  getAnalytics: async (hospitalId, { period = 'month' } = {}) => {
+    const baseWhere = { doctor: { hospitalId } };
+
+    // Status breakdown
+    const [pending, confirmed, completed, cancelled, paid, unpaid] = await Promise.all([
+      prisma.appointment.count({ where: { ...baseWhere, status: "pending" } }),
+      prisma.appointment.count({ where: { ...baseWhere, status: "accepted" } }),
+      prisma.appointment.count({ where: { ...baseWhere, status: "completed" } }),
+      prisma.appointment.count({ where: { ...baseWhere, status: "cancelled" } }),
+      prisma.appointment.count({ where: { ...baseWhere, isPaid: true } }),
+      prisma.appointment.count({ where: { ...baseWhere, isPaid: false } }),
+    ]);
+
+    // Revenue aggregate
+    const paidAgg = await prisma.appointment.aggregate({
+      where: { ...baseWhere, isPaid: true },
+      _sum: { fee: true },
+    });
+
+    // Bookings by day (last 30 days)
+    const sinceDays = period === 'week' ? 7 : period === 'year' ? 365 : 30;
+    const since = new Date(Date.now() - sinceDays * 24 * 3600 * 1000);
+    const dayRows = await prisma.appointment.findMany({
+      where: { ...baseWhere, createdAt: { gte: since } },
+      select: { createdAt: true },
+    });
+    const byDay = {};
+    dayRows.forEach((r) => {
+      const k = r.createdAt.toISOString().slice(0, 10);
+      byDay[k] = (byDay[k] || 0) + 1;
+    });
+
+    // Per doctor
+    const doctorRows = await prisma.appointment.groupBy({
+      by: ['doctorId'],
+      _count: { _all: true },
+      where: baseWhere,
+    });
+    const doctorNames = await prisma.doctorProfile.findMany({
+      where: { hospitalId },
+      select: { id: true, fullName: true },
+    });
+    const nameMap = {};
+    doctorNames.forEach((d) => { nameMap[d.id] = d.fullName; });
+    const byDoctor = doctorRows.map((r) => ({
+      doctorId: r.doctorId,
+      doctorName: nameMap[r.doctorId] || 'Unknown',
+      bookings: r._count._all,
+    })).sort((a, b) => b.bookings - a.bookings);
+
+    // Per service (specialization)
+    const serviceRows = await prisma.appointment.findMany({
+      where: baseWhere,
+      select: { doctor: { select: { specialization: true } } },
+    });
+    const byService = {};
+    serviceRows.forEach((r) => {
+      const s = r.doctor?.specialization || 'General';
+      byService[s] = (byService[s] || 0) + 1;
+    });
+
+    // Card usage
+    const cardsAgg = await prisma.card.aggregate({
+      where: { hospitalId },
+      _count: true,
+      _sum: { price: true },
+    });
+    const activeNow = await prisma.card.count({
+      where: { hospitalId, isActive: true, expiresAt: { gt: new Date() }, isPaid: true },
+    });
+    const expiredNow = await prisma.card.count({
+      where: { hospitalId, OR: [{ expiresAt: { lte: new Date() } }, { isActive: false }] },
+    });
+
+    return {
+      status: { pending, confirmed, completed, cancelled },
+      payments: { paid, unpaid, revenue: Number(paidAgg?._sum?.fee || 0) },
+      byDay: Object.keys(byDay).sort().map((k) => ({ date: k, count: byDay[k] })),
+      period,
+      byDoctor,
+      byService: Object.keys(byService).map((k) => ({ service: k, count: byService[k] }))
+        .sort((a, b) => b.count - a.count),
+      cards: {
+        total: cardsAgg._count,
+        issuedValue: Number(cardsAgg._sum?.price || 0),
+        active: activeNow,
+        expired: expiredNow,
+      },
+    };
+  },
+
+  listAppointments: async (hospitalId, filters = {}) => {
+    const { status, search, doctorId, from, to } = filters;
+    const where = { doctor: { hospitalId } };
+
+    if (status) where.status = status;
+    if (doctorId) where.doctorId = Number(doctorId);
+
+    if (from || to) {
+      where.dateTime = {};
+      if (from) where.dateTime.gte = new Date(from);
+      if (to) where.dateTime.lte = new Date(to);
+    }
+
+    if (search) {
+      where.OR = [
+        { patient: { phone: { contains: search, mode: 'insensitive' } } },
+        { patient: { patientProfile: { fullName: { contains: search, mode: 'insensitive' } } } },
+        { confirmationCode: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const page = Math.max(1, parseInt(filters.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(filters.limit, 10) || 20));
+    const skip = (page - 1) * limit;
+
+    const [appointments, total] = await Promise.all([
+      prisma.appointment.findMany({
+        where,
+        include: {
+          doctor: {
+            select: {
+              id: true,
+              fullName: true,
+              specialization: true,
+            },
+          },
+          patient: {
+            select: {
+              id: true,
+              phone: true,
+              createdAt: true,
+              patientProfile: { select: { fullName: true, gender: true, bloodType: true } },
+            },
+          },
+          slot: {
+            select: { startTime: true, endTime: true, maxPatients: true },
+          },
+          card: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              price: true,
+              isPaid: true,
+              issuedAt: true,
+              activatedAt: true,
+              expiresAt: true,
+              isActive: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.appointment.count({ where }),
+    ]);
+
+    return {
+      items: appointments.map((a) => ({
+        id: a.id,
+        doctorId: a.doctor?.id,
+        doctorName: a.doctor?.fullName,
+        specialization: a.doctor?.specialization,
+        patientId: a.patient?.id,
+        patientPhone: a.patient?.phone,
+        patientJoinedAt: a.patient?.createdAt,
+        patientName: a.patient?.patientProfile?.fullName || a.patient?.phone || "Patient",
+        patientGender: a.patient?.patientProfile?.gender,
+        patientBloodType: a.patient?.patientProfile?.bloodType,
+        dateTime: a.dateTime,
+        status: a.status,
+        fee: Number(a.fee),
+        isPaid: a.isPaid,
+        paymentMethod: a.paymentMethod,
+        reason: a.reason,
+        confirmationCode: a.confirmationCode,
+        slotStart: a.slot?.startTime || null,
+        slotEnd: a.slot?.endTime || null,
+        slotMaxPatients: a.slot?.maxPatients || null,
+        card: a.card
+          ? {
+              id: a.card.id,
+              code: a.card.code,
+              name: a.card.name,
+              price: Number(a.card.price),
+              isPaid: a.card.isPaid,
+              issuedAt: a.card.issuedAt,
+              activatedAt: a.card.activatedAt,
+              expiresAt: a.card.expiresAt,
+              isActive: a.card.isActive,
+            }
+          : null,
+        createdAt: a.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
+  },
+
+  listPatients: async (hospitalId, { search } = {}) => {
+    const where = { appointments: { some: { doctor: { hospitalId } } } };
+    if (search) {
+      where.OR = [
+        { phone: { contains: search, mode: 'insensitive' } },
+        { patientProfile: { fullName: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
+    const patients = await prisma.user.findMany({
       where,
-      include: {
-        doctor: {
-          select: {
-            id: true,
-            fullName: true,
-            specialization: true,
-          },
+      select: {
+        id: true,
+        phone: true,
+        createdAt: true,
+        patientProfile: {
+          select: { fullName: true, gender: true, bloodType: true, dateOfBirth: true, emergencyContact: true },
         },
-        patient: {
+        _count: {
           select: {
-            id: true,
-            phone: true,
-            patientProfile: { select: { fullName: true } },
-          },
-        },
-        slot: {
-          select: {
-            startTime: true,
-            endTime: true,
+            patientAppointments: { where: { doctor: { hospitalId } } },
+            cards: { where: { hospitalId } },
           },
         },
       },
       orderBy: { createdAt: "desc" },
+      take: 200,
     });
 
-    return appointments.map((a) => ({
-      id: a.id,
-      doctorId: a.doctor?.id,
-      doctorName: a.doctor?.fullName,
-      specialization: a.doctor?.specialization,
-      patientId: a.patient?.id,
-      patientPhone: a.patient?.phone,
-      patientName:
-        a.patient?.patientProfile?.fullName || a.patient?.phone || "Patient",
-      dateTime: a.dateTime,
-      status: a.status,
-      fee: Number(a.fee),
-      isPaid: a.isPaid,
-      paymentMethod: a.paymentMethod,
-      reason: a.reason,
-      confirmationCode: a.confirmationCode,
-      slotStart: a.slot?.startTime || null,
-      createdAt: a.createdAt,
+    return patients.map((p) => ({
+      id: p.id,
+      phone: p.phone,
+      fullName: p.patientProfile?.fullName || p.phone || 'Patient',
+      gender: p.patientProfile?.gender,
+      bloodType: p.patientProfile?.bloodType,
+      dateOfBirth: p.patientProfile?.dateOfBirth,
+      emergencyContact: p.patientProfile?.emergencyContact,
+      joinedAt: p.createdAt,
+      bookings: p._count.patientAppointments,
+      cards: p._count.cards,
     }));
   },
 
@@ -360,6 +623,50 @@ const HospitalPortalService = {
       await tx.receptionistProfile.delete({ where: { id: receptionistId } });
       await tx.user.delete({ where: { id: profile.userId } });
     });
+  },
+
+  createCardTemplate: async (data, hospitalId) => {
+    return prisma.cardTemplate.create({
+      data: {
+        name: data.name,
+        hospitalId,
+        price: data.price,
+        validityDays: data.validityDays != null ? Number(data.validityDays) : null,
+        isActive: true,
+      },
+    });
+  },
+
+  listCardTemplates: async (hospitalId) => {
+    return prisma.cardTemplate.findMany({
+      where: { hospitalId },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+
+  updateCardTemplate: async (cardId, data, hospitalId) => {
+    const template = await prisma.cardTemplate.findUnique({ where: { id: cardId } });
+    if (!template) throw new Error("Card template not found");
+    if (template.hospitalId !== hospitalId) throw new Error("Card template does not belong to this hospital");
+
+    const updateData = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.price !== undefined) updateData.price = data.price;
+    if (data.validityDays !== undefined) updateData.validityDays = data.validityDays != null ? Number(data.validityDays) : null;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    return prisma.cardTemplate.update({
+      where: { id: cardId },
+      data: updateData,
+    });
+  },
+
+  deleteCardTemplate: async (cardId, hospitalId) => {
+    const template = await prisma.cardTemplate.findUnique({ where: { id: cardId } });
+    if (!template) throw new Error("Card template not found");
+    if (template.hospitalId !== hospitalId) throw new Error("Card template does not belong to this hospital");
+
+    return prisma.cardTemplate.delete({ where: { id: cardId } });
   },
 };
 

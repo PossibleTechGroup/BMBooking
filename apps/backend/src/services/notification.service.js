@@ -304,6 +304,46 @@ const NotificationService = {
       }
     }
     return results;
+  },
+
+  notifyReceptionistsAppointmentBooked: async ({ hospitalId, patientName, doctorName, specialization, dateTime, isPaid, status, appointmentId }) => {
+    const profiles = await prisma.receptionistProfile.findMany({
+      where: { hospitalId },
+      select: { userId: true },
+    });
+
+    if (!profiles.length) return null;
+
+    const msg = `New booking: ${patientName || 'A patient'} → ${doctorName || 'Doctor'}${specialization ? ` (${specialization})` : ''}`;
+
+    const metadata = {
+      appointmentId,
+      hospitalId,
+      patientName: patientName || null,
+      doctorName: doctorName || null,
+      specialization: specialization || null,
+      dateTime: dateTime || null,
+      isPaid: !!isPaid,
+      status: status || null,
+    };
+
+    const results = [];
+    for (const p of profiles) {
+      try {
+        results.push(
+          await NotificationService.create(
+            p.userId,
+            NOTIFICATION_TYPES.APPOINTMENT_BOOKED,
+            'New Patient Booking',
+            msg,
+            metadata
+          )
+        );
+      } catch (err) {
+        console.error('[NOTIFICATION] Failed to notify receptionist:', err.message);
+      }
+    }
+    return results;
   }
 };
 

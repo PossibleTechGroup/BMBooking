@@ -192,12 +192,6 @@ export default function DoctorDetailPage() {
             <MedText variant="body" className="text-text-secondary">Hospital Card Price</MedText>
             <MedText variant="h2" as="span" className="text-success">ETB {doctor.hospital.cardPrice}</MedText>
           </div>
-          {doctor.hospital.serviceFee && (
-            <div className="flex justify-between items-center mt-2 pt-2 border-t border-border">
-              <MedText variant="body" className="text-text-secondary">Service Fee</MedText>
-              <MedText variant="h2" as="span">ETB {doctor.hospital.serviceFee.amount}</MedText>
-            </div>
-          )}
         </MedCard>
       )}
 

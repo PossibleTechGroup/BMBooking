@@ -60,12 +60,44 @@ const HospitalPortalController = {
 
   listAppointments: async (req, res) => {
     try {
-      const status = req.query.status;
       const appointments = await HospitalPortalService.listAppointments(
         req.hospital.id,
-        status,
+        req.query,
       );
       res.status(200).json({ status: "success", data: appointments });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  },
+
+  getOverview: async (req, res) => {
+    try {
+      const overview = await HospitalPortalService.getOverview(req.hospital.id);
+      res.status(200).json({ status: "success", data: overview });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  },
+
+  getAnalytics: async (req, res) => {
+    try {
+      const analytics = await HospitalPortalService.getAnalytics(
+        req.hospital.id,
+        { period: req.query.period },
+      );
+      res.status(200).json({ status: "success", data: analytics });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  },
+
+  listPatients: async (req, res) => {
+    try {
+      const patients = await HospitalPortalService.listPatients(
+        req.hospital.id,
+        { search: req.query.search },
+      );
+      res.status(200).json({ status: "success", data: patients });
     } catch (err) {
       res.status(500).json({ status: "error", message: err.message });
     }
@@ -152,6 +184,60 @@ const HospitalPortalController = {
         .json({ status: "success", message: "Receptionist deleted" });
     } catch (err) {
       const status = err.message === "Receptionist not found" ? 404 : 400;
+      res.status(status).json({ status: "fail", message: err.message });
+    }
+  },
+
+  listCardTemplates: async (req, res) => {
+    try {
+      const templates = await HospitalPortalService.listCardTemplates(
+        req.hospital.id,
+      );
+      res.status(200).json({ status: "success", data: templates });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  },
+
+  createCardTemplate: async (req, res) => {
+    try {
+      const template = await HospitalPortalService.createCardTemplate(
+        req.body,
+        req.hospital.id,
+      );
+      res.status(201).json({ status: "success", data: template });
+    } catch (err) {
+      res.status(400).json({ status: "fail", message: err.message });
+    }
+  },
+
+  updateCardTemplate: async (req, res) => {
+    try {
+      const cardId = parseInt(req.params.id, 10);
+      const template = await HospitalPortalService.updateCardTemplate(
+        cardId,
+        req.body,
+        req.hospital.id,
+      );
+      res.status(200).json({ status: "success", data: template });
+    } catch (err) {
+      const status = err.message === "Card template not found" ? 404 : 400;
+      res.status(status).json({ status: "fail", message: err.message });
+    }
+  },
+
+  deleteCardTemplate: async (req, res) => {
+    try {
+      const cardId = parseInt(req.params.id, 10);
+      await HospitalPortalService.deleteCardTemplate(
+        cardId,
+        req.hospital.id,
+      );
+      res
+        .status(200)
+        .json({ status: "success", message: "Card template deleted" });
+    } catch (err) {
+      const status = err.message === "Card template not found" ? 404 : 400;
       res.status(status).json({ status: "fail", message: err.message });
     }
   },

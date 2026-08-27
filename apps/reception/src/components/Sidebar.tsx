@@ -1,7 +1,9 @@
 import { NavLink } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Calendar, Stethoscope, Wrench, LogOut, LayoutDashboard, ChevronLeft, ChevronRight, Building2, UserRound, Scale } from 'lucide-react';
+import { useEffect } from 'react';
+import { Calendar, Stethoscope, Wrench, LogOut, LayoutDashboard, ChevronLeft, ChevronRight, Building2, UserRound, Scale, Bell } from 'lucide-react';
 import { logout } from '../store/slices/authSlice';
+import { fetchUnreadCount } from '../store/slices/notificationSlice';
 import type { RootState } from '../store';
 
 const navItems = [
@@ -10,6 +12,7 @@ const navItems = [
   { to: '/schedules', icon: Calendar, label: 'Schedules' },
   { to: '/appointments', icon: Stethoscope, label: 'Appointments' },
   { to: '/equipment', icon: Wrench, label: 'Equipment' },
+  { to: '/notifications', icon: Bell, label: 'Notifications' },
   { to: '/hospital', icon: Building2, label: 'Hospital' },
   { to: '/legal', icon: Scale, label: 'Legal' },
 ];
@@ -22,6 +25,13 @@ interface SidebarProps {
 function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
+  const { unreadCount } = useSelector((state: RootState) => state.notifications);
+
+  useEffect(() => {
+    dispatch(fetchUnreadCount());
+    const interval = setInterval(() => dispatch(fetchUnreadCount()), 15000);
+    return () => clearInterval(interval);
+  }, [dispatch]);
 
   return (
     <aside
@@ -97,6 +107,26 @@ function Sidebar({ collapsed, onToggle }: SidebarProps) {
           >
             <item.icon size={20} />
             {!collapsed && <span>{item.label}</span>}
+            {item.to === '/notifications' && unreadCount > 0 && (
+              <span
+                style={{
+                  marginLeft: 'auto',
+                  background: '#DC2626',
+                  color: '#fff',
+                  borderRadius: '999px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  minWidth: 18,
+                  height: 18,
+                  padding: '0 5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

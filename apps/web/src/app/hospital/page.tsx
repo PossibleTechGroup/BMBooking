@@ -3,11 +3,17 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
-import { fetchHospitalStats, fetchHospitalAppointments } from '@/lib/store/slices/hospitalSlice';
+import {
+  fetchHospitalOverview,
+  fetchHospitalAppointments,
+} from '@/lib/store/slices/hospitalSlice';
 import { api } from '@/lib/api/client';
 import { MedText } from '@/components/ui/med-text';
 import { MedCard } from '@/components/ui/med-card';
-import { Bell, ClipboardList, Stethoscope, Users, TrendingUp, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import {
+  Bell, ClipboardList, BarChart3, CreditCard, Stethoscope, Users,
+  Clock, CheckCircle2, CalendarDays, UserPlus, Wallet, CalendarClock, Ticket,
+} from 'lucide-react';
 
 interface NotificationItem {
   id: number;
@@ -29,23 +35,32 @@ function timeAgo(iso?: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+const moduleCards = [
+  { title: 'Appointments', desc: 'View, filter and manage all patient bookings.', color: '#175CD3', icon: ClipboardList, href: '/hospital/appointments' },
+  { title: 'Analytics', desc: 'Track bookings, payments and card usage.', color: '#6941C6', icon: BarChart3, href: '/hospital/analytics' },
+  { title: 'Packages', desc: 'Manage card templates and validity periods.', color: '#027A48', icon: CreditCard, href: '/hospital/packages' },
+  { title: 'Doctors', desc: 'Review and manage registered doctors.', color: '#1E5A8A', icon: Stethoscope, href: '/hospital/doctors' },
+  { title: 'Receptionists', desc: 'Manage reception staff accounts.', color: '#B54708', icon: Users, href: '/hospital/receptionists' },
+];
+
 export default function HospitalDashboardPage() {
   const dispatch = useAppDispatch();
   const { user, token } = useAppSelector((s) => s.auth);
-  const { profile, stats, appointments } = useAppSelector((s) => s.hospital);
+  const { profile, overview, appointments } = useAppSelector((s) => s.hospital);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [tab, setTab] = useState<'pending' | 'all'>('pending');
 
-  const loadStatsAndAppointments = () => {
-    dispatch(fetchHospitalStats());
-    dispatch(fetchHospitalAppointments(tab === 'pending' ? 'pending' : undefined));
+  const loadOverview = () => {
+    dispatch(fetchHospitalOverview());
+    dispatch(fetchHospitalAppointments({ status: tab === 'pending' ? 'pending' : undefined, limit: 10 }));
   };
 
   useEffect(() => {
     if (token) {
-      loadStatsAndAppointments();
+      loadOverview();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, token, tab]);
 
   useEffect(() => {
@@ -78,19 +93,23 @@ export default function HospitalDashboardPage() {
     }
   };
 
-  const cards = [
-    { label: 'Doctors', value: stats?.doctors || 0, icon: Stethoscope, color: 'text-blue', href: '/hospital/doctors' },
-    { label: 'Receptionists', value: stats?.receptionists || 0, icon: Users, color: 'text-secondary', href: '/hospital/receptionists' },
-    { label: 'Appointments', value: stats?.appointments || 0, icon: ClipboardList, color: 'text-success', href: '/hospital' },
-    { label: 'Pending', value: stats?.pendingAppointments || 0, icon: TrendingUp, color: 'text-warning', href: '/hospital' },
+  const statCards = [
+    { label: "Today's Appointments", value: overview?.todayAppointments ?? 0, icon: CalendarDays, color: 'text-blue' },
+    { label: 'New Bookings', value: overview?.newBookings ?? 0, icon: UserPlus, color: 'text-secondary' },
+    { label: 'Pending', value: overview?.pending ?? 0, icon: Clock, color: 'text-warning' },
+    { label: 'Confirmed', value: overview?.confirmed ?? 0, icon: CheckCircle2, color: 'text-success' },
+    { label: 'Available Slots', value: overview?.availableSlots ?? 0, icon: CalendarClock, color: 'text-blue' },
+    { label: 'Total Slots', value: overview?.totalSlots ?? 0, icon: CalendarClock, color: 'text-secondary' },
+    { label: 'Active Cards', value: overview?.activeCards ?? 0, icon: Ticket, color: 'text-success' },
+    { label: 'Revenue (ETB)', value: overview ? `${Number(overview.revenue || 0).toLocaleString()}` : '0', icon: Wallet, color: 'text-warning' },
   ];
 
-  const visibleAppointments = tab === 'pending'
-    ? appointments.filter((a) => a.status?.toLowerCase() === 'pending' || a.status?.toLowerCase() === 'booked')
-    : appointments;
+  const visibleAppointments = overview
+    ? appointments.filter((a) => (tab === 'pending' ? a.status?.toLowerCase() === 'pending' : true)).slice(0, 10)
+    : [];
 
   return (
-    <div className="p-5 max-w-3xl mx-auto">
+    <div className="p-5 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <div>
           <MedText variant="h2" as="h2" className="text-[20px]">Dashboard</MedText>
@@ -99,7 +118,7 @@ export default function HospitalDashboardPage() {
           </MedText>
         </div>
         <div className="flex items-center gap-2 relative">
-          <Clock size={18} className="text-muted" />
+          <Bell size={18} className="text-muted" />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-white text-[10px] flex items-center justify-center">
               {unreadCount}
@@ -108,14 +127,32 @@ export default function HospitalDashboardPage() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Overview stat tiles */}
+      <MedText variant="body" className="text-[15px] font-medium mb-3">Overview</MedText>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-        {cards.map((c) => (
-          <Link key={c.label} href={c.href}>
+        {statCards.map((c) => (
+          <MedCard key={c.label} className="h-full">
+            <c.icon size={20} className={`${c.color} mb-2`} />
+            <MedText variant="h1" as="span" className="text-[24px] block">{c.value}</MedText>
+            <MedText variant="metadata">{c.label}</MedText>
+          </MedCard>
+        ))}
+      </div>
+
+      {/* Module links */}
+      <MedText variant="body" className="text-[15px] font-medium mb-3">Modules</MedText>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+        {moduleCards.map((m) => (
+          <Link key={m.title} href={m.href}>
             <MedCard className="h-full hover:shadow-md transition-shadow">
-              <c.icon size={20} className={`${c.color} mb-2`} />
-              <MedText variant="h1" as="span" className="text-[24px] block">{c.value}</MedText>
-              <MedText variant="metadata">{c.label}</MedText>
+              <div
+                className="w-11 h-11 rounded-[10px] flex items-center justify-center mb-3"
+                style={{ background: `${m.color}14` }}
+              >
+                <m.icon size={22} color={m.color} />
+              </div>
+              <MedText variant="body" className="text-[16px] font-semibold">{m.title}</MedText>
+              <MedText variant="metadata" className="mt-0.5">{m.desc}</MedText>
             </MedCard>
           </Link>
         ))}
@@ -181,7 +218,7 @@ export default function HospitalDashboardPage() {
           </div>
         </div>
 
-        {!stats ? (
+        {!overview ? (
           <div className="text-center py-10">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
@@ -213,6 +250,8 @@ export default function HospitalDashboardPage() {
                         ? 'bg-success/10 text-success'
                         : a.status?.toLowerCase() === 'cancelled'
                         ? 'bg-error/10 text-error'
+                        : a.status?.toLowerCase() === 'accepted'
+                        ? 'bg-blue/10 text-blue'
                         : 'bg-warning/10 text-warning'
                     }`}
                   >

@@ -233,14 +233,35 @@ function AppointmentsPage() {
                   <div className="mb-4">
                     <MedText variant="metadata" className="mb-2">Available Slots</MedText>
                     <div className="flex flex-wrap gap-2">
-                      {availableSlots.map((slot, i) => (
-                        <button key={i} onClick={() => { setBookingTime(slot.startTime?.slice(11, 16) || ''); setBookingSlotId(slot.id ?? null); }}
-                          className={`px-3 py-1.5 rounded-full text-[13px] font-medium transition-all ${
-                            bookingTime === slot.startTime?.slice(11, 16) ? 'bg-primary text-white' : 'bg-foreground/5 text-text-secondary hover:bg-foreground/10'
-                          }`}>
-                          {slot.startTime?.slice(11, 16)}
-                        </button>
-                      ))}
+                      {availableSlots.map((slot, i) => {
+                        const maxPatients = slot.maxPatients;
+                        const booked = slot._count?.bookings ?? 0;
+                        const isFull = typeof maxPatients === 'number' && maxPatients > 0 && booked >= maxPatients;
+                        const remaining = typeof maxPatients === 'number' && maxPatients > 0 ? Math.max(0, maxPatients - booked) : null;
+                        const selected = bookingTime === slot.startTime?.slice(11, 16);
+                        return (
+                          <button
+                            key={i}
+                            disabled={isFull}
+                            onClick={() => { setBookingTime(slot.startTime?.slice(11, 16) || ''); setBookingSlotId(slot.id ?? null); }}
+                            className={`px-3 py-1.5 rounded-full text-[13px] font-medium transition-all ${
+                              isFull
+                                ? 'bg-foreground/5 text-muted line-through cursor-not-allowed'
+                                : selected
+                                ? 'bg-primary text-white'
+                                : 'bg-foreground/5 text-text-secondary hover:bg-foreground/10'
+                            }`}
+                            title={isFull ? 'Slot is full' : remaining != null ? `${remaining} spot(s) remaining` : ''}
+                          >
+                            {slot.startTime?.slice(11, 16)}
+                            {maxPatients != null && (
+                              <span className={`ml-1.5 text-[11px] ${selected ? 'text-white/80' : isFull ? 'text-muted' : 'text-primary'}`}>
+                                ({booked}/{maxPatients})
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

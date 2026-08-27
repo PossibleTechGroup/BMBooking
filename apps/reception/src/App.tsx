@@ -9,6 +9,7 @@ import AppointmentsPage from './pages/AppointmentsPage';
 import EquipmentPage from './pages/EquipmentPage';
 import HospitalSettingsPage from './pages/HospitalSettingsPage';
 import LegalPage from './pages/LegalPage';
+import NotificationsPage from './pages/NotificationsPage';
 import Layout from './components/Layout';
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="appointments" element={<AppointmentsPage />} />
           <Route path="equipment" element={<EquipmentPage />} />
           <Route path="hospital" element={<HospitalSettingsPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="legal" element={<LegalPage />} />
         </Route>
         <Route path="*" element={

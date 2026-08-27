@@ -370,11 +370,13 @@ const schemas = {
   createCardTemplate: Joi.object({
     name: Joi.string().min(1).max(100).required(),
     price: Joi.number().min(0).required(),
+    validityDays: Joi.number().integer().min(0).allow(null).optional(),
   }),
 
   updateCardTemplate: Joi.object({
     name: Joi.string().min(1).max(100).optional(),
     price: Joi.number().min(0).optional(),
+    validityDays: Joi.number().integer().min(0).allow(null).optional(),
     isActive: Joi.boolean().optional(),
   }).min(1),
 
@@ -384,6 +386,7 @@ const schemas = {
     templateId: Joi.number().integer().optional(),
     expiresAt: Joi.date().iso().optional(),
     price: Joi.number().min(0).optional(),
+    validityDays: Joi.number().integer().min(0).allow(null).optional(),
     isPaid: Joi.boolean().optional(),
   }),
 

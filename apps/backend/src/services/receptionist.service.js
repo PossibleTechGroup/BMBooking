@@ -1313,6 +1313,7 @@ const ReceptionistService = {
         name: data.name,
         hospitalId,
         price: data.price,
+        validityDays: data.validityDays != null ? Number(data.validityDays) : null,
         isActive: true,
       },
     });
@@ -1335,6 +1336,7 @@ const ReceptionistService = {
     const updateData = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.price !== undefined) updateData.price = data.price;
+    if (data.validityDays !== undefined) updateData.validityDays = data.validityDays != null ? Number(data.validityDays) : null;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
     return prisma.cardTemplate.update({
@@ -1366,11 +1368,13 @@ const ReceptionistService = {
     // Get price and name from template or hospital default
     let price = data.price;
     let name = "Hospital Visit Card";
+    let validityDays = data.validityDays != null ? Number(data.validityDays) : null;
     if (!price && data.templateId) {
       const template = await prisma.cardTemplate.findUnique({ where: { id: data.templateId } });
       if (template) {
         price = Number(template.price);
         name = template.name;
+        validityDays = template.validityDays ?? validityDays;
       }
     }
     if (!price) {
@@ -1392,9 +1396,12 @@ const ReceptionistService = {
     }
     if (!code) throw new Error("Failed to generate unique card code");
 
+    const isPaid = data.isPaid === true || data.isPaid === 'true';
+    const issuedAt = new Date();
+    const validity = validityDays ?? 365;
     const expiresAt = data.expiresAt ? new Date(data.expiresAt) : (() => {
-      const d = new Date();
-      d.setFullYear(d.getFullYear() + 1);
+      const d = new Date(issuedAt);
+      d.setDate(d.getDate() + validity);
       return d;
     })();
 
@@ -1405,7 +1412,10 @@ const ReceptionistService = {
         hospitalId,
         patientId: data.patientId,
         price,
-        isPaid: data.isPaid === true || data.isPaid === 'true',
+        isPaid,
+        validityDays: validityDays ?? null,
+        issuedAt,
+        activatedAt: isPaid ? issuedAt : null,
         expiresAt,
       },
       include: {
