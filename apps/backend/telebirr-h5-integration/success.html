@@ -95,7 +95,7 @@
     </div>
     <h1>Payment Successful</h1>
     <p id="successMsg">Your Telebirr payment was completed. You can return to BM Booking App.</p>
-    <a href="bmbooking://payment-success" class="btn" id="returnBtn">Return to BM Booking App</a>
+    <a href="https://bmbookingtelegrambot.possibletechplc.com/patient/appointments" class="btn" id="returnBtn">Return to BM Booking App</a>
     <p class="meta" id="returnToTelegram" style="display:none;font-size:14px;color:var(--text-secondary);margin-bottom:16px;line-height:1.5">Your payment is received. Go back to Telegram and continue in the BM Booking chat.</p>
     <p class="meta" id="orderMeta"></p>
   </div>
@@ -117,6 +117,13 @@
       document.getElementById('successMsg').textContent =
         'Your Telebirr payment was completed. Go back to Telegram to finish booking your appointment.';
       document.getElementById('returnToTelegram').style.display = 'block';
+    } else {
+      // Return to the BM Booking web app (same origin the payment started from,
+      // so the pending booking in sessionStorage survives and the appointment
+      // is created automatically).
+      const returnTo = params.get('returnTo') || 'https://bmbookingtelegrambot.possibletechplc.com/patient/appointments';
+      const btn = document.getElementById('returnBtn');
+      if (btn) btn.href = returnTo;
     }
   </script>
 </body>

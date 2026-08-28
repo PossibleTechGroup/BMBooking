@@ -237,9 +237,15 @@
 
       // Telegram WebView blocks plain-http pages and custom schemes, so use our
       // HTTPS backend page for the redirect when opened from the Telegram app.
+      // For browsers/web app, pass the opener's origin so success.html's
+      // "Return to BM Booking App" button reloads the SAME app (which keeps the
+      // pending booking in sessionStorage and auto-creates the appointment).
+      let refOrigin = '';
+      try { refOrigin = new URL(document.referrer).origin; } catch (e) { /* ignore */ }
+      const returnTo = (refOrigin || 'https://bmbookingtelegrambot.possibletechplc.com') + '/patient/appointments';
       const redirectUrl = fromTelegram
         ? 'https://bmbookingapi.possibletechplc.com/api/payments/success-redirect?from=tg'
-        : baseUrl + '/success.html';
+        : baseUrl + '/success.html?returnTo=' + encodeURIComponent(returnTo);
 
       const fd = new FormData(e.target);
       const body = {
