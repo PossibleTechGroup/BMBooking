@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { fetchMyAppointments, createAppointment, cancelAppointment, fetchDoctorScheduleSlots } from '@/lib/store/slices/appointmentSlice';
@@ -76,18 +76,24 @@ function AppointmentsPage() {
     if (doctors.length === 0) dispatch(fetchDoctors());
   }, [dispatch]);
 
-  // Restore a pending booking after returning from the Telebirr "back to merchant"
-  // flow, verify the payment, and auto-create the appointment.
-  useEffect(() => {
+  // Restore a pending booking after returning from the Telebirr payment flow,
+  // verify the payment, and auto-create the appointment. The pending booking is
+  // kept in localStorage (survives tab switches and logins) and the completion
+  // is re-checked when the app tab regains focus/visibility.
+  const pendingFinishRef = useRef(false);
+
+  const completePendingBooking = async () => {
+    if (pendingFinishRef.current) return;
     if (doctors.length === 0) return;
     let pending: any = null;
     try {
-      pending = JSON.parse(sessionStorage.getItem(PENDING_BOOKING_KEY) || 'null');
+      pending = JSON.parse(localStorage.getItem(PENDING_BOOKING_KEY) || 'null');
     } catch (e) { /* ignore */ }
     if (!pending?.doctorId) return;
     const doctor = doctors.find((d) => d.id === Number(pending.doctorId));
     if (!doctor) return;
 
+    pendingFinishRef.current = true;
     setBookingDoctorId(Number(pending.doctorId));
     setBookingDoctorName(pending.name || doctor.fullName || '');
     setBookingDate(pending.date || '');
@@ -99,54 +105,65 @@ function AppointmentsPage() {
     setBookingStep('payment');
     setModalError('');
 
-    const finishBooking = async () => {
-      try {
-        setPaying(true);
-        const verifyRes = await api.post('/payments/verify-telebirr', { amount: pending.totalPayable });
-        const paid = verifyRes.data?.status === 'success' && verifyRes.data?.data?.paid;
-        if (!paid) {
-          setModalError('Payment not confirmed yet. If you already paid, tap "Verify & Book" to confirm.');
-          setPaying(false);
-          return;
-        }
-        if (!pending.date || !pending.time) {
-          setModalError('Please pick a date and time to finish booking.');
-          setPaying(false);
-          return;
-        }
-        const dateTime = `${pending.date}T${pending.time}:00.000Z`;
-        const result = await dispatch(createAppointment({
-          doctorId: Number(pending.doctorId),
-          dateTime,
-          fee: pending.fee ?? 0,
-          reason: pending.reason || '',
-          slotId: pending.slotId ?? undefined,
-          paymentMethod: pending.includeCardFee ? 'card' : 'service_fee',
-          paidCardFee: !!pending.includeCardFee,
-        }));
-        if (createAppointment.fulfilled.match(result)) {
-          try { sessionStorage.removeItem(PENDING_BOOKING_KEY); } catch (e) { /* ignore */ }
-          setShowBookingModal(false);
-          setBookingDoctorId(null);
-          setBookingDate('');
-          setBookingTime('');
-          setBookingSlotId(null);
-          setBookingReason('');
-          setAvailableSlots([]);
-          setBookingStep('details');
-          setIncludeCardFee(false);
-          dispatch(fetchMyAppointments());
-        } else {
-          setModalError((result.payload as string) || 'Failed to book. Please try again.');
-        }
-      } catch (err: any) {
-        setModalError(err?.response?.data?.message || err?.message || 'Payment verification failed. Please try again.');
-      } finally {
-        setPaying(false);
+    try {
+      setPaying(true);
+      const verifyRes = await api.post('/payments/verify-telebirr', { amount: pending.totalPayable });
+      const paid = verifyRes.data?.status === 'success' && verifyRes.data?.data?.paid;
+      if (!paid) {
+        setModalError('Payment not confirmed yet. If you already paid, tap "Verify & Book" to confirm.');
+        return;
       }
-    };
+      if (!pending.date || !pending.time) {
+        setModalError('Please pick a date and time to finish booking.');
+        return;
+      }
+      const dateTime = `${pending.date}T${pending.time}:00.000Z`;
+      const result = await dispatch(createAppointment({
+        doctorId: Number(pending.doctorId),
+        dateTime,
+        fee: pending.fee ?? 0,
+        reason: pending.reason || '',
+        slotId: pending.slotId ?? undefined,
+        paymentMethod: pending.includeCardFee ? 'card' : 'service_fee',
+        paidCardFee: !!pending.includeCardFee,
+      }));
+      if (createAppointment.fulfilled.match(result)) {
+        try { localStorage.removeItem(PENDING_BOOKING_KEY); } catch (e) { /* ignore */ }
+        setShowBookingModal(false);
+        setBookingDoctorId(null);
+        setBookingDate('');
+        setBookingTime('');
+        setBookingSlotId(null);
+        setBookingReason('');
+        setAvailableSlots([]);
+        setBookingStep('details');
+        setIncludeCardFee(false);
+        dispatch(fetchMyAppointments());
+      } else {
+        setModalError((result.payload as string) || 'Failed to book. Please try again.');
+      }
+    } catch (err: any) {
+      setModalError(err?.response?.data?.message || err?.message || 'Payment verification failed. Please try again.');
+    } finally {
+      setPaying(false);
+      pendingFinishRef.current = false;
+    }
+  };
 
-    finishBooking();
+  useEffect(() => {
+    completePendingBooking();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') completePendingBooking();
+    };
+    const onActivate = () => completePendingBooking();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onActivate);
+    window.addEventListener('pageshow', onActivate);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onActivate);
+      window.removeEventListener('pageshow', onActivate);
+    };
   }, [doctors, dispatch]);
 
   useEffect(() => {
@@ -184,7 +201,7 @@ function AppointmentsPage() {
       return;
     }
     try {
-      sessionStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify({
+      localStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify({
         doctorId: bookingDoctorId,
         name: bookingDoctorName,
         date: bookingDate,
@@ -203,7 +220,7 @@ function AppointmentsPage() {
     if (!bookingDoctorId || !bookingDate || !bookingTime) return;
     setModalError('');
     setPaying(true);
-    try { sessionStorage.removeItem(PENDING_BOOKING_KEY); } catch (e) { /* ignore */ }
+    try { localStorage.removeItem(PENDING_BOOKING_KEY); } catch (e) { /* ignore */ }
     try {
       const verifyRes = await api.post('/payments/verify-telebirr', { amount: totalPayable });
       const paid = verifyRes.data?.status === 'success' && verifyRes.data?.data?.paid;
@@ -243,7 +260,7 @@ function AppointmentsPage() {
   };
 
   const cancelBooking = () => {
-    try { sessionStorage.removeItem(PENDING_BOOKING_KEY); } catch (e) { /* ignore */ }
+    try { localStorage.removeItem(PENDING_BOOKING_KEY); } catch (e) { /* ignore */ }
     setShowBookingModal(false);
   };
 
