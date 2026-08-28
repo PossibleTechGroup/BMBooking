@@ -2,28 +2,32 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
-import { fetchHospitalProfile, updateHospitalProfile, clearHospitalError } from '@/lib/store/slices/hospitalSlice';
+import { fetchHospitalProfile, updateHospitalProfile, clearHospitalError, fetchHospitalServices, addHospitalService, removeHospitalService } from '@/lib/store/slices/hospitalSlice';
 import { MedText } from '@/components/ui/med-text';
 import { MedCard } from '@/components/ui/med-card';
 import { MedButton } from '@/components/ui/med-button';
-import { MedInput } from '@/components/ui/med-input';
-import { Building2, Mail, MapPin, Phone, Pencil, Check } from 'lucide-react';
+import { MedInput, MedTextarea } from '@/components/ui/med-input';
+import { Building2, Mail, MapPin, Phone, Pencil, Check, Plus, X, Image as ImageIcon, FileText, Stethoscope } from 'lucide-react';
 
 export default function HospitalProfilePage() {
   const dispatch = useAppDispatch();
   const { token } = useAppSelector((s) => s.auth);
-  const { profile, error } = useAppSelector((s) => s.hospital);
+  const { profile, services, error } = useAppSelector((s) => s.hospital);
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [image, setImage] = useState('');
+  const [description, setDescription] = useState('');
+  const [newService, setNewService] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (token) {
       dispatch(fetchHospitalProfile());
+      dispatch(fetchHospitalServices());
     }
   }, [dispatch, token]);
 
@@ -33,10 +37,24 @@ export default function HospitalProfilePage() {
     setAddress(profile.address || '');
     setPhone(profile.phone || '');
     setEmail(profile.email || '');
+    setImage(profile.image || '');
+    setDescription(profile.description || '');
+    setNewService('');
     setEditing(true);
   };
 
   const isEmailValid = !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const handleAddService = async () => {
+    const value = newService.trim();
+    if (!value) return;
+    await dispatch(addHospitalService({ name: value }));
+    setNewService('');
+  };
+
+  const handleRemoveService = async (id: number) => {
+    await dispatch(removeHospitalService(id));
+  };
 
   const handleSave = async () => {
     dispatch(clearHospitalError());
@@ -47,6 +65,8 @@ export default function HospitalProfilePage() {
         address: address.trim() || undefined,
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
+        image: image.trim() || undefined,
+        description: description.trim() || undefined,
       })
     );
     setSaving(false);
@@ -111,7 +131,81 @@ export default function HospitalProfilePage() {
             errorText="Enter a valid email address"
           />
 
-          <div className="flex gap-3">
+          <div className="border-t border-border/60 pt-4 mb-1">
+            <div className="flex items-center gap-2 mb-3">
+              <ImageIcon size={16} className="text-muted" />
+              <MedText variant="metadata" className="text-text-secondary text-[13px] font-semibold uppercase tracking-wide">Logo</MedText>
+            </div>
+            {image && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={image} alt="Logo preview" className="w-16 h-16 rounded-[12px] object-cover mb-3 bg-foreground/5" />
+            )}
+            <MedInput
+              label="Logo Image URL"
+              placeholder="https://example.com/logo.png"
+              value={image}
+              onChange={(e) => { setImage(e.target.value); dispatch(clearHospitalError()); }}
+            />
+          </div>
+
+          <div className="border-t border-border/60 pt-4 mb-1">
+            <div className="flex items-center gap-2 mb-3">
+              <FileText size={16} className="text-muted" />
+              <MedText variant="metadata" className="text-text-secondary text-[13px] font-semibold uppercase tracking-wide">Description</MedText>
+            </div>
+            <MedTextarea
+              label="About this hospital"
+              placeholder="Describe your hospital, facilities, specialties, and what patients should know..."
+              value={description}
+              onChange={(e) => { setDescription(e.target.value); dispatch(clearHospitalError()); }}
+            />
+          </div>
+
+          <div className="border-t border-border/60 pt-4 mb-1">
+            <div className="flex items-center gap-2 mb-3">
+              <Stethoscope size={16} className="text-muted" />
+              <MedText variant="metadata" className="text-text-secondary text-[13px] font-semibold uppercase tracking-wide">Services</MedText>
+            </div>
+            {services.length > 0 ? (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {services.map((s) => (
+                  <span key={s.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[20px] bg-primary/10 text-primary text-[13px] font-medium">
+                    {s.name}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveService(s.id)}
+                      className="text-primary/60 hover:text-primary transition-colors"
+                      aria-label={`Remove ${s.name}`}
+                    >
+                      <X size={13} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <MedText variant="metadata" className="text-muted mb-3">No services added yet.</MedText>
+            )}
+            <div className="flex gap-2">
+              <MedInput
+                label="Add a service"
+                placeholder="e.g. Radiology, Cardiology, Emergency"
+                value={newService}
+                onChange={(e) => setNewService(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddService(); } }}
+                className="mb-0"
+              />
+              <button
+                type="button"
+                onClick={handleAddService}
+                disabled={!newService.trim()}
+                className="self-end mb-1 flex items-center gap-1 px-3 py-3 rounded-[12px] bg-primary text-white text-[13px] font-medium h-14 hover:bg-primary/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-3 mt-4">
             <MedButton title="Save Changes" onPress={handleSave} disabled={!name.trim() || !isEmailValid} loading={saving} />
             <MedButton title="Cancel" onPress={() => { setEditing(false); dispatch(clearHospitalError()); }} type="outline" className="w-auto px-8" />
           </div>
@@ -120,8 +214,13 @@ export default function HospitalProfilePage() {
         <>
           <MedCard className="mb-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-foreground/5 flex items-center justify-center">
-                <Building2 size={28} className="text-muted" />
+              <div className="w-16 h-16 rounded-full bg-foreground/5 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {profile.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profile.image} alt={profile.name} className="w-full h-full object-cover" />
+                ) : (
+                  <Building2 size={28} className="text-muted" />
+                )}
               </div>
               <div>
                 <MedText variant="h2" as="h3">{profile.name}</MedText>
@@ -129,6 +228,26 @@ export default function HospitalProfilePage() {
               </div>
             </div>
           </MedCard>
+
+          {profile.description && (
+            <MedCard className="mb-4">
+              <MedText variant="metadata" className="text-muted mb-2">About this hospital</MedText>
+              <MedText variant="body" className="text-[14px] leading-relaxed">{profile.description}</MedText>
+            </MedCard>
+          )}
+
+          {services.length > 0 && (
+            <MedCard className="mb-4">
+              <MedText variant="metadata" className="text-muted mb-3">Services</MedText>
+              <div className="flex flex-wrap gap-2">
+                {services.map((s) => (
+                  <span key={s.id} className="px-3 py-1.5 rounded-[20px] bg-primary/10 text-primary text-[13px] font-medium">
+                    {s.name}
+                  </span>
+                ))}
+              </div>
+            </MedCard>
+          )}
 
           <MedCard className="mb-4">
             <div className="space-y-4">

@@ -33,6 +33,7 @@ const HospitalPortalService = {
           phone: data.phone || null,
           email: data.email || null,
           image: data.image || data.logo || null,
+          description: data.description || null,
           cardPrice: 0,
           latitude: data.latitude || null,
           longitude: data.longitude || null,
@@ -85,6 +86,7 @@ const HospitalPortalService = {
         latitude: true,
         longitude: true,
         image: true,
+        description: true,
         cardPrice: true,
         createdAt: true,
         services: { select: { id: true, name: true, category: true }, orderBy: { id: "asc" } },
@@ -115,6 +117,7 @@ const HospitalPortalService = {
     if (data.longitude !== undefined) updateData.longitude = data.longitude;
     if (data.image !== undefined) updateData.image = data.image;
     else if (data.logo !== undefined) updateData.image = data.logo;
+    if (data.description !== undefined) updateData.description = data.description;
 
     if (Object.keys(updateData).length === 0) {
       throw new Error("No fields to update");

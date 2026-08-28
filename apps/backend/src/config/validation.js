@@ -342,6 +342,7 @@ const schemas = {
     latitude: Joi.number().min(-90).max(90).allow(null).optional(),
     longitude: Joi.number().min(-180).max(180).allow(null).optional(),
     image: Joi.string().allow(null, '').optional(),
+    description: Joi.string().max(5000).allow(null, '').optional(),
   }).min(1),
 
   updateReceptionist: Joi.object({

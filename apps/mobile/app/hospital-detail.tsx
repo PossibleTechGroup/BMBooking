@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-// import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { MedText } from '../components/medconnect/MedText';
@@ -116,8 +116,8 @@ export default function HospitalDetailScreen() {
 
           <MedText variant="h2" style={styles.sectionTitle}>Location</MedText>
           <MedCard style={styles.mapCard}>
-            {/* <MapView
-              provider={PROVIDER_GOOGLE}
+            <MapView
+              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
               style={styles.map}
               initialRegion={{
                 latitude: hospital.latitude,
@@ -135,10 +135,7 @@ export default function HospitalDetailScreen() {
                 }}
                 title={hospital.name}
               />
-            </MapView> */}
-            <Pressable style={styles.mapOverlay} onPress={openInMaps}>
-              <MedText variant="body" style={{ textAlign: 'center', marginTop: 80 }}>Map disabled (Rebuild required)</MedText>
-            </Pressable>
+            </MapView>
           </MedCard>
 
           <MedText variant="h2" style={styles.sectionTitle}>Medical Equipment</MedText>
@@ -238,10 +235,6 @@ const styles = StyleSheet.create({
   },
   map: {
     ...StyleSheet.absoluteFillObject,
-  },
-  mapOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
   },
   equipmentCard: {
     marginBottom: 12,

@@ -9,6 +9,7 @@ export interface HospitalProfile {
   phone: string | null;
   email: string | null;
   image?: string | null;
+  description?: string | null;
   cardPrice?: string;
   serviceFee?: { amount: string } | null;
   services?: { id: number; name: string; category: string | null }[];
@@ -48,6 +49,7 @@ export interface HospitalListItem {
   phone: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  description?: string | null;
   cardPrice?: string;
   serviceFee?: { amount: string } | null;
   doctorCount?: number;
@@ -66,6 +68,8 @@ export interface HospitalDetail {
   cardPrice?: string;
   serviceFee?: { amount: string } | null;
   doctors: DoctorDetail[];
+  services?: { name: string }[];
+  description?: string | null;
 }
 
 export interface DoctorDetail {
@@ -370,7 +374,7 @@ export const fetchHospitalProfile = createAsyncThunk(
 
 export const updateHospitalProfile = createAsyncThunk(
   'hospital/updateProfile',
-  async (data: { name?: string; address?: string; phone?: string; email?: string }, { rejectWithValue }) => {
+  async (data: { name?: string; address?: string; phone?: string; email?: string; image?: string; description?: string }, { rejectWithValue }) => {
     try {
       const response = await api.patch('/hospital/profile', data);
       return response.data.data;

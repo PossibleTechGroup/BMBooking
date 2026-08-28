@@ -105,6 +105,7 @@ const AdminHospitalService = {
     if (data.latitude !== undefined) updateData.latitude = data.latitude;
     if (data.longitude !== undefined) updateData.longitude = data.longitude;
     if (data.image !== undefined) updateData.image = data.image;
+    if (data.description !== undefined) updateData.description = data.description;
     if (data.cardPrice !== undefined) updateData.cardPrice = data.cardPrice;
 
     return prisma.hospital.update({

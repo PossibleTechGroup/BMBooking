@@ -20,6 +20,7 @@ import {
   Clock,
   Building2,
   Navigation,
+  FileText,
 } from 'lucide-react';
 
 export default function HospitalDetailPage() {
@@ -112,6 +113,29 @@ export default function HospitalDetailPage() {
           </div>
         </div>
       </MedCard>
+
+      {selectedHospital.description && (
+        <MedCard className="mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText size={15} className="text-muted" />
+            <MedText variant="metadata" className="text-text-secondary text-[12px] font-semibold uppercase tracking-wide">About this hospital</MedText>
+          </div>
+          <MedText variant="body" className="text-[14px] leading-relaxed text-text-secondary whitespace-pre-line">{selectedHospital.description}</MedText>
+        </MedCard>
+      )}
+
+      {selectedHospital.services && selectedHospital.services.length > 0 && (
+        <MedCard className="mb-4">
+          <MedText variant="metadata" className="text-text-secondary text-[12px] font-semibold uppercase tracking-wide mb-3">Services</MedText>
+          <div className="flex flex-wrap gap-2">
+            {selectedHospital.services.map((s, i) => (
+              <span key={i} className="px-3 py-1.5 rounded-[20px] bg-primary/10 text-primary text-[13px] font-medium">
+                {s.name}
+              </span>
+            ))}
+          </div>
+        </MedCard>
+      )}
 
       {/* Doctors */}
       <div className="mb-4">

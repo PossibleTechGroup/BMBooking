@@ -14,6 +14,11 @@
     "android": {
       "package": "com.bmbooking",
       "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyB0QIswSs-P-969OH9FY6bFttPvNYgOKQk"
+        }
+      },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
