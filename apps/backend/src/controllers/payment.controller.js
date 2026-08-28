@@ -59,6 +59,38 @@ const PaymentController = {
   successRedirect: (req, res) => {
     const webUrl =
       process.env.WEB_APP_URL || 'https://bmbooking.possibletechplc.com/patient/appointments';
+
+    // Telegram Mini App flow: Telegram's webview refuses plain-http pages and
+    // custom schemes, so no auto-redirect and no deep link here. The user just
+    // goes back to Telegram and the book is auto-completed by polling.
+    if (req.query.from === 'tg') {
+      return res.send(`
+        <html>
+          <head>
+            <title>Payment Successful</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; text-align: center; padding: 50px 24px; margin: 0; background: #f9f7f2; }
+              .card { background: white; padding: 34px 26px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); max-width: 380px; margin: 0 auto; }
+              .ring { width: 72px; height: 72px; border-radius: 50%; background: #ecfdf3; border: 1px solid #d1fadf; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; font-size: 34px; color: #039855; }
+              h1 { color: #101828; font-size: 22px; margin: 0 0 10px; }
+              p { color: #667085; font-size: 15px; line-height: 1.55; margin: 0 0 6px; }
+              .botline { color: #98a2b3; font-size: 13px; margin-top: 14px; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="ring">✓</div>
+              <h1>Payment Successful</h1>
+              <p>Your payment was received.</p>
+              <p>Return to the Telegram chat and reopen the app to finish your booking.</p>
+              <p class="botline">Your appointment will be created automatically.</p>
+            </div>
+          </body>
+        </html>
+      `);
+    }
+
     res.send(`
       <html>
         <head>

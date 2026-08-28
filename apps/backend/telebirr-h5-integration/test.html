@@ -235,6 +235,12 @@
       btn.querySelector('span').textContent = 'Creating order…';
       err.classList.remove('show');
 
+      // Telegram WebView blocks plain-http pages and custom schemes, so use our
+      // HTTPS backend page for the redirect when opened from the Telegram app.
+      const redirectUrl = fromTelegram
+        ? 'https://bmbookingapi.possibletechplc.com/api/payments/success-redirect?from=tg'
+        : baseUrl + '/success.html';
+
       const fd = new FormData(e.target);
       const body = {
         refNo: 'ORD' + Date.now(),
@@ -242,7 +248,7 @@
         total_amount: fd.get('total_amount'),
         trans_currency: fd.get('trans_currency'),
         notify_url: baseUrl + '/notify.html',
-        redirect_url: baseUrl + '/success.html' + (fromTelegram ? '?from=tg' : '')
+        redirect_url: redirectUrl
       };
 
       try {
