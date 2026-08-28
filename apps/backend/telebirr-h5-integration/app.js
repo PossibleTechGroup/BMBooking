@@ -10,6 +10,12 @@ const { signRequestObject } = require("./utils/tools");
 const app = express();
 const server = http.createServer(app);
 
+function isSuccessStatus(status) {
+  if (!status) return false;
+  const v = String(status).toUpperCase();
+  return v === "COMPLETED" || v.includes("TRADE_SUCCESS") || v.includes("SUCCESS");
+}
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
@@ -151,7 +157,7 @@ async function handlePaymentNotify(req, res) {
     console.log("✅ Payment Info Extracted:", JSON.stringify(paymentInfo, null, 2));
     
     // Log payment completion
-    if (paymentInfo.status === "Completed") {
+    if (isSuccessStatus(paymentInfo.status)) {
       console.log(`✅✅✅ PAYMENT COMPLETED ✅✅✅`);
       console.log(`   Order: ${paymentInfo.orderId}`);
       console.log(`   Amount: ${paymentInfo.amount} ${paymentInfo.currency}`);

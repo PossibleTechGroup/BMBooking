@@ -117,11 +117,6 @@
       document.getElementById('successMsg').textContent =
         'Your Telebirr payment was completed. Go back to Telegram to finish booking your appointment.';
       document.getElementById('returnToTelegram').style.display = 'block';
-    } else {
-      setTimeout(() => {
-        window.location.href = 'bmbooking://payment-success' +
-          (window.location.search ? window.location.search.replace('?', '&') : '');
-      }, 2500);
     }
   </script>
 </body>
