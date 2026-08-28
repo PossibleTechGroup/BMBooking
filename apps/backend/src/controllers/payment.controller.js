@@ -54,9 +54,11 @@ const PaymentController = {
 
   /**
    * GET /api/payments/success-redirect
-   * A landing page that deep links back to the app
+   * A landing page that returns the patient to BM Booking (web or mobile)
    */
   successRedirect: (req, res) => {
+    const webUrl =
+      process.env.WEB_APP_URL || 'https://bmbooking.possibletechplc.com/patient/appointments';
     res.send(`
       <html>
         <head>
@@ -68,20 +70,21 @@ const PaymentController = {
             .icon { font-size: 50px; color: #2ecc71; margin-bottom: 20px; }
             h1 { color: #2c3e50; font-size: 24px; margin-bottom: 10px; }
             p { color: #7f8c8d; margin-bottom: 30px; }
-            .btn { background: #0088cc; color: white; padding: 15px 30px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; }
+            .btn { background: #0088cc; color: white; padding: 15px 30px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; margin: 6px; }
+            .btn-mobile { background: #6b7280; }
           </style>
         </head>
         <body>
           <div class="card">
             <div class="icon">✓</div>
             <h1>Payment Received!</h1>
-            <p>Thank you for your payment. You can now return to the app to finish booking your appointment.</p>
-            <a href="bmbooking://payment-success" class="btn">Return to BM Booking</a>
+            <p>Thank you for your payment. Return below to finish booking your appointment.</p>
+            <a href="${webUrl}" class="btn">Return to BM Booking (Web)</a>
+            <a href="bmbooking://payment-success" class="btn btn-mobile">Return (Mobile App)</a>
           </div>
           <script>
-            // Try to auto-redirect after 2 seconds
             setTimeout(function() {
-              window.location.href = "bmbooking://payment-success";
+              window.location.href = "${webUrl}";
             }, 2000);
           </script>
         </body>

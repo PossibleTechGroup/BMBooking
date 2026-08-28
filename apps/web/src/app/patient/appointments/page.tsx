@@ -19,6 +19,8 @@ const STATUS_STYLES: Record<string, string> = {
   cancelled: 'bg-[#F3F4F6] text-[#5A6B80]',
 };
 
+const PENDING_BOOKING_KEY = 'bm_pending_booking';
+
 export default function AppointmentsPageWrapper() {
   return (
     <Suspense fallback={<div className="p-5 text-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" /></div>}>
@@ -74,6 +76,79 @@ function AppointmentsPage() {
     if (doctors.length === 0) dispatch(fetchDoctors());
   }, [dispatch]);
 
+  // Restore a pending booking after returning from the Telebirr "back to merchant"
+  // flow, verify the payment, and auto-create the appointment.
+  useEffect(() => {
+    if (doctors.length === 0) return;
+    let pending: any = null;
+    try {
+      pending = JSON.parse(sessionStorage.getItem(PENDING_BOOKING_KEY) || 'null');
+    } catch (e) { /* ignore */ }
+    if (!pending?.doctorId) return;
+    const doctor = doctors.find((d) => d.id === Number(pending.doctorId));
+    if (!doctor) return;
+
+    setBookingDoctorId(Number(pending.doctorId));
+    setBookingDoctorName(pending.name || doctor.fullName || '');
+    setBookingDate(pending.date || '');
+    setBookingTime(pending.time || '');
+    setBookingSlotId(pending.slotId ?? null);
+    setBookingReason(pending.reason || '');
+    setIncludeCardFee(!!pending.includeCardFee);
+    setShowBookingModal(true);
+    setBookingStep('payment');
+    setModalError('');
+
+    const finishBooking = async () => {
+      try {
+        setPaying(true);
+        const verifyRes = await api.post('/payments/verify-telebirr', { amount: pending.totalPayable });
+        const paid = verifyRes.data?.status === 'success' && verifyRes.data?.data?.paid;
+        if (!paid) {
+          setModalError('Payment not confirmed yet. If you already paid, tap "Verify & Book" to confirm.');
+          setPaying(false);
+          return;
+        }
+        if (!pending.date || !pending.time) {
+          setModalError('Please pick a date and time to finish booking.');
+          setPaying(false);
+          return;
+        }
+        const dateTime = `${pending.date}T${pending.time}:00.000Z`;
+        const result = await dispatch(createAppointment({
+          doctorId: Number(pending.doctorId),
+          dateTime,
+          fee: pending.fee ?? 0,
+          reason: pending.reason || '',
+          slotId: pending.slotId ?? undefined,
+          paymentMethod: pending.includeCardFee ? 'card' : 'service_fee',
+          paidCardFee: !!pending.includeCardFee,
+        }));
+        if (createAppointment.fulfilled.match(result)) {
+          try { sessionStorage.removeItem(PENDING_BOOKING_KEY); } catch (e) { /* ignore */ }
+          setShowBookingModal(false);
+          setBookingDoctorId(null);
+          setBookingDate('');
+          setBookingTime('');
+          setBookingSlotId(null);
+          setBookingReason('');
+          setAvailableSlots([]);
+          setBookingStep('details');
+          setIncludeCardFee(false);
+          dispatch(fetchMyAppointments());
+        } else {
+          setModalError((result.payload as string) || 'Failed to book. Please try again.');
+        }
+      } catch (err: any) {
+        setModalError(err?.response?.data?.message || err?.message || 'Payment verification failed. Please try again.');
+      } finally {
+        setPaying(false);
+      }
+    };
+
+    finishBooking();
+  }, [doctors, dispatch]);
+
   useEffect(() => {
     const bookDoctorId = searchParams.get('book');
     if (bookDoctorId) {
@@ -108,6 +183,19 @@ function AppointmentsPage() {
       setModalError('Invalid payment amount.');
       return;
     }
+    try {
+      sessionStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify({
+        doctorId: bookingDoctorId,
+        name: bookingDoctorName,
+        date: bookingDate,
+        time: bookingTime,
+        slotId: bookingSlotId,
+        reason: bookingReason,
+        includeCardFee,
+        totalPayable,
+        fee: doctorFee,
+      }));
+    } catch (e) { /* ignore */ }
     window.open(`${TELEBIRR_URL}/?amount=${encodeURIComponent(String(totalPayable))}`, '_blank');
   };
 
@@ -115,6 +203,7 @@ function AppointmentsPage() {
     if (!bookingDoctorId || !bookingDate || !bookingTime) return;
     setModalError('');
     setPaying(true);
+    try { sessionStorage.removeItem(PENDING_BOOKING_KEY); } catch (e) { /* ignore */ }
     try {
       const verifyRes = await api.post('/payments/verify-telebirr', { amount: totalPayable });
       const paid = verifyRes.data?.status === 'success' && verifyRes.data?.data?.paid;
@@ -151,6 +240,11 @@ function AppointmentsPage() {
     } finally {
       setPaying(false);
     }
+  };
+
+  const cancelBooking = () => {
+    try { sessionStorage.removeItem(PENDING_BOOKING_KEY); } catch (e) { /* ignore */ }
+    setShowBookingModal(false);
   };
 
   return (
@@ -212,11 +306,11 @@ function AppointmentsPage() {
 
       {/* Booking Modal */}
       {showBookingModal && (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-end sm:items-center justify-center p-4" onClick={() => setShowBookingModal(false)}>
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-end sm:items-center justify-center p-4" onClick={cancelBooking}>
           <div className="bg-surface rounded-t-[20px] sm:rounded-[20px] w-full max-w-lg p-6 animate-in slide-in-from-bottom-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
               <MedText variant="h2" as="h3">{bookingStep === 'payment' ? 'Payment' : 'Book Appointment'}</MedText>
-              <button onClick={() => setShowBookingModal(false)}><X size={20} /></button>
+              <button onClick={cancelBooking}><X size={20} /></button>
             </div>
 
             <MedText variant="body" className="text-text-secondary mb-4">With {bookingDoctorName}</MedText>
