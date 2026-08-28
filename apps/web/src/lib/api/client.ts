@@ -3,7 +3,7 @@ import axios from 'axios';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export const TELEBIRR_URL =
-  process.env.NEXT_PUBLIC_TELEBIRR_URL || 'http://157.180.114.86:53402';
+  process.env.NEXT_PUBLIC_TELEBIRR_URL || 'https://bmtelebirr.possibletechplc.com';
 
 export const api = axios.create({
   baseURL: API_URL ? `${API_URL}/api` : '/api',
