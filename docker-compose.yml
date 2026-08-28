@@ -80,6 +80,7 @@ services:
       PORT: "8080"
       HOST: "0.0.0.0"
       SERVER_IP: ${TELEBIRR_SERVER_IP:-bmtelebirr.possibletechplc.com}
+      PUBLIC_BASE_URL: ${PUBLIC_TELEBIRR_BASE_URL:-http://77.42.25.202:53402}
       SHEGA_BACKEND_URL: ${SHEGA_BACKEND_URL:-http://backend:5000}
       BM_BACKEND_URL: ${BM_BACKEND_URL:-http://backend:5000}
     dns:

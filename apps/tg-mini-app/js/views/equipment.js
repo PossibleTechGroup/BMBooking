@@ -92,7 +92,7 @@ const EquipmentView = (() => {
       state.totalPayable = pending.totalPayable;
 
       const verifyRes = await API.verifyTelebirr(pending.totalPayable);
-      if (verifyRes?.paid) {
+      if (verifyRes?.data?.paid) {
         state.paymentDone = true;
         confirmBooking(container);
       } else {
@@ -135,7 +135,7 @@ const EquipmentView = (() => {
           btn.textContent = 'Checking...';
           btn.disabled = true;
           const r = await API.verifyTelebirr(pending.totalPayable);
-          if (r?.paid) {
+          if (r?.data?.paid) {
             state.paymentDone = true;
             confirmBooking(container);
           } else {
@@ -176,7 +176,7 @@ const EquipmentView = (() => {
       btn.textContent = 'Checking...';
       btn.disabled = true;
       const r = await API.verifyTelebirr(pending.totalPayable);
-      if (r?.paid) {
+      if (r?.data?.paid) {
         clearPending();
         state.paymentDone = true;
         confirmBooking(container);
@@ -189,7 +189,7 @@ const EquipmentView = (() => {
   }
 
   function openPaymentUrl(amount) {
-    const url = `${API.TELEBIRR}/?amount=${encodeURIComponent(String(amount))}`;
+    const url = `${API.TELEBIRR}/?amount=${encodeURIComponent(String(amount))}&src=tg`;
     if (TG.webapp) {
       TG.openLink(url);
     } else {

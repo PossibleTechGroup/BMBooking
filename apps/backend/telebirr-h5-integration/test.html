@@ -223,6 +223,9 @@
     // Prefill amount only from BM Booking mobile (?amount=)
     const params = new URLSearchParams(window.location.search);
     if (params.get('amount')) document.getElementById('total_amount').value = params.get('amount');
+    // Telegram Mini App opens this page with ?src=tg — mark the redirect so
+    // success.html knows to stay browser-safe (no app deep link).
+    const fromTelegram = params.get('src') === 'tg';
 
     document.getElementById('paymentForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -239,7 +242,7 @@
         total_amount: fd.get('total_amount'),
         trans_currency: fd.get('trans_currency'),
         notify_url: baseUrl + '/notify.html',
-        redirect_url: baseUrl + '/success.html'
+        redirect_url: baseUrl + '/success.html' + (fromTelegram ? '?from=tg' : '')
       };
 
       try {

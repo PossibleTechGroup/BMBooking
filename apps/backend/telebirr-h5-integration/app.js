@@ -231,13 +231,17 @@ app.post("/verify-payment", handlePaymentNotify);
 // Callback status check endpoint
 app.get("/callback-status", (req, res) => {
   const serverPort = process.env.PORT || 8080;
-  // SERVER_IP in .env = your LAN or public IP (e.g. 192.168.1.5 or 157.180.114.86)
+  // PUBLIC_BASE_URL is the externally-reachable URL of this H5 service
+  // (e.g. http://77.42.25.202:53402). When set it is used for both the
+  // Telebirr webhook (notify_url) and the success/back-to-merchant
+  // (redirect_url), guaranteeing callbacks arrive at the correct service.
+  // Fallback: build from SERVER_IP in .env = your LAN or public IP.
   const host =
     process.env.SERVER_IP ||
     req.headers["x-forwarded-host"]?.split(":")[0] ||
     (req.headers.host || "").split(":")[0] ||
     "localhost";
-  const baseUrl = `http://${host}:${serverPort}`;
+  const baseUrl = process.env.PUBLIC_BASE_URL || `http://${host}:${serverPort}`;
 
   res.json({
     status: "active",
@@ -248,7 +252,7 @@ app.get("/callback-status", (req, res) => {
     serverIP: host,
     serverPort,
     timestamp: new Date().toISOString(),
-    note: "Open the app via http://<your-ip>:8080 and set SERVER_IP in .env for Telebirr webhooks",
+    note: "PUBLIC_BASE_URL env is used for notify_url/redirect_url when set",
   });
 });
 

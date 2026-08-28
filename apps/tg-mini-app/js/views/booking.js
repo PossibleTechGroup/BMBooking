@@ -1,5 +1,29 @@
 const BookingView = (() => {
   const PENDING_KEY = 'bk_pending_payment';
+  let paymentPollTimer = null;
+
+  function stopPaymentPoll() {
+    if (paymentPollTimer) {
+      clearInterval(paymentPollTimer);
+      paymentPollTimer = null;
+    }
+  }
+
+  function startPaymentPoll(container) {
+    stopPaymentPoll();
+    paymentPollTimer = setInterval(async () => {
+      try {
+        const r = await API.verifyTelebirr(state.totalPayable);
+        if (r?.data?.paid) {
+          stopPaymentPoll();
+          state.paymentDone = true;
+          state.step = 4;
+          renderConfirm(container);
+          showStep(container);
+        }
+      } catch {}
+    }, 3500);
+  }
 
   let state = {
     step: 0,
@@ -80,7 +104,7 @@ const BookingView = (() => {
   }
 
   function openPaymentUrl(amount) {
-    const url = `${API.TELEBIRR}/?amount=${encodeURIComponent(String(amount))}`;
+    const url = `${API.TELEBIRR}/?amount=${encodeURIComponent(String(amount))}&src=tg`;
     if (TG.webapp) {
       TG.openLink(url);
     } else {
@@ -133,6 +157,7 @@ const BookingView = (() => {
 
   async function render(container, params) {
     TG.hideMainButton();
+    stopPaymentPoll();
 
     const pending = loadPending();
     if (pending && pending.doctorId) {
@@ -172,7 +197,7 @@ const BookingView = (() => {
 
     try {
       const r = await API.verifyTelebirr(state.totalPayable);
-      if (r?.paid) {
+      if (r?.data?.paid) {
         state.paymentDone = true;
         state.step = 4;
         renderConfirm(container);
@@ -190,6 +215,7 @@ const BookingView = (() => {
   }
 
   function renderPaymentWaiting(container) {
+    stopPaymentPoll();
     const el = container.querySelector('#step-payment');
     el.innerHTML = `
       <h3 style="margin-bottom:16px">${t('payment')}</h3>
@@ -200,6 +226,7 @@ const BookingView = (() => {
         </div>
       </div>
       <p class="text-hint mt-8" style="font-size:13px">${t('waitingPayment')}</p>
+      <p class="text-hint" style="font-size:13px" id="pay-auto-hint">${t('autoCheckPayment')}</p>
       <button class="btn btn-primary mt-16" id="pay-verify-btn">${t('verifyPaymentAgain')}</button>
       <button class="btn btn-outline mt-8" id="pay-retry-btn">${t('openingTelebirr')}</button>
     `;
@@ -210,7 +237,8 @@ const BookingView = (() => {
       btn.disabled = true;
       try {
         const r = await API.verifyTelebirr(state.totalPayable);
-        if (r?.paid) {
+        if (r?.data?.paid) {
+          stopPaymentPoll();
           state.paymentDone = true;
           state.step = 4;
           renderConfirm(container);
@@ -233,6 +261,8 @@ const BookingView = (() => {
       openPaymentUrl(state.totalPayable);
       TG.showAlert(t('waitingPayment'));
     });
+
+    startPaymentPoll(container);
   }
 
   // ─── Step 0: Sponsor ───
