@@ -241,14 +241,27 @@ const AuthService = {
       throw new Error("Invalid username or password");
     }
 
+    const receptionistProfile = await prisma.receptionistProfile.findUnique({
+      where: { userId: user.id },
+    });
+    const hospitalId = receptionistProfile ? receptionistProfile.hospitalId : null;
+
     const token = signToken({
       id: user.id,
       username: user.username,
       role: user.role,
+      hospitalId,
     });
     return {
       token,
-      user: { id: user.id, username: user.username, role: user.role },
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        hospitalRole: "staff",
+        hospitalId,
+        permissions: receptionistProfile ? receptionistProfile.permissions || [] : [],
+      },
     };
   },
 
@@ -290,10 +303,17 @@ const AuthService = {
       id: user.id,
       phone: user.phone,
       role: user.role,
+      hospitalId: hospitalProfile.hospitalId,
     });
     return {
       token,
-      user: { id: user.id, phone: user.phone, role: user.role },
+      user: {
+        id: user.id,
+        phone: user.phone,
+        role: user.role,
+        hospitalRole: "owner",
+        hospitalId: hospitalProfile.hospitalId,
+      },
     };
   },
 };

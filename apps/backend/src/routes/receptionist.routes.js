@@ -44,6 +44,8 @@ router.patch(
 );
 
 router.get("/patients", receptionistController.searchPatients);
+router.get("/patients/directory", receptionistController.listPatients);
+router.get("/patients/:id/history", receptionistController.getPatientHistory);
 router.post("/patients", validate(schemas.createPatientByReceptionist), receptionistController.createPatient);
 router.get("/doctors", receptionistController.getHospitalDoctors);
 router.get("/doctors/search", receptionistController.searchAllDoctors);

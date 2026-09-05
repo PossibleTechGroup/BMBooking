@@ -1,6 +1,7 @@
 const prisma = require("../lib/prisma");
 const ReceptionistService = require("../services/receptionist.service");
 const AppointmentService = require("../services/appointment.service");
+const HospitalPortalService = require("../services/hospital-portal.service");
 const { handleCloudinaryUpload } = require('../lib/cloudinary');
 
 
@@ -390,6 +391,31 @@ const ReceptionistController = {
     } catch (err) {
       console.error("❌ [RECEPTIONIST] Search patients error:", err.message);
       res.status(400).json({ status: "fail", message: err.message });
+    }
+  },
+
+  getPatientHistory: async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = await HospitalPortalService.getPatientHistory(
+        req.receptionistProfile.hospitalId,
+        id,
+      );
+      res.status(200).json({ status: "success", data });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  },
+
+  listPatients: async (req, res) => {
+    try {
+      const patients = await HospitalPortalService.listPatients(
+        req.receptionistProfile.hospitalId,
+        { search: req.query.search },
+      );
+      res.status(200).json({ status: "success", data: patients });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: err.message });
     }
   },
 

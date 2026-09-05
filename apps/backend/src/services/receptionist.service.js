@@ -1651,6 +1651,17 @@ const ReceptionistService = {
     const endOfToday = new Date(now);
     endOfToday.setHours(23, 59, 59, 999);
 
+    const staffUsers = await prisma.user.findMany({
+      where: {
+        OR: [
+          { receptionistProfile: { hospitalId } },
+          { hospitalProfile: { hospitalId } },
+        ],
+      },
+      select: { id: true },
+    });
+    const staffUserIds = staffUsers.map((u) => u.id);
+
     const [
       todaysAppointments,
       todaysApprovedAppointments,
@@ -1669,7 +1680,7 @@ const ReceptionistService = {
         where: {
           doctor: { hospitalId },
           dateTime: { gte: startOfToday, lte: endOfToday },
-          status: "approved",
+          status: "accepted",
         },
       }),
       prisma.appointment.count({
@@ -1714,7 +1725,7 @@ const ReceptionistService = {
       }),
       prisma.notification.count({
         where: {
-          receiver: { receptionistProfile: { hospitalId } },
+          userId: { in: staffUserIds },
           isRead: false,
         },
       }),

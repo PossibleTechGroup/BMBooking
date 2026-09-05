@@ -352,15 +352,19 @@ const schemas = {
     hospitalId: Joi.number().integer().optional(),
     phone: Joi.string().regex(phoneRegex).optional().allow(null, ''),
     email: Joi.string().email().optional().allow(null, ''),
+    fullName: Joi.string().max(100).optional().allow(null, ''),
+    permissions: Joi.array().items(Joi.string()).optional(),
   }).min(1).messages({ "object.min": "At least one field must be provided for update" }),
 
   createReceptionist: Joi.object({
     username: Joi.string().pattern(/^[a-zA-Z0-9_]+$/).min(3).max(50).required()
       .messages({ "string.pattern.base": "Username may only contain letters, numbers, and underscores" }),
     password: Joi.string().min(8).required(),
-    hospitalId: Joi.number().integer().required(),
+    hospitalId: Joi.number().integer().optional(),
     phone: Joi.string().regex(phoneRegex).optional(),
     email: Joi.string().email().optional(),
+    fullName: Joi.string().max(100).optional().allow(null, ''),
+    permissions: Joi.array().items(Joi.string()).optional(),
   }),
 
   updateHospitalCardPrice: Joi.object({

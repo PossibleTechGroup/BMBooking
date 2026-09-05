@@ -6,9 +6,13 @@ export type ProfileStatus = 'None' | 'PendingReview' | 'Approved' | 'Rejected' |
 interface User {
   id: number;
   phone: string;
+  username?: string | null;
   fullName?: string;
-  role: 'patient' | 'doctor' | 'hospital';
+  role: 'patient' | 'doctor' | 'hospital' | 'receptionist';
   isLocked: boolean;
+  hospitalRole?: 'owner' | 'staff';
+  hospitalId?: number | null;
+  permissions?: string[];
   doctorProfile?: any;
   patientProfile?: any;
   hospitalProfile?: any;
@@ -53,6 +57,8 @@ const mapErrorToKey = (message: string): string => {
   if (msg.includes('rejected') && msg.includes('hospital')) return 'errorHospitalRejected';
   if (msg.includes('registration form')) return 'errorHospitalFormRequired';
   if (msg.includes('no hospital')) return 'errorHospitalNoProfile';
+  if (msg.includes('invalid username or password')) return 'errorInvalidCredentials';
+  if (msg.includes('invalid phone or password')) return 'errorInvalidCredentials';
   return 'errorGeneric';
 };
 
@@ -195,6 +201,22 @@ export const hospitalLogin = createAsyncThunk(
   }
 );
 
+export const receptionistLogin = createAsyncThunk(
+  'auth/receptionistLogin',
+  async ({ username, password }: { username: string; password: string }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/auth/receptionist-login', { username, password });
+      const { token, user } = response.data.data;
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('user_data', JSON.stringify(user));
+      return { token, user };
+    } catch (error: any) {
+      const rawMessage = error.response?.data?.message || error.response?.data?.data?.message || error.message;
+      return rejectWithValue(mapErrorToKey(rawMessage));
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -274,7 +296,14 @@ const authSlice = createSlice({
         state.user = action.payload.user;
         state.loading = false;
       })
-      .addCase(hospitalLogin.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
+      .addCase(hospitalLogin.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
+      .addCase(receptionistLogin.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(receptionistLogin.fulfilled, (state, action) => {
+        state.token = action.payload.token;
+        state.user = action.payload.user;
+        state.loading = false;
+      })
+      .addCase(receptionistLogin.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
   },
 });
 

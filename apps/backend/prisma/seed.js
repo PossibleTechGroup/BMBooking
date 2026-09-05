@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
+const { ALL_PERMISSIONS } = require("../src/config/permissions");
 const prisma = new PrismaClient();
 
 function onDate(base, dayOffset, hours = 0, minutes = 0) {
@@ -21,82 +22,143 @@ const HOSPITALS = [
   { name: "Landmark Hospital", address: "Addis Ababa, Megenagna", phone: "+25111234567", cardPrice: 50, lat: 9.0200, lng: 38.8000 },
 ];
 
-// ── 5 Real Doctors (from uploaded images) ────────────────────────────────
+// ── 9 Real Doctors (from uploaded images) ──────────────────────────────
+// NOTE: intentionally no doctor is assigned to Zewditu Memorial Hospital (Zmezem), index 2.
 const DOCTORS = [
   {
     phone: "+251910000001",
-    fullName: "Dr. Mulualem Gessese",
-    email: "mulualem.gessese@bm-booking.com",
+    fullName: "Dr. Kefelegn Dejene",
+    email: "kefelegn.dejene@bm-booking.com",
     specialization: "Cardiology",
     specializations: ["Cardiology", "Internal Medicine"],
     licenseNumber: "MD-10001",
-    experienceYears: 15,
-    bio: "Experienced cardiologist specializing in interventional cardiology and cardiac rehabilitation.",
+    experienceYears: 16,
+    bio: "Senior cardiologist with expertise in interventional cardiology and advanced cardiac imaging.",
     hospitalIdx: 0,
-    clinicName: "Gessese Heart Clinic",
-    clinicAddress: "Bole, Addis Ababa",
+    clinicName: "Dejene Heart Clinic",
+    clinicAddress: "Tichet St, Addis Ababa",
     languages: ["Amharic", "English"],
-    profilePicture: "https://i.pravatar.cc/300?img=12",
+    profilePicture: "https://drkefecardio.com/images/AboutUs/9d10b8d9-7165-4784-b3aa-c4ecdb98d018.jpg",
   },
   {
     phone: "+251910000002",
-    fullName: "Dr. Menberu",
-    email: "menberu@bm-booking.com",
-    specialization: "Pediatrics",
-    specializations: ["Pediatrics", "Family Medicine"],
+    fullName: "Dr. Nathan Muluberhan",
+    email: "nathan.muluberhan@bm-booking.com",
+    specialization: "Emergency & Critical Care",
+    specializations: ["Emergency & Critical Care", "Internal Medicine"],
     licenseNumber: "MD-10002",
-    experienceYears: 10,
-    bio: "Compassionate pediatrician dedicated to child health, development, and preventive care.",
+    experienceYears: 11,
+    bio: "Emergency and critical care specialist focused on resuscitation, trauma, and ICU management.",
     hospitalIdx: 1,
-    clinicName: "Menberu Child Health Center",
-    clinicAddress: "Kazanchis, Addis Ababa",
-    languages: ["Amharic", "English", "Oromiffa"],
-    profilePicture: "https://i.pravatar.cc/300?img=32",
+    clinicName: "Muluberhan Emergency Clinic",
+    clinicAddress: "Swaziland St, Addis Ababa",
+    languages: ["Amharic", "English"],
+    profilePicture: "https://www.ethiopianmedicalass.org/wp-content/uploads/2023/09/photo_5807729501948460841_x.jpg",
   },
   {
     phone: "+251910000003",
-    fullName: "Dr. MIftah Dellil",
-    email: "miftah.dellil@bm-booking.com",
-    specialization: "Orthopedics",
-    specializations: ["Orthopedics", "General Surgery"],
+    fullName: "Dr. Samson Bassa",
+    email: "samson.bassa@bm-booking.com",
+    specialization: "Internal Medicine",
+    specializations: ["Internal Medicine", "General Medicine"],
     licenseNumber: "MD-10003",
-    experienceYears: 12,
-    bio: "Skilled orthopedic surgeon specializing in joint replacement, trauma, and sports injuries.",
-    hospitalIdx: 2,
-    clinicName: "Dellil Orthopedic Clinic",
-    clinicAddress: "Piazza, Addis Ababa",
+    experienceYears: 14,
+    bio: "Internal medicine physician dedicated to diagnosis and management of complex adult conditions.",
+    hospitalIdx: 3,
+    clinicName: "Bassa Internal Medicine Center",
+    clinicAddress: "Bole Rd, Addis Ababa",
     languages: ["Amharic", "English"],
-    profilePicture: "https://i.pravatar.cc/300?img=59",
+    profilePicture: "https://amcethiopia.com/images/v/dr-samson-780.jpg",
   },
   {
     phone: "+251910000004",
-    fullName: "Dr. Elshaday",
-    email: "elshaday@bm-booking.com",
-    specialization: "Dermatology",
-    specializations: ["Dermatology", "Cosmetic Medicine"],
+    fullName: "Dr. Wubshet Jote Tolossa",
+    email: "wubshet.tolossa@bm-booking.com",
+    specialization: "Nephrology",
+    specializations: ["Nephrology", "Internal Medicine"],
     licenseNumber: "MD-10004",
-    experienceYears: 8,
-    bio: "Expert dermatologist focusing on skin care, cosmetic dermatology, and dermatologic surgery.",
-    hospitalIdx: 3,
-    clinicName: "Elshaday Skin & Beauty Clinic",
-    clinicAddress: "Bole, Addis Ababa",
+    experienceYears: 12,
+    bio: "Nephrologist specializing in kidney disease, dialysis, and hypertension management.",
+    hospitalIdx: 4,
+    clinicName: "Tolossa Kidney Care Clinic",
+    clinicAddress: "Mexico St, Addis Ababa",
     languages: ["Amharic", "English"],
-    profilePicture: "https://i.pravatar.cc/300?img=45",
+    profilePicture: "https://healthequity.atlanticfellows.org/wp-content/uploads/2025/08/Tolossa_Wubshet--scaled.jpg",
   },
   {
     phone: "+251910000005",
-    fullName: "Dr. Paulos Shume",
-    email: "paulos.shume@bm-booking.com",
-    specialization: "Neurology",
-    specializations: ["Neurology", "Psychiatry"],
+    fullName: "Dr. Abdu Adem Yesufe",
+    email: "abdu.yesufe@bm-booking.com",
+    specialization: "Oncology",
+    specializations: ["Oncology", "Internal Medicine"],
     licenseNumber: "MD-10005",
-    experienceYears: 18,
-    bio: "Senior neurologist with expertise in stroke, epilepsy, and neurodegenerative disorders.",
-    hospitalIdx: 4,
-    clinicName: "Shume Neurology Center",
+    experienceYears: 13,
+    bio: "Medical oncologist focused on cancer diagnosis, chemotherapy, and supportive care.",
+    hospitalIdx: 1,
+    clinicName: "Yesufe Oncology Center",
+    clinicAddress: "Swaziland St, Addis Ababa",
+    languages: ["Amharic", "English"],
+    profilePicture: "https://oncodaily.com/pub/uploads/2025/07/St.-Pauls-Hospital-Millennium-Medical-College.jpg",
+  },
+  {
+    phone: "+251910000006",
+    fullName: "Dr. Eden Haileselassie",
+    email: "eden.haileselassie@bm-booking.com",
+    specialization: "General Medicine",
+    specializations: ["General Medicine", "Family Medicine"],
+    licenseNumber: "MD-10006",
+    experienceYears: 9,
+    bio: "General practitioner offering comprehensive primary and preventive care for all ages.",
+    hospitalIdx: 5,
+    clinicName: "Haileselassie Family Clinic",
+    clinicAddress: "Kazanchis, Addis Ababa",
+    languages: ["Amharic", "English"],
+    profilePicture: "https://www.amcethiopia.com/images/n/dr-eden-780.jpg",
+  },
+  {
+    phone: "+251910000007",
+    fullName: "Dr. Selamawit Tariku",
+    email: "selamawit.tariku@bm-booking.com",
+    specialization: "Radiology",
+    specializations: ["Radiology", "Diagnostic Imaging"],
+    licenseNumber: "MD-10007",
+    experienceYears: 10,
+    bio: "Radiologist specializing in diagnostic imaging, MRI, CT, and interventional radiology.",
+    hospitalIdx: 6,
+    clinicName: "Tariku Imaging Center",
+    clinicAddress: "Bole Medhanealem, Addis Ababa",
+    languages: ["Amharic", "English"],
+    profilePicture: "https://amcethiopia.com/images/n/dr-selamawit-780.jpg",
+  },
+  {
+    phone: "+251910000008",
+    fullName: "Dr. Mahlet Tadesse",
+    email: "mahlet.tadesse@bm-booking.com",
+    specialization: "Endocrinology",
+    specializations: ["Endocrinology", "Internal Medicine"],
+    licenseNumber: "MD-10008",
+    experienceYears: 11,
+    bio: "Endocrinologist specialized in diabetes, thyroid disorders, and hormonal imbalances.",
+    hospitalIdx: 7,
+    clinicName: "Tadesse Endocrine Clinic",
     clinicAddress: "Megenagna, Addis Ababa",
     languages: ["Amharic", "English"],
-    profilePicture: "https://i.pravatar.cc/300?img=68",
+    profilePicture: "https://amcethiopia.com/images/r/dr-mahlet-780.jpg",
+  },
+  {
+    phone: "+251910000009",
+    fullName: "Dr. Samrawit Girma",
+    email: "samrawit.girma@bm-booking.com",
+    specialization: "General Medicine",
+    specializations: ["General Medicine", "Internal Medicine"],
+    licenseNumber: "MD-10009",
+    experienceYears: 7,
+    bio: "General medicine physician providing patient-centered outpatient and hospital care.",
+    hospitalIdx: 0,
+    clinicName: "Girma Primary Care Clinic",
+    clinicAddress: "Tichet St, Addis Ababa",
+    languages: ["Amharic", "English"],
+    profilePicture: "https://www.soddo.org/wp-content/uploads/2025/03/Samrawit-Girma-Medical-Doctor-1024x1024.jpg",
   },
 ];
 
@@ -195,9 +257,9 @@ async function main() {
 
   // ── 3. Receptionists ──────────────────────────────────────────────────
   const receptionistDefs = [
-    { phone: "+251933000000", username: "receptionist_bl", hospitalIdx: 0 },
-    { phone: "+251933000001", username: "receptionist_sp", hospitalIdx: 1 },
-    { phone: "+251933000002", username: "receptionist_zw", hospitalIdx: 2 },
+    { phone: "+251933000000", username: "receptionist_bl", hospitalIdx: 0, permissions: ALL_PERMISSIONS },
+    { phone: "+251933000001", username: "receptionist_sp", hospitalIdx: 1, permissions: ALL_PERMISSIONS },
+    { phone: "+251933000002", username: "receptionist_zw", hospitalIdx: 2, permissions: ALL_PERMISSIONS },
   ];
   const receptionists = [];
   const receptionistPassword = await bcrypt.hash("password123", 10);
@@ -207,7 +269,7 @@ async function main() {
       username: r.username, password: receptionistPassword, role: "receptionist",
     });
     const profile = await prisma.receptionistProfile.create({
-      data: { userId: u.id, hospitalId: hospitals[r.hospitalIdx].id },
+      data: { userId: u.id, hospitalId: hospitals[r.hospitalIdx].id, permissions: r.permissions },
     });
     receptionists.push({ user: u, profile });
   }
@@ -333,7 +395,7 @@ async function main() {
     "  Receptionist (Zewditu):    username=receptionist_zw, password=password123\n" +
     "  Doctors:                  password=password123 (phone numbers below)\n" +
     DOCTORS.map(d => `    ${d.fullName}: ${d.phone} — 50 ETB/visit`).join("\n") +
-    "\n\n📋 All 5 doctors have schedules Mon-Fri 8:00-17:00 for 4 weeks."
+    "\n\n📋 All 9 doctors have schedules Mon-Fri 8:00-17:00 for 4 weeks (none at Zmezem/Zewditu)."
   );
 }
 

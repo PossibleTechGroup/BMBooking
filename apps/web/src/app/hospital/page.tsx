@@ -11,6 +11,7 @@ import {
 import { api } from '@/lib/api/client';
 import { MedText } from '@/components/ui/med-text';
 import { MedCard } from '@/components/ui/med-card';
+import RegisterDoctorModal from '@/components/hospital/register-doctor-modal';
 import {
   Bell, ClipboardList, BarChart3, CreditCard, Stethoscope, Users,
   Clock, CheckCircle2, CalendarDays, UserPlus, Wallet, CalendarClock, Ticket,
@@ -37,12 +38,21 @@ function timeAgo(iso?: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-const quickActions = [
+interface QuickAction {
+  title: string;
+  desc: string;
+  color: string;
+  icon: typeof ClipboardList;
+  href?: string;
+  action?: string;
+}
+
+const quickActions: QuickAction[] = [
   { title: 'Appointments', desc: 'Manage patient bookings', color: '#175CD3', icon: ClipboardList, href: '/hospital/appointments' },
   { title: 'Analytics', desc: 'Bookings, payments & cards', color: '#6941C6', icon: BarChart3, href: '/hospital/analytics' },
-  { title: 'Packages', desc: 'Card templates & validity', color: '#027A48', icon: CreditCard, href: '/hospital/packages' },
+  { title: 'Register Doctor', desc: 'Add a doctor with intro video', color: '#027A48', icon: UserPlus, action: 'register-doctor' },
   { title: 'Doctors', desc: 'Review & manage doctors', color: '#1E5A8A', icon: Stethoscope, href: '/hospital/doctors' },
-  { title: 'Receptionists', desc: 'Manage reception staff', color: '#B54708', icon: Users, href: '/hospital/receptionists' },
+  { title: 'Staff', desc: 'Manage reception staff', color: '#B54708', icon: Users, href: '/hospital/staff' },
   { title: 'Profile', desc: 'Facility details & services', color: '#334155', icon: Building2, href: '/hospital/profile' },
 ];
 
@@ -61,6 +71,7 @@ export default function HospitalDashboardPage() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [tab, setTab] = useState<'pending' | 'all'>('pending');
+  const [showRegister, setShowRegister] = useState(false);
 
   const loadOverview = () => {
     dispatch(fetchHospitalOverview());
@@ -212,20 +223,35 @@ export default function HospitalDashboardPage() {
       {/* ── Quick actions ──────────────────────────────────── */}
       <MedText variant="body" className="text-[15px] font-semibold mb-3">Quick Actions</MedText>
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-8">
-        {quickActions.map((m) => (
-          <Link key={m.title} href={m.href} className="group">
-            <MedCard className="h-full hover:shadow-md transition-all hover:-translate-y-0.5 p-4">
-              <div
-                className="w-10 h-10 rounded-[10px] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform"
-                style={{ background: `${m.color}14` }}
-              >
-                <m.icon size={20} color={m.color} />
-              </div>
-              <MedText variant="body" className="text-[14px] font-semibold">{m.title}</MedText>
-              <MedText variant="metadata" className="mt-0.5">{m.desc}</MedText>
-            </MedCard>
-          </Link>
-        ))}
+        {quickActions.map((m) =>
+          m.action === 'register-doctor' ? (
+            <button key={m.title} onClick={() => setShowRegister(true)} className="group">
+              <MedCard className="h-full hover:shadow-md transition-all hover:-translate-y-0.5 p-4 cursor-pointer text-left">
+                <div
+                  className="w-10 h-10 rounded-[10px] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform"
+                  style={{ background: `${m.color}14` }}
+                >
+                  <m.icon size={20} color={m.color} />
+                </div>
+                <MedText variant="body" className="text-[14px] font-semibold">{m.title}</MedText>
+                <MedText variant="metadata" className="mt-0.5">{m.desc}</MedText>
+              </MedCard>
+            </button>
+          ) : (
+            <Link key={m.title} href={m.href!} className="group">
+              <MedCard className="h-full hover:shadow-md transition-all hover:-translate-y-0.5 p-4">
+                <div
+                  className="w-10 h-10 rounded-[10px] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform"
+                  style={{ background: `${m.color}14` }}
+                >
+                  <m.icon size={20} color={m.color} />
+                </div>
+                <MedText variant="body" className="text-[14px] font-semibold">{m.title}</MedText>
+                <MedText variant="metadata" className="mt-0.5">{m.desc}</MedText>
+              </MedCard>
+            </Link>
+          )
+        )}
       </div>
 
       {/* ── Two-column layout: notifications + bookings ─────── */}
@@ -342,6 +368,8 @@ export default function HospitalDashboardPage() {
           )}
         </MedCard>
       </div>
+
+      <RegisterDoctorModal open={showRegister} onClose={() => setShowRegister(false)} onRegistered={loadOverview} />
     </div>
   );
 }

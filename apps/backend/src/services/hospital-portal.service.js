@@ -1,6 +1,15 @@
 const bcrypt = require("bcryptjs");
 const prisma = require("../lib/prisma");
 const { resolveServiceLabel } = require("../config/services.config");
+const { ALL_PERMISSIONS } = require("../config/permissions");
+
+// Owner-only keys can never be assigned to a receptionist, even if the API is
+// called directly (defense-in-depth besides the owner-only route middleware).
+const OWNER_ONLY_PERMISSIONS = ["staff.manage", "settings.edit"];
+const sanitizePermissions = (permissions) => {
+  const list = Array.isArray(permissions) ? permissions : [];
+  return [...new Set(list.filter((p) => !OWNER_ONLY_PERMISSIONS.includes(p)))];
+};
 
 const HospitalPortalService = {
   register: async (data) => {
@@ -394,16 +403,42 @@ const HospitalPortalService = {
         patientName: a.patient?.patientProfile?.fullName || a.patient?.phone || "Patient",
         patientGender: a.patient?.patientProfile?.gender,
         patientBloodType: a.patient?.patientProfile?.bloodType,
+        patient: a.patient
+          ? {
+              id: a.patient.id,
+              phone: a.patient.phone,
+              patientProfile: a.patient.patientProfile
+                ? {
+                    fullName: a.patient.patientProfile.fullName,
+                    gender: a.patient.patientProfile.gender,
+                    bloodType: a.patient.patientProfile.bloodType,
+                  }
+                : null,
+            }
+          : null,
+        doctor: a.doctor
+          ? {
+              id: a.doctor.id,
+              fullName: a.doctor.fullName,
+              specialization: a.doctor.specialization,
+            }
+          : null,
         dateTime: a.dateTime,
         status: a.status,
         fee: Number(a.fee),
         isPaid: a.isPaid,
         paymentMethod: a.paymentMethod,
         reason: a.reason,
+        issueCategory: a.issueCategory,
+        notes: a.notes,
+        declineReason: a.declineReason,
+        parentAppointmentId: a.parentAppointmentId,
         confirmationCode: a.confirmationCode,
+        slotId: a.slot?.id || null,
         slotStart: a.slot?.startTime || null,
         slotEnd: a.slot?.endTime || null,
         slotMaxPatients: a.slot?.maxPatients || null,
+        attachments: a.attachments || [],
         card: a.card
           ? {
               id: a.card.id,
@@ -426,7 +461,7 @@ const HospitalPortalService = {
   },
 
   listPatients: async (hospitalId, { search } = {}) => {
-    const where = { appointments: { some: { doctor: { hospitalId } } } };
+    const where = { patientAppointments: { some: { doctor: { hospitalId } } } };
     if (search) {
       where.OR = [
         { phone: { contains: search, mode: 'insensitive' } },
@@ -468,6 +503,51 @@ const HospitalPortalService = {
     }));
   },
 
+  getPatientHistory: async (hospitalId, patientId) => {
+    const patient = await prisma.user.findUnique({
+      where: { id: patientId },
+      select: {
+        id: true,
+        phone: true,
+        createdAt: true,
+        patientProfile: {
+          select: {
+            fullName: true,
+            gender: true,
+            bloodType: true,
+            dateOfBirth: true,
+            emergencyContact: true,
+          },
+        },
+      },
+    });
+    if (!patient) {
+      throw new Error("Patient not found");
+    }
+
+    const [appointments, equipmentBookings] = await Promise.all([
+      prisma.appointment.findMany({
+        where: { patientId, doctor: { hospitalId } },
+        include: {
+          doctor: { select: { id: true, fullName: true, specialization: true } },
+        },
+        orderBy: { dateTime: "desc" },
+      }),
+      prisma.equipmentBooking.findMany({
+        where: { patientId, hospitalId },
+        include: {
+          equipment: { select: { id: true, name: true, category: true, price: true } },
+          hospital: {
+            select: { id: true, name: true, serviceFee: { select: { amount: true } } },
+          },
+        },
+        orderBy: { dateTime: "desc" },
+      }),
+    ]);
+
+    return { patient, appointments, equipmentBookings };
+  },
+
   listDoctors: async (hospitalId, includeAll = false) => {
     const where = { hospitalId };
     if (!includeAll) where.status = "Approved";
@@ -483,6 +563,7 @@ const HospitalPortalService = {
         experienceYears: true,
         bio: true,
         profilePicture: true,
+        introVideo: true,
         status: true,
         rejectionReason: true,
         createdAt: true,
@@ -575,8 +656,9 @@ const HospitalPortalService = {
       const profile = await tx.receptionistProfile.create({
         data: {
           userId: user.id,
-          hospitalId,
-          fullName: data.fullName || null,
+hospitalId,
+            fullName: data.fullName || null,
+            permissions: sanitizePermissions(data.permissions),
         },
         include: {
           user: {
@@ -619,10 +701,16 @@ const HospitalPortalService = {
         });
       }
 
-      await tx.receptionistProfile.update({
-        where: { id: receptionistId },
-        data: { fullName: data.fullName || null },
-      });
+      const updateProfileData = {};
+      if (data.fullName !== undefined) updateProfileData.fullName = data.fullName || null;
+      if (data.permissions !== undefined) updateProfileData.permissions = sanitizePermissions(data.permissions);
+
+      if (Object.keys(updateProfileData).length > 0) {
+        await tx.receptionistProfile.update({
+          where: { id: receptionistId },
+          data: updateProfileData,
+        });
+      }
 
       return tx.receptionistProfile.findUnique({
         where: { id: receptionistId },

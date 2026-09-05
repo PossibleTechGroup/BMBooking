@@ -11,7 +11,7 @@ import {
 import { MedText } from '@/components/ui/med-text';
 import { MedCard } from '@/components/ui/med-card';
 import { MedInput } from '@/components/ui/med-input';
-import { Stethoscope, Check, X, Clock, Mail, Phone, Award, Plus, Loader2, Image as ImageIcon, Video as VideoIcon, Trash } from 'lucide-react';
+import { Stethoscope, Check, X, Clock, Mail, Phone, Award, Plus, Loader2, Image as ImageIcon, Video as VideoIcon, Trash, Play } from 'lucide-react';
 
 interface RegisterForm {
   fullName: string;
@@ -47,6 +47,7 @@ export default function HospitalDoctorsPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState<number | null>(null);
   const [showRegister, setShowRegister] = useState(false);
+  const [videoDoc, setVideoDoc] = useState<{ fullName: string | null; introVideo: string | null } | null>(null);
   const [registerForm, setRegisterForm] = useState<RegisterForm>(emptyRegister);
   const [registerSaving, setRegisterSaving] = useState(false);
   const [registerResult, setRegisterResult] = useState<string | null>(null);
@@ -188,6 +189,32 @@ export default function HospitalDoctorsPage() {
                 {actioningId === showRejectModal ? 'Rejecting...' : 'Reject'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Intro Video Modal */}
+      {videoDoc && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-5" onClick={(e) => { if (e.target === e.currentTarget) setVideoDoc(null); }}>
+          <div className="bg-surface rounded-[16px] p-5 w-full max-w-lg shadow-lg">
+            <div className="flex justify-between items-center mb-4">
+              <MedText variant="h2" as="h3" className="text-[16px]">
+                {videoDoc.fullName || 'Doctor'}&apos;s Intro Video
+              </MedText>
+              <button onClick={() => setVideoDoc(null)} className="p-1.5 text-muted hover:text-text-secondary">
+                <X size={18} />
+              </button>
+            </div>
+            {videoDoc.introVideo ? (
+              <video controls autoPlay className="w-full rounded-[12px] bg-black max-h-[60vh]">
+                <source src={videoDoc.introVideo} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            ) : (
+              <MedText variant="body" className="text-text-secondary text-center py-8">
+                No intro video available.
+              </MedText>
+            )}
           </div>
         </div>
       )}
@@ -385,16 +412,33 @@ export default function HospitalDoctorsPage() {
             <MedCard key={doc.id}>
               <div className="flex justify-between items-start gap-3">
                 <div className="min-w-0 flex-1">
-                  <MedText variant="body" className="text-[14px] font-medium">
-                    {doc.fullName || 'Unnamed Doctor'}
-                  </MedText>
-                  {doc.specialization && (
-                    <MedText variant="metadata" className="mt-0.5 flex items-center gap-1">
-                      <Award size={12} /> {doc.specialization}
-                    </MedText>
-                  )}
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-foreground/5 flex items-center justify-center shrink-0 overflow-hidden border border-border">
+                      {doc.profilePicture ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={doc.profilePicture} alt={doc.fullName || 'Doctor'} className="w-full h-full object-cover" />
+                      ) : (
+                        <Award size={20} className="text-muted" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <MedText variant="body" className="text-[14px] font-medium">
+                        {doc.fullName || 'Unnamed Doctor'}
+                      </MedText>
+                      {doc.specialization && (
+                        <MedText variant="metadata" className="mt-0.5 flex items-center gap-1">
+                          <Award size={12} /> {doc.specialization}
+                        </MedText>
+                      )}
+                      {doc.experienceYears != null && (
+                        <MedText variant="metadata" className="flex items-center gap-1 mt-0.5">
+                          <Clock size={12} /> {doc.experienceYears} yrs exp
+                        </MedText>
+                      )}
+                    </div>
+                  </div>
                   {doc.user?.phone && (
-                    <MedText variant="metadata" className="flex items-center gap-1 mt-0.5">
+                    <MedText variant="metadata" className="flex items-center gap-1 mt-2">
                       <Phone size={12} /> {doc.user.phone}
                     </MedText>
                   )}
@@ -425,29 +469,39 @@ export default function HospitalDoctorsPage() {
                 </div>
 
                 {/* Action buttons for pending doctors */}
-                {doc.status === 'PendingReview' && (
-                  <div className="flex gap-2 shrink-0">
+                <div className="flex flex-col gap-2 shrink-0 items-end">
+                  {doc.introVideo && (
                     <button
-                      onClick={() => handleApprove(doc.id)}
-                      disabled={actioningId === doc.id}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-success/10 text-success text-[13px] font-medium hover:bg-success/20 transition-all"
+                      onClick={() => setVideoDoc({ fullName: doc.fullName ?? null, introVideo: doc.introVideo ?? null })}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-blue/10 text-blue text-[13px] font-medium hover:bg-blue/20 transition-all"
                     >
-                      {actioningId === doc.id ? (
-                        <span className="w-3.5 h-3.5 border-2 border-success border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Check size={14} />
-                      )}
-                      Approve
+                      <Play size={14} /> Intro Video
                     </button>
-                    <button
-                      onClick={() => setShowRejectModal(doc.id)}
-                      disabled={actioningId === doc.id}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-error/10 text-error text-[13px] font-medium hover:bg-error/20 transition-all"
-                    >
-                      <X size={14} /> Reject
-                    </button>
-                  </div>
-                )}
+                  )}
+                  {doc.status === 'PendingReview' && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleApprove(doc.id)}
+                        disabled={actioningId === doc.id}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-success/10 text-success text-[13px] font-medium hover:bg-success/20 transition-all"
+                      >
+                        {actioningId === doc.id ? (
+                          <span className="w-3.5 h-3.5 border-2 border-success border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Check size={14} />
+                        )}
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => setShowRejectModal(doc.id)}
+                        disabled={actioningId === doc.id}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-error/10 text-error text-[13px] font-medium hover:bg-error/20 transition-all"
+                      >
+                        <X size={14} /> Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </MedCard>
           ))}

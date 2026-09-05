@@ -1,6 +1,33 @@
 const HospitalPortalService = require("../services/hospital-portal.service");
 
 const HospitalPortalController = {
+  getMe: async (req, res) => {
+    try {
+      const hospital = await HospitalPortalService.getProfile(req.hospital.id);
+      res.status(200).json({
+        status: "success",
+        data: {
+          user: {
+            id: req.user.id,
+            role: req.user.role,
+            hospitalRole: req.hospitalRole,
+            hospitalId: req.hospital.id,
+            permissions: req.permissions || [],
+            username: req.user.username || null,
+            phone: req.user.phone || null,
+            fullName:
+              (req.receptionistProfile && req.receptionistProfile.fullName) ||
+              (req.hospitalProfile && req.hospitalProfile.fullName) ||
+              null,
+          },
+          hospital,
+        },
+      });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  },
+
   register: async (req, res) => {
     try {
       const { name, address, phone, email, adminPhone, password, services, image, logo, latitude, longitude } = req.body;
@@ -103,6 +130,19 @@ const HospitalPortalController = {
         { search: req.query.search },
       );
       res.status(200).json({ status: "success", data: patients });
+    } catch (err) {
+      res.status(500).json({ status: "error", message: err.message });
+    }
+  },
+
+  getPatientHistory: async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = await HospitalPortalService.getPatientHistory(
+        req.hospital.id,
+        id,
+      );
+      res.status(200).json({ status: "success", data });
     } catch (err) {
       res.status(500).json({ status: "error", message: err.message });
     }

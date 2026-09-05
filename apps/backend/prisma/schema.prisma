@@ -91,6 +91,8 @@ model Hospital {
   image         String?             @map("image")
   description   String?             @map("description")
   cardPrice     Decimal             @map("card_price") @db.Decimal(10, 2)
+  rating        Float               @default(0.0)
+  totalReviews  Int                 @default(0) @map("total_reviews")
   createdAt     DateTime            @default(now()) @map("created_at")
   updatedAt     DateTime            @updatedAt @map("updated_at")
 
@@ -105,6 +107,7 @@ model Hospital {
   cardTemplates CardTemplate[]
   serviceFee    ServiceFee?
   services      HospitalService[]
+  reviews       Review[]
 
   @@map("hospitals")
 }
@@ -127,9 +130,10 @@ model ReceptionistProfile {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   hospitalId Int      @map("hospital_id")
   hospital   Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
-  fullName   String?  @map("full_name")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  fullName    String?   @map("full_name")
+  permissions String[]  @default([])
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   reviewedAppointments Appointment[] @relation("ReviewedAppointments")
   reviewedBookings     EquipmentBooking[] @relation("ReviewedBookings")
@@ -254,7 +258,7 @@ model Appointment {
   bookedBy        User?             @relation("BookedByAppointments", fields: [bookedById], references: [id])
   doctorId        Int               @map("doctor_id")
   doctor          DoctorProfile     @relation(fields: [doctorId], references: [id])
-  review          Review?           @relation("AppointmentReview")
+  reviews         Review[]          @relation("AppointmentReview")
   dateTime        DateTime          @map("appointment_date")
   status          AppointmentStatus @default(pending)
   fee             Decimal           @db.Decimal(10, 2)
@@ -479,17 +483,23 @@ model EquipmentBooking {
 }
 
 model Review {
-  id              Int           @id @default(autoincrement())
-  patientId       Int           @map("patient_id")
-  patient         User          @relation(fields: [patientId], references: [id])
-  doctorId        Int           @map("doctor_id")
-  doctor          DoctorProfile @relation(fields: [doctorId], references: [id])
-  appointmentId   Int           @unique @map("appointment_id")
-  appointment     Appointment   @relation("AppointmentReview", fields: [appointmentId], references: [id], onDelete: Cascade)
-  rating          Int           // 1 to 5
+  id              Int            @id @default(autoincrement())
+  patientId       Int            @map("patient_id")
+  patient         User           @relation(fields: [patientId], references: [id])
+  doctorId        Int?           @map("doctor_id")
+  doctor          DoctorProfile? @relation(fields: [doctorId], references: [id])
+  hospitalId      Int?           @map("hospital_id")
+  hospital        Hospital?      @relation(fields: [hospitalId], references: [id])
+  appointmentId   Int            @map("appointment_id")
+  appointment     Appointment    @relation("AppointmentReview", fields: [appointmentId], references: [id], onDelete: Cascade)
+  rating          Int            // 1 to 5
   comment         String?
-  createdAt       DateTime      @default(now()) @map("created_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
 
+  @@unique([appointmentId, doctorId])
+  @@unique([appointmentId, hospitalId])
+  @@index([doctorId])
+  @@index([hospitalId])
   @@map("reviews")
 }
 

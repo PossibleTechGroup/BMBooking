@@ -6,17 +6,24 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { loadStoredAuth, logout } from '@/lib/store/slices/authSlice';
-import { fetchHospitalProfile, fetchHospitalStats } from '@/lib/store/slices/hospitalSlice';
-import { Gauge, Stethoscope, Users, User, ClipboardList, BarChart3, CreditCard, LogOut, Menu, X, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
+import { fetchHospitalMe, fetchHospitalStats } from '@/lib/store/slices/hospitalSlice';
+import { hasPermission } from '@/lib/permissions';
+import { api } from '@/lib/api/client';
+import { Gauge, Stethoscope, Users, User, ClipboardList, BarChart3, CreditCard, LogOut, Menu, X, ChevronLeft, ChevronRight, Building2, HeartPulse, CalendarClock, Scissors, Bell, ScrollText } from 'lucide-react';
 
 const navItems = [
-  { href: '/hospital', label: 'Dashboard', icon: Gauge },
-  { href: '/hospital/appointments', label: 'Appointments', icon: ClipboardList },
-  { href: '/hospital/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/hospital/packages', label: 'Packages', icon: CreditCard },
-  { href: '/hospital/doctors', label: 'Doctors', icon: Stethoscope },
-  { href: '/hospital/receptionists', label: 'Receptionists', icon: Users },
-  { href: '/hospital/profile', label: 'Profile', icon: User },
+  { href: '/hospital', label: 'Dashboard', icon: Gauge, perm: 'analytics.view' },
+  { href: '/hospital/appointments', label: 'Appointments', icon: ClipboardList, perm: 'appointments.view' },
+  { href: '/hospital/patients', label: 'Patients', icon: HeartPulse, perm: 'patients.view' },
+  { href: '/hospital/notifications', label: 'Alerts', icon: Bell, perm: 'appointments.view' },
+  { href: '/hospital/schedules', label: 'Schedules', icon: CalendarClock, perm: 'schedules.view' },
+  { href: '/hospital/equipment', label: 'Equipment', icon: Scissors, perm: 'equipment.view' },
+  { href: '/hospital/analytics', label: 'Analytics', icon: BarChart3, perm: 'analytics.view' },
+  { href: '/hospital/packages', label: 'Packages', icon: CreditCard, perm: 'settings.view' },
+  { href: '/hospital/doctors', label: 'Doctors', icon: Stethoscope, perm: 'doctors.view' },
+  { href: '/hospital/staff', label: 'Staff', icon: Users, perm: 'staff.manage' },
+  { href: '/hospital/legal', label: 'Legal', icon: ScrollText, perm: 'settings.view' },
+  { href: '/hospital/profile', label: 'Profile', icon: User, perm: 'settings.view' },
 ];
 
 export default function HospitalLayout({ children }: { children: React.ReactNode }) {
@@ -24,9 +31,26 @@ export default function HospitalLayout({ children }: { children: React.ReactNode
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { user, token } = useAppSelector((s) => s.auth);
-  const { profile, stats } = useAppSelector((s) => s.hospital);
+  const { profile, stats, permissions, hospitalRole } = useAppSelector((s) => s.hospital);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!token) return;
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const loadUnread = async () => {
+      try {
+        const res = await api.get(`/notifications?limit=1&t=${Date.now()}`);
+        setUnreadCount(res.data?.data?.unreadCount ?? 0);
+      } catch {
+        // ignore
+      }
+    };
+    loadUnread();
+    interval = setInterval(loadUnread, 20000);
+    return () => { if (interval) clearInterval(interval); };
+  }, [token]);
 
   useEffect(() => {
     if (!token) dispatch(loadStoredAuth());
@@ -43,11 +67,15 @@ export default function HospitalLayout({ children }: { children: React.ReactNode
 
   useEffect(() => {
     if (token) {
-      dispatch(fetchHospitalProfile());
+      dispatch(fetchHospitalMe());
       dispatch(fetchHospitalStats());
     }
   }, [dispatch, token]);
 
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.perm === 'staff.manage' && hospitalRole !== 'owner') return false;
+    return hasPermission(permissions, hospitalRole, item.perm);
+  });
   const isRegisterPage = pathname.includes('/hospital/register');
   const hospitalName = profile?.name || user?.hospitalProfile?.hospital?.name || user?.phone || 'Hospital';
   const initials = (hospitalName || 'H').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2) || 'H';
@@ -60,7 +88,7 @@ export default function HospitalLayout({ children }: { children: React.ReactNode
     href === '/hospital' ? pathname === '/hospital' : pathname.startsWith(href);
 
   const renderNavLinks = (onNavigate?: () => void) =>
-    navItems.map((item) => {
+    visibleNavItems.map((item) => {
       const active = isActive(item.href);
       return (
         <Link
@@ -74,6 +102,11 @@ export default function HospitalLayout({ children }: { children: React.ReactNode
         >
           <item.icon size={20} strokeWidth={active ? 2.2 : 1.8} />
           {!collapsed && <span>{item.label}</span>}
+          {item.href === '/hospital/notifications' && unreadCount > 0 && (
+            <span className={`min-w-[18px] h-[18px] px-1 rounded-full bg-error text-white text-[10px] font-bold flex items-center justify-center ${collapsed ? 'absolute top-0 right-0' : ''}`}>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </Link>
       );
     });
@@ -137,7 +170,7 @@ export default function HospitalLayout({ children }: { children: React.ReactNode
           </div>
           <button
             onClick={() => { dispatch(logout()); router.push('/login'); }}
-            className={`flex items-center gap-2.5 rounded-[8px] text-[14px] font-medium text-error hover:bg-error-bg transition-colors ${collapsed ? 'justify-center px-2 py-3' : 'px-3 py-2.5'}`}
+            className={`flex items-center gap-2.5 rounded-[8px] text-[14px] font-medium text-error hover:bg-error-bg transition-colors ${collapsed ? 'relative justify-center px-2 py-3' : 'px-3 py-2.5'}`}
             title="Logout"
           >
             <LogOut size={18} />
@@ -164,7 +197,7 @@ export default function HospitalLayout({ children }: { children: React.ReactNode
       {mobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-30 bg-black/20" onClick={() => setMobileMenuOpen(false)}>
           <div className="absolute top-[52px] left-0 right-0 bg-surface border-b border-border p-3 space-y-1" onClick={(e) => e.stopPropagation()}>
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -175,6 +208,11 @@ export default function HospitalLayout({ children }: { children: React.ReactNode
               >
                 <item.icon size={18} />
                 {item.label}
+                {item.href === '/hospital/notifications' && unreadCount > 0 && (
+                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-error text-white text-[10px] font-bold flex items-center justify-center">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </Link>
             ))}
             <button
@@ -196,7 +234,7 @@ export default function HospitalLayout({ children }: { children: React.ReactNode
 
       {/* Bottom nav for mobile */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-40 flex justify-around py-2 px-1">
-        {navItems.slice(0, 5).map((item) => {
+        {visibleNavItems.slice(0, 5).map((item) => {
           const active = isActive(item.href);
           return (
             <Link
