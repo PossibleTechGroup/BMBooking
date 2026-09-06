@@ -18,15 +18,34 @@ import { AdminPageHeader } from '@/components/admin/page-header';
 import { AdminSubTabs } from '@/components/admin/subtabs';
 
 interface HospitalApplication {
-  id: string;
+  id: number;
   hospitalName: string;
   contactPerson: string;
   contactInfo: string;
-  status: 'PENDING' | 'CONTACTED' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
   updatedAt: string;
-  contactedAt: string | null;
-  notes: string | null;
+  rejectionReason: string | null;
+}
+
+interface HospitalRegistration {
+  id: number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  updatedAt: string;
+  rejectionReason: string | null;
+  hospital: {
+    id: number;
+    name: string;
+    address: string | null;
+    phone: string | null;
+    email: string | null;
+  };
+  user: {
+    id: number;
+    phone: string | null;
+    email: string | null;
+  };
 }
 
 const theme = { primary: '#0F172A', border: '#E2E8F0' };
@@ -35,8 +54,8 @@ export default function AdminAppliedHospitalsPage() {
   const [applications, setApplications] = useState<HospitalApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'CONTACTED' | 'APPROVED' | 'REJECTED'>('ALL');
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchApplications();
@@ -45,25 +64,53 @@ export default function AdminAppliedHospitalsPage() {
   const fetchApplications = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/admin/hospital-applications');
-      setApplications(response.data.data || []);
+      const response = await api.get('/admin/hospital-registrations');
+      const data: HospitalRegistration[] = response.data.data || [];
+      setApplications(
+        data.map((r) => ({
+          id: r.id,
+          hospitalName: r.hospital?.name ?? 'Unknown hospital',
+          contactPerson: r.user?.phone ?? r.user?.email ?? '-',
+          contactInfo: r.hospital?.address ?? r.hospital?.phone ?? '-',
+          status: r.status,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+          rejectionReason: r.rejectionReason,
+        }))
+      );
     } catch (error) {
-      console.error('Failed to fetch hospital applications', error);
+      console.error('Failed to fetch hospital registrations', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMarkContacted = async (id: string) => {
+  const handleApprove = async (id: number) => {
     setUpdatingId(id);
     try {
-      await api.patch(`/admin/hospital-applications/${id}`, {
-        status: 'CONTACTED',
+      await api.patch(`/admin/hospital-registrations/${id}`, { status: 'APPROVED' });
+      await fetchApplications();
+    } catch (error) {
+      console.error('Failed to approve registration', error);
+      alert('Failed to approve registration');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    const reason = window.prompt('Rejection reason (optional):');
+    if (reason === null) return;
+    setUpdatingId(id);
+    try {
+      await api.patch(`/admin/hospital-registrations/${id}`, {
+        status: 'REJECTED',
+        rejectionReason: reason.trim() || null,
       });
       await fetchApplications();
     } catch (error) {
-      console.error('Failed to mark as contacted', error);
-      alert('Failed to update status');
+      console.error('Failed to reject registration', error);
+      alert('Failed to reject registration');
     } finally {
       setUpdatingId(null);
     }
@@ -84,8 +131,6 @@ export default function AdminAppliedHospitalsPage() {
     switch (status) {
       case 'PENDING':
         return { backgroundColor: '#FEF3F2', color: '#B42318', border: '1px solid #FECDCA' };
-      case 'CONTACTED':
-        return { backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' };
       case 'APPROVED':
         return { backgroundColor: '#ECFDF3', color: '#027A48', border: '1px solid #A7F3D0' };
       default:
@@ -117,7 +162,8 @@ export default function AdminAppliedHospitalsPage() {
         tabs={[
           { key: 'ALL', label: `All (${applications.length})`, icon: <Building2 size={16} /> },
           { key: 'PENDING', label: `Pending (${applications.filter((a) => a.status === 'PENDING').length})`, icon: <Clock size={16} /> },
-          { key: 'CONTACTED', label: `Contacted (${applications.filter((a) => a.status === 'CONTACTED').length})`, icon: <Phone size={16} /> },
+          { key: 'APPROVED', label: `Approved (${applications.filter((a) => a.status === 'APPROVED').length})`, icon: <CheckCircle size={16} /> },
+          { key: 'REJECTED', label: `Rejected (${applications.filter((a) => a.status === 'REJECTED').length})`, icon: <Phone size={16} /> },
         ]}
         activeKey={filter}
         onChange={(key) => setFilter(key as typeof filter)}
@@ -137,7 +183,6 @@ export default function AdminAppliedHospitalsPage() {
                 <th style={s.th}>Contact Info</th>
                 <th style={s.th}>Applied Date</th>
                 <th style={s.th}>Status</th>
-                <th style={s.th}>Contacted Date</th>
                 <th style={{ ...s.th, textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
@@ -175,30 +220,32 @@ export default function AdminAppliedHospitalsPage() {
                       {app.status}
                     </span>
                   </td>
-                  <td style={s.td}>
-                    {app.contactedAt ? (
-                      <div style={s.infoWrap}>
-                        <CheckCircle size={14} color="#10B981" />
-                        <span>{formatDate(new Date(app.contactedAt), 'medium')}</span>
-                      </div>
-                    ) : (
-                      <span style={{ color: '#94A3B8', fontSize: '13px' }}>-</span>
-                    )}
-                  </td>
                   <td style={{ ...s.td, textAlign: 'right' }}>
-                    {app.status === 'PENDING' && (
-                      <button
-                        style={s.markBtn}
-                        onClick={() => handleMarkContacted(app.id)}
-                        disabled={updatingId === app.id}
-                      >
-                        {updatingId === app.id ? (
-                          <Loader2 size={14} className="spin" />
-                        ) : (
-                          'Mark Contacted'
-                        )}
-                      </button>
-                    )}
+                    <div style={s.actionsWrap}>
+                      {app.status === 'PENDING' && (
+                        <>
+                          <button
+                            style={{ ...s.markBtn, backgroundColor: '#059669' }}
+                            onClick={() => handleApprove(app.id)}
+                            disabled={updatingId === app.id}
+                          >
+                            {updatingId === app.id ? <Loader2 size={14} className="spin" /> : 'Approve'}
+                          </button>
+                          <button
+                            style={{ ...s.rejectBtn }}
+                            onClick={() => handleReject(app.id)}
+                            disabled={updatingId === app.id}
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      {app.status === 'REJECTED' && app.rejectionReason && (
+                        <span style={{ color: '#94A3B8', fontSize: '12px' }}>
+                          {app.rejectionReason}
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -241,5 +288,17 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     transition: 'all 0.15s',
   },
+  rejectBtn: {
+    backgroundColor: '#FFF',
+    color: '#B42318',
+    border: '1px solid #FECDCA',
+    borderRadius: '8px',
+    padding: '8px 14px',
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  },
+  actionsWrap: { display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px' },
   emptyState: { padding: '60px', textAlign: 'center' },
 };
