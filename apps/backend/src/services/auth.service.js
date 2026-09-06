@@ -3,6 +3,21 @@ const prisma = require("../lib/prisma");
 const User = require("../models/user.model");
 const OTP = require("../models/otp.model");
 const { signToken } = require("../lib/jwt.lib");
+const { ALL_PERMISSIONS } = require("../config/permissions");
+
+// Normalize a phone-like identifier (09..., 9..., +2519...) to +251XXXXXXXXX
+// Returns null if the identifier does not look like an Ethiopian phone number.
+const normalizePhone = (identifier) => {
+  const trimmed = (identifier || "").trim();
+  if (!trimmed) return null;
+
+  let digits = trimmed.replace(/\D/g, "");
+  if (digits.startsWith("251")) digits = digits.slice(3);
+  if (digits.startsWith("0")) digits = digits.slice(1);
+  if (!/^[79]\d{8}$/.test(digits)) return null;
+
+  return `+251${digits}`;
+};
 
 const AuthService = {
   requestOTP: async (phone, role, isRegistration) => {
@@ -261,6 +276,133 @@ const AuthService = {
         hospitalRole: "staff",
         hospitalId,
         permissions: receptionistProfile ? receptionistProfile.permissions || [] : [],
+      },
+    };
+  },
+
+  loginHospitalPortal: async (identifier, password) => {
+    if (!identifier || !password) {
+      throw new Error("Username/phone and password are required");
+    }
+
+    // Identifier resolution (single lookup path — not a fallback retry).
+    const phone = normalizePhone(identifier);
+    let user = null;
+
+    if (phone) {
+      // Phone-shaped → try hospital owner first, then staff (numeric usernames).
+      user = await User.findByPhone(phone);
+    }
+    if (!user) {
+      user = await User.findByUsername(identifier.trim());
+    }
+    if (!user && phone) {
+      // Last attempt: a staff account whose identifier was phone-shaped.
+      user = await User.findByUsername(identifier.trim());
+    }
+
+    if (!user) {
+      throw new Error("Invalid username or password");
+    }
+
+    if (user.role !== "hospital" && user.role !== "receptionist") {
+      throw new Error("Access denied. Hospital portal only.");
+    }
+
+    if (!user.password) {
+      throw new Error("Invalid username or password");
+    }
+
+    // Account lock check
+    if (
+      user.isLocked &&
+      user.lockedUntil &&
+      new Date() < new Date(user.lockedUntil)
+    ) {
+      const remainingMinutes = Math.ceil(
+        (new Date(user.lockedUntil) - new Date()) / 60000,
+      );
+      throw new Error(
+        `Account locked. Try again in ${remainingMinutes} minutes.`,
+      );
+    } else if (user.isLocked) {
+      await User.unlockAccount(user.id);
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      throw new Error("Invalid username or password");
+    }
+
+    // --- Owner path ---
+    if (user.role === "hospital") {
+      const hospitalProfile = user.hospitalProfile
+        ? user.hospitalProfile
+        : await prisma.hospitalProfile.findUnique({
+            where: { userId: user.id },
+          });
+      if (!hospitalProfile) {
+        throw new Error(
+          "No hospital linked to this account. Please contact support.",
+        );
+      }
+      if (hospitalProfile.status === "PENDING") {
+        throw new Error(
+          "Your hospital registration is pending admin approval. Please try again later.",
+        );
+      }
+      if (hospitalProfile.status === "REJECTED") {
+        throw new Error(
+          hospitalProfile.rejectionReason
+            ? `Your hospital registration was rejected: ${hospitalProfile.rejectionReason}`
+            : "Your hospital registration was rejected.",
+        );
+      }
+
+      const token = signToken({
+        id: user.id,
+        phone: user.phone,
+        role: user.role,
+        hospitalId: hospitalProfile.hospitalId,
+      });
+      return {
+        token,
+        user: {
+          id: user.id,
+          phone: user.phone,
+          role: user.role,
+          hospitalRole: "owner",
+          hospitalId: hospitalProfile.hospitalId,
+          permissions: [...ALL_PERMISSIONS],
+        },
+      };
+    }
+
+    // --- Staff path (receptionist) ---
+    const receptionistProfile = await prisma.receptionistProfile.findUnique({
+      where: { userId: user.id },
+    });
+    if (!receptionistProfile) {
+      throw new Error("Receptionist profile not found");
+    }
+
+    const token = signToken({
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      hospitalId: receptionistProfile.hospitalId,
+    });
+    return {
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        phone: user.phone || null,
+        fullName: receptionistProfile.fullName || null,
+        role: user.role,
+        hospitalRole: "staff",
+        hospitalId: receptionistProfile.hospitalId,
+        permissions: receptionistProfile.permissions || [],
       },
     };
   },

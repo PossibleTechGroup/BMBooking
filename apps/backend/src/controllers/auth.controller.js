@@ -54,6 +54,25 @@ const AuthController = {
     }
   },
 
+  hospitalPortalLogin: async (req, res) => {
+    try {
+      const { identifier, password } = req.body;
+      if (!identifier || !password) {
+        return res
+          .status(400)
+          .json({
+            status: "fail",
+            message: "Username/phone and password are required",
+          });
+      }
+
+      const result = await AuthService.loginHospitalPortal(identifier, password);
+      res.status(200).json({ status: "success", data: result });
+    } catch (err) {
+      res.status(400).json({ status: "fail", message: err.message });
+    }
+  },
+
   hospitalLogin: async (req, res) => {
     try {
       const { phone, password } = req.body;

@@ -5,10 +5,11 @@ export type ProfileStatus = 'None' | 'PendingReview' | 'Approved' | 'Rejected' |
 
 interface User {
   id: number;
-  phone: string;
+  phone?: string | null;
+  email?: string | null;
   username?: string | null;
   fullName?: string;
-  role: 'patient' | 'doctor' | 'hospital' | 'receptionist';
+  role: 'patient' | 'doctor' | 'hospital' | 'receptionist' | 'admin';
   isLocked: boolean;
   hospitalRole?: 'owner' | 'staff';
   hospitalId?: number | null;
@@ -59,6 +60,7 @@ const mapErrorToKey = (message: string): string => {
   if (msg.includes('no hospital')) return 'errorHospitalNoProfile';
   if (msg.includes('invalid username or password')) return 'errorInvalidCredentials';
   if (msg.includes('invalid phone or password')) return 'errorInvalidCredentials';
+  if (msg.includes('invalid email or password')) return 'errorInvalidCredentials';
   return 'errorGeneric';
 };
 
@@ -217,6 +219,38 @@ export const receptionistLogin = createAsyncThunk(
   }
 );
 
+export const hospitalPortalLogin = createAsyncThunk(
+  'auth/hospitalPortalLogin',
+  async ({ identifier, password }: { identifier: string; password: string }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/auth/hospital-portal-login', { identifier, password });
+      const { token, user } = response.data.data;
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('user_data', JSON.stringify(user));
+      return { token, user };
+    } catch (error: any) {
+      const rawMessage = error.response?.data?.message || error.response?.data?.data?.message || error.message;
+      return rejectWithValue(mapErrorToKey(rawMessage));
+    }
+  }
+);
+
+export const adminLogin = createAsyncThunk(
+  'auth/adminLogin',
+  async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/admin/login', { email, password });
+      const { token, user } = response.data.data;
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('user_data', JSON.stringify(user));
+      return { token, user };
+    } catch (error: any) {
+      const rawMessage = error.response?.data?.message || error.response?.data?.data?.message || error.message;
+      return rejectWithValue(mapErrorToKey(rawMessage));
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -303,7 +337,21 @@ const authSlice = createSlice({
         state.user = action.payload.user;
         state.loading = false;
       })
-      .addCase(receptionistLogin.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
+      .addCase(receptionistLogin.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
+      .addCase(hospitalPortalLogin.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(hospitalPortalLogin.fulfilled, (state, action) => {
+        state.token = action.payload.token;
+        state.user = action.payload.user;
+        state.loading = false;
+      })
+      .addCase(hospitalPortalLogin.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })
+      .addCase(adminLogin.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(adminLogin.fulfilled, (state, action) => {
+        state.token = action.payload.token;
+        state.user = action.payload.user;
+        state.loading = false;
+      })
+      .addCase(adminLogin.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; });
   },
 });
 

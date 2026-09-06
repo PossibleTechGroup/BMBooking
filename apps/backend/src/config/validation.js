@@ -77,6 +77,11 @@ const schemas = {
     password: Joi.string().required(),
   }),
 
+  hospitalPortalLogin: Joi.object({
+    identifier: Joi.string().required(),
+    password: Joi.string().required(),
+  }),
+
   createSchedule: Joi.object({
     doctorId: Joi.number().required(),
     date: Joi.date().iso().required(),
