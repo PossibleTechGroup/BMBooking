@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
-import { requestOtp, verifyOtp, hospitalPortalLogin, clearError } from '@/lib/store/slices/authSlice';
+import { requestOtp, verifyOtp, hospitalPortalLogin, adminLogin, clearError } from '@/lib/store/slices/authSlice';
 import { User, Stethoscope, Building2, Eye, EyeOff, Lock, ShieldCheck, CalendarCheck, Loader2, LogIn, ArrowLeft } from 'lucide-react';
 
 const errorMessages: Record<string, string> = {
@@ -70,7 +70,11 @@ export default function LoginPage() {
   const handleLogin = async () => {
     if (!identifier.trim() || !password) return;
     dispatch(clearError());
-    dispatch(hospitalPortalLogin({ identifier: identifier.trim(), password }));
+    if (identifier.includes('@')) {
+      dispatch(adminLogin({ email: identifier.trim(), password }));
+    } else {
+      dispatch(hospitalPortalLogin({ identifier: identifier.trim(), password }));
+    }
   };
 
   const handleRequestOtp = async () => {
@@ -171,7 +175,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '28px' }}>One sign-in for hospital owners and staff.</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '28px' }}>One sign-in for hospital owners, staff and platform administrators.</div>
 
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>Username or Phone Number</label>
               <div style={{ position: 'relative', marginBottom: '18px' }}>
