@@ -21,6 +21,7 @@ const navItems = [
   { href: '/hospital/analytics', label: 'Analytics', icon: BarChart3, perm: 'analytics.view' },
   { href: '/hospital/packages', label: 'Packages', icon: CreditCard, perm: 'settings.view' },
   { href: '/hospital/doctors', label: 'Doctors', icon: Stethoscope, perm: 'doctors.view' },
+  { href: '/hospital/receptionists', label: 'Receptionists', icon: User, perm: 'staff.manage' },
   { href: '/hospital/staff', label: 'Staff', icon: Users, perm: 'staff.manage' },
   { href: '/hospital/legal', label: 'Legal', icon: ScrollText, perm: 'settings.view' },
   { href: '/hospital/profile', label: 'Profile', icon: User, perm: 'settings.view' },
