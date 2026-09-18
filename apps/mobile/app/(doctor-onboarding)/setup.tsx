@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "expo-router";
 import Animated, { FadeIn, FadeOutLeft, SlideInRight } from "react-native-reanimated";
 import axios from "axios";
 import { LanguagePicker } from "../../components/LanguagePicker";
@@ -43,6 +44,7 @@ type Step = 1 | 2 | 3;
 export default function DoctorSetupScreen() {
   const { t } = useTranslation();
   const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
   const styles = createOnboardingStyles(theme);
@@ -428,7 +430,12 @@ export default function DoctorSetupScreen() {
       <MedLoadingOverlay visible={loading} />
 
       <View style={styles.header}>
-        <LanguagePicker />
+        <View style={styles.headerLeft}>
+          <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+            <Ionicons name="arrow-back" size={22} color={theme.text} />
+          </Pressable>
+          <LanguagePicker />
+        </View>
         <Pressable onPress={() => dispatch(logout())} style={styles.logoutBtn}>
           <Ionicons name="log-out-outline" size={24} color="#D92D20" />
         </Pressable>

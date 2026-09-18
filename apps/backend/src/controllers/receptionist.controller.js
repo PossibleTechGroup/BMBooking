@@ -243,10 +243,30 @@ const ReceptionistController = {
         hospitalId: req.receptionistProfile.hospitalId,
         photo: photoUrl,
       };
-      const equipment = await ReceptionistService.createEquipment(data);
+const equipment = await ReceptionistService.createEquipment(data);
       res.status(201).json({ status: "success", data: equipment });
     } catch (err) {
-      console.error("❌ [RECEPTIONIST] Add equipment error:", err.message);
+      console.error("? [RECEPTIONIST] Add equipment error:", err.message);
+      res.status(400).json({ status: "fail", message: err.message });
+    }
+  },
+
+  addItems: async (req, res) => {
+    try {
+      const { items } = req.body;
+      const hospitalId = req.receptionistProfile.hospitalId;
+      const created = [];
+      for (const item of items || []) {
+        created.push(
+          await ReceptionistService.createEquipment({
+            ...item,
+            hospitalId,
+          })
+        );
+      }
+      res.status(201).json({ status: "success", data: created });
+    } catch (err) {
+      console.error("? [RECEPTIONIST] Add equipment (bulk) error:", err.message);
       res.status(400).json({ status: "fail", message: err.message });
     }
   },

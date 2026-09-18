@@ -6,6 +6,7 @@ export interface MedicalEquipment {
   id: number;
   name: string;
   category: string;
+  hospitalId: number | null;
   hospitalName: string;
   hospitalPhone: string;
   address: string;
@@ -16,6 +17,7 @@ export interface MedicalEquipment {
   description: string;
   photo: string | null;
   price: number | null;
+  serviceFee: number | null;
 }
 
 interface EquipmentState {
@@ -44,6 +46,10 @@ const flattenEquipment = (item: any): MedicalEquipment => ({
   description: item.description || '',
   photo: item.photo || null,
   price: item.price ? parseFloat(item.price) : null,
+  serviceFee: item.hospital?.serviceFee?.amount
+    ? parseFloat(item.hospital.serviceFee.amount)
+    : null,
+  hospitalId: item.hospital?.id ?? null,
   hospitalName: item.hospital?.name || '',
   hospitalPhone: item.hospital?.phone || '',
   address: item.hospital?.address || '',

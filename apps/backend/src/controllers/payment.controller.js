@@ -60,15 +60,29 @@ const PaymentController = {
     const webUrl =
       process.env.WEB_APP_URL || 'https://bmbooking.possibletechplc.com/patient/appointments';
 
-    // Telegram Mini App flow: Telegram's webview refuses plain-http pages and
-    // custom schemes, so no auto-redirect and no deep link here. The user just
-    // goes back to Telegram and the book is auto-completed by polling.
+    // Telegram Mini App flow: after payment the user is handed straight back to
+    // the BM Booking app inside Telegram via the ?startapp=home deep link
+    // (opens the app's home page in the chat). The payment is reconciled
+    // against the paygate first (server-side, so it is recorded even though
+    // the user leaves this page immediately).
     if (req.query.from === 'tg') {
+      const refNo = String(
+        req.query.out_trade_no || req.query.merch_order_id || req.query.trade_no || ''
+      ).trim();
+      if (/^ORD[A-Za-z0-9]+$/.test(refNo)) {
+        const h5Url = process.env.PUBLIC_TELEBIRR_URL || 'https://bmtelebirr.possibletechplc.com';
+        const axios = require('axios');
+        axios
+          .get(`${h5Url}/order-status?refNo=${encodeURIComponent(refNo)}`, { timeout: 10000 })
+          .catch((e) => console.error('❌ [success-redirect] reconcile failed:', e.message));
+      }
+      const botLink = 'https://t.me/bmbookingb_bot/Bmbooking?startapp=home';
       return res.send(`
         <html>
           <head>
             <title>Payment Successful</title>
             <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta http-equiv="refresh" content="4;url=${botLink}">
             <style>
               body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; text-align: center; padding: 50px 24px; margin: 0; background: #f9f7f2; }
               .card { background: white; padding: 34px 26px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); max-width: 380px; margin: 0 auto; }
@@ -76,6 +90,7 @@ const PaymentController = {
               h1 { color: #101828; font-size: 22px; margin: 0 0 10px; }
               p { color: #667085; font-size: 15px; line-height: 1.55; margin: 0 0 6px; }
               .botline { color: #98a2b3; font-size: 13px; margin-top: 14px; }
+              a { color: #2a6ed1; }
             </style>
           </head>
           <body>
@@ -83,9 +98,11 @@ const PaymentController = {
               <div class="ring">✓</div>
               <h1>Payment Successful</h1>
               <p>Your payment was received.</p>
-              <p>Return to the Telegram chat and reopen the app to finish your booking.</p>
+              <p>Taking you back to the <strong>BM Booking</strong> Telegram app...</p>
               <p class="botline">Your appointment will be created automatically.</p>
+              <p class="botline">Not redirected? <a href="${botLink}">Open Telegram</a></p>
             </div>
+            <script>setTimeout(function(){ window.location.replace('${botLink}'); }, 4000);</script>
           </body>
         </html>
       `);
@@ -112,7 +129,7 @@ const PaymentController = {
             <h1>Payment Received!</h1>
             <p>Thank you for your payment. Return below to finish booking your appointment.</p>
             <a href="${webUrl}" class="btn">Return to BM Booking (Web)</a>
-            <a href="bmbooking://payment-success" class="btn btn-mobile">Return (Mobile App)</a>
+            <a href="bm-booking://payment-success" class="btn btn-mobile">Return (Mobile App)</a>
           </div>
           <script>
             setTimeout(function() {

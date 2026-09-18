@@ -1,160 +1,104 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView, RefreshControl, Pressable, Modal, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  RefreshControl,
+  Pressable,
+  Modal,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/theme';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 import { MedText } from '../../components/medconnect/MedText';
-import { MedCard } from '../../components/medconnect/MedCard';
 import { MedButton } from '../../components/medconnect/MedButton';
-import { MedInput } from '../../components/medconnect/MedInput';
+import { BMHeader } from '../../components/BMHeader';
+import { LanguagePicker } from '../../components/LanguagePicker';
 import axios from 'axios';
 import { BASE_URL } from '../../constants/api';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { AppDispatch, RootState } from '../../store';
-import { fetchMyAppointments, cancelAppointment, rescheduleAppointment, fetchDoctorScheduleSlots } from '../../store/slices/appointmentSlice';
-import { fetchMyEquipmentBookings, cancelEquipmentBooking, rescheduleEquipmentBooking, fetchEquipmentAvailability } from '../../store/slices/equipmentSlice';
-import { formatDate, formatEthiopianLocalTime } from '../../utils/ethiopianDate';
+import {
+  fetchMyAppointments,
+  cancelAppointment,
+} from '../../store/slices/appointmentSlice';
+import {
+  fetchMyEquipmentBookings,
+} from '../../store/slices/equipmentSlice';
+import { formatEthiopianLocalTime } from '../../utils/ethiopianDate';
 import { useTimeFormat } from '../../utils/timeFormat';
-import { formatDisplayTime } from '../../types/schedule';
 
-const STATUS_TABS = ['All', 'Pending', 'Accepted', 'Completed', 'Cancelled'];
-const BOOKING_TABS = ['Doctor', 'Lab Bookings'];
+const STATUS_TABS = ['All', 'Pending', 'Accepted', 'Completed', 'Declined', 'Cancelled'];
+
 export default function PatientAppointmentsScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const { isEthiopian } = useTimeFormat();
-
-  const fmtTime = (d: Date) => isEthiopian ? formatEthiopianLocalTime(d) : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-
+  const { t } = useTranslation();
   const router = useRouter();
+
+  const fmtTime = (d: Date) =>
+    isEthiopian
+      ? formatEthiopianLocalTime(d)
+      : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
   const { appointments, loading } = useSelector((state: RootState) => state.appointment);
   const { myBookings } = useSelector((state: RootState) => state.equipment);
-  const [activeTab, setActiveTab] = useState('All');
-  const [bookingTab, setBookingTab] = useState('Doctor');
-
-  useEffect(() => {
-    dispatch(fetchMyAppointments());
-    dispatch(fetchMyEquipmentBookings());
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (bookingTab === 'Lab Bookings') {
-      dispatch(fetchMyEquipmentBookings());
-    }
-  }, [bookingTab, dispatch]);
   const { token } = useSelector((state: RootState) => state.auth);
   const userId = useSelector((state: RootState) => state.auth.user?.id);
+
+  const [activeTab, setActiveTab] = useState('All');
   const [rateModalVisible, setRateModalVisible] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
-
-  const [rescheduleModalVisible, setRescheduleModalVisible] = useState(false);
-  const [rescheduleAppt, setRescheduleAppt] = useState<any>(null);
-  const [schedules, setSchedules] = useState<any[]>([]);
-  const [scheduleDates, setScheduleDates] = useState<any[]>([]);
-  const [selectedDateId, setSelectedDateId] = useState<string | null>(null);
-  const [slotsForDate, setSlotsForDate] = useState<any[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<any>(null);
-  const [loadingSchedules, setLoadingSchedules] = useState(false);
-
-  const [equipReschedVisible, setEquipReschedVisible] = useState(false);
-  const [equipReschedBooking, setEquipReschedBooking] = useState<any>(null);
-  const [equipAvailDate, setEquipAvailDate] = useState('');
-  const [equipAvailSlots, setEquipAvailSlots] = useState<any[]>([]);
-  const [selectedEquipSlot, setSelectedEquipSlot] = useState('');
-  const [loadingEquipAvail, setLoadingEquipAvail] = useState(false);
-
-  const existingReview = React.useMemo(() => {
-    if (!selectedAppointment) return null;
-    return reviews.find((r: any) => r.appointmentId === selectedAppointment.id) || null;
-  }, [reviews, selectedAppointment]);
-
-  const loadReviews = async (appointment: any) => {
-    try {
-      const res = await axios.get(`${BASE_URL}/api/reviews/doctor/${appointment.doctorId}`);
-      setReviews(res.data.data || []);
-    } catch (_) {}
-  };
+  const [hospitalReviews, setHospitalReviews] = useState<any[]>([]);
+  const [reviewTarget, setReviewTarget] = useState<'doctor' | 'hospital'>('doctor');
 
   useEffect(() => {
-    if (selectedAppointment) {
-      const existing = reviews.find((r: any) => r.appointmentId === selectedAppointment.id);
-      setRating(existing?.rating || 5);
-      setComment(existing?.comment || '');
-    }
-  }, [selectedAppointment, reviews]);
-
-  const handleSubmitReview = async () => {
-    if (!selectedAppointment) return;
-    try {
-      setSubmitting(true);
-      await axios.post(`${BASE_URL}/api/reviews`, {
-        doctorId: selectedAppointment.doctorId,
-        rating,
-        comment,
-        appointmentId: selectedAppointment.id,
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setSelectedAppointment(null);
-      setRateModalVisible(false);
-      setComment('');
-      setRating(5);
-      setReviews([]);
-      dispatch(fetchMyAppointments());
-    } catch (err) {
-      console.error('Failed to submit review:', err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const onRefresh = () => {
     dispatch(fetchMyAppointments());
-  };
+    dispatch(fetchMyEquipmentBookings());
+  }, [dispatch]);
 
-  const openReschedule = async (apt: any) => {
-    setRescheduleAppt(apt);
-    setRescheduleModalVisible(true);
-    setSelectedSlot(null);
-    setSelectedDateId(null);
-    setSlotsForDate([]);
-    setLoadingSchedules(true);
-    try {
-      const result = await dispatch(fetchDoctorScheduleSlots({ doctorId: apt.doctorId })).unwrap();
-      setSchedules(result || []);
-      const dates = (result || []).map((s: any) => {
-        const d = new Date(s.date);
-        return {
-          id: d.toISOString().split('T')[0],
-          day: formatDate(d, 'weekday-short'),
-          date: formatDate(d, 'month-day'),
-          label: formatDate(d, 'full'),
-        };
-      });
-      const unique = dates.filter((d: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === d.id) === i);
-      setScheduleDates(unique);
-      if (unique.length > 0) setSelectedDateId(unique[0].id);
-    } catch { /* handled by UI */ }
-    finally { setLoadingSchedules(false); }
-  };
+  const onRefresh = useCallback(() => {
+    dispatch(fetchMyAppointments());
+    dispatch(fetchMyEquipmentBookings());
+  }, [dispatch]);
 
-  useEffect(() => {
-    if (!selectedDateId || schedules.length === 0) { setSlotsForDate([]); return; }
-    const daySchedules = schedules.filter((s: any) =>
-      new Date(s.date).toISOString().split('T')[0] === selectedDateId
-    );
-    const allSlots = daySchedules.flatMap((s: any) => s.slots || []);
-    allSlots.sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-    setSlotsForDate(allSlots);
-    setSelectedSlot(null);
-  }, [selectedDateId, schedules]);
+  const filteredAppointments = appointments.filter((apt) => {
+    if (activeTab === 'All') return true;
+    return apt.status.toLowerCase() === activeTab.toLowerCase();
+  });
+
+  const getStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+      case 'confirmed':
+        return { bg: '#E8F5E9', fg: '#2E7D32', text: 'Accepted' };
+      case 'pending':
+        return { bg: '#FFF8E1', fg: '#F57C00', text: 'Pending' };
+      case 'completed':
+        return { bg: '#E3F2FD', fg: '#1565C0', text: 'Completed' };
+      case 'declined':
+        return { bg: '#FFEBEE', fg: '#C62828', text: 'Declined' };
+      case 'cancelled':
+        return { bg: '#F3F4F6', fg: '#5A6B80', text: 'Cancelled' };
+      default:
+        return { bg: '#F1F5F9', fg: '#64748B', text: status };
+    }
+  };
 
   const handleCancel = (apt: any) => {
     Alert.alert(
@@ -174,671 +118,334 @@ export default function PatientAppointmentsScreen() {
             }
           },
         },
-      ],
+      ]
     );
   };
 
-  const handleRescheduleConfirm = async () => {
-    if (!rescheduleAppt || !selectedSlot) return;
-    try {
-      await dispatch(rescheduleAppointment({
-        appointmentId: rescheduleAppt.id,
-        dateTime: selectedSlot.startTime,
-        slotId: selectedSlot.id,
-      })).unwrap();
-      setRescheduleModalVisible(false);
-      setRescheduleAppt(null);
-      dispatch(fetchMyAppointments());
-    } catch (err: any) {
-      Alert.alert('Error', err || 'Failed to reschedule appointment');
-    }
+  const openRateReview = (appointment: any, target: 'doctor' | 'hospital') => {
+    setSelectedAppointment(appointment);
+    setReviewTarget(target);
+    setRateModalVisible(true);
   };
 
-  const handleEquipCancel = (booking: any) => {
-    Alert.alert(
-      'Cancel Lab Booking',
-      'Are you sure you want to cancel this lab booking?',
-      [
-        { text: 'No', style: 'cancel' },
+  const handleSubmitReview = async () => {
+    if (!selectedAppointment) return;
+    try {
+      setSubmitting(true);
+      await axios.post(
+        `${BASE_URL}/api/reviews`,
         {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await dispatch(cancelEquipmentBooking(booking.id)).unwrap();
-              dispatch(fetchMyEquipmentBookings());
-            } catch (err: any) {
-              Alert.alert('Error', err || 'Failed to cancel booking');
-            }
-          },
+          doctorId: reviewTarget === 'doctor' ? selectedAppointment.doctorId : undefined,
+          hospitalId: reviewTarget === 'hospital' ? selectedAppointment.doctor?.hospital?.id : undefined,
+          rating,
+          comment,
+          appointmentId: selectedAppointment.id,
         },
-      ],
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setSelectedAppointment(null);
+      setRateModalVisible(false);
+      setComment('');
+      setRating(5);
+      dispatch(fetchMyAppointments());
+    } catch (err) {
+      console.error('Failed to submit review:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const renderAppointmentCard = (apt: any) => {
+    const badge = getStatusBadge(apt.status);
+    const doctor = apt.doctor;
+    const hospital = doctor?.hospital || {};
+    const hospitalName = hospital?.name || doctor?.clinicName || 'Clinic';
+    const regPhone = hospital?.phone || doctor?.clinicAddress || '1212121212';
+    const receptionistPhone = hospital?.receptionistPhone || null;
+    const hospitalAddress = hospital?.address || '';
+    const hasCoords =
+      typeof hospital?.latitude === 'number' &&
+      typeof hospital?.longitude === 'number';
+    const aptDate = apt.dateTime ? new Date(apt.dateTime) : new Date();
+    const dateFormatted = `${aptDate.getMonth() + 1}/${aptDate.getDate()}/${aptDate.getFullYear()}`;
+    const timeFormatted = fmtTime(aptDate);
+    const specialty = doctor?.specializations?.length
+      ? doctor.specializations.join(', ')
+      : doctor?.specialization || 'General Doctor';
+
+    const openMaps = () => {
+      if (!hasCoords) return;
+      const url = Platform.select({
+        ios: `maps:0,0?q=${hospitalName}@${hospital.latitude},${hospital.longitude}`,
+        android: `geo:0,0?q=${hospital.latitude},${hospital.longitude}(${encodeURIComponent(hospitalName)})`,
+      });
+      if (url) Linking.openURL(url);
+    };
+
+    return (
+      <View key={apt.id} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        {/* Top Doctor & Status */}
+        <View style={styles.cardHeader}>
+          <MedText variant="body" style={[styles.doctorName, { color: theme.text }]} numberOfLines={1}>
+            {doctor?.fullName || 'john'}
+          </MedText>
+          <View style={[styles.statusPill, { backgroundColor: badge.bg }]}>
+            <MedText style={[styles.statusText, { color: badge.fg }]}>
+              {badge.text}
+            </MedText>
+          </View>
+        </View>
+
+        {/* Doctor Specialty */}
+        <MedText style={[styles.specialtyText, { color: theme.textSecondary }]} numberOfLines={1}>
+          {specialty}
+        </MedText>
+
+        {/* Date & Time Row */}
+        <View style={styles.dateTimeRow}>
+          <View style={styles.iconTextRow}>
+            <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
+            <MedText style={[styles.metaValue, { color: theme.text }]}>{dateFormatted}</MedText>
+          </View>
+          <View style={styles.iconTextRow}>
+            <Ionicons name="time-outline" size={16} color={theme.textSecondary} />
+            <MedText style={[styles.metaValue, { color: theme.text }]}>{timeFormatted}</MedText>
+          </View>
+        </View>
+
+        {apt.reason ? (
+          <MedText style={[styles.reasonText, { color: theme.textSecondary }]} numberOfLines={2}>
+            {apt.reason}
+          </MedText>
+        ) : null}
+
+        {/* Divider */}
+        <View style={[styles.cardDivider, { backgroundColor: theme.border }]} />
+
+        {/* Hospital info */}
+        <MedText style={[styles.hospitalName, { color: theme.text }]} numberOfLines={1}>
+          {hospitalName}
+        </MedText>
+
+        {hospitalAddress ? (
+          <View style={styles.regRow}>
+            <Ionicons name="location-outline" size={15} color={theme.textSecondary} />
+            <MedText style={[styles.regText, { color: theme.textSecondary }]}>
+              {hospitalAddress}
+            </MedText>
+          </View>
+        ) : null}
+
+        {/* Phone & Registration info */}
+        {regPhone !== '1212121212' && (
+          <Pressable
+            style={styles.regRow}
+            onPress={() => Linking.openURL(`tel:${regPhone}`)}
+            hitSlop={6}
+          >
+            <Ionicons name="call-outline" size={15} color={theme.textSecondary} />
+            <MedText style={[styles.regText, { color: theme.textSecondary }]}>
+              Registration: {regPhone}
+            </MedText>
+            <View style={[styles.callBadge, { backgroundColor: theme.primary + '18' }]}>
+              <Ionicons name="call" size={14} color={theme.primary} />
+            </View>
+          </Pressable>
+        )}
+
+        {receptionistPhone ? (
+          <Pressable
+            style={styles.regRow}
+            onPress={() => Linking.openURL(`tel:${receptionistPhone}`)}
+            hitSlop={6}
+          >
+            <Ionicons name="person-circle-outline" size={15} color={theme.textSecondary} />
+            <MedText style={[styles.regText, { color: theme.textSecondary }]}>
+              Reception: {receptionistPhone}
+            </MedText>
+            <View style={[styles.callBadge, { backgroundColor: theme.primary + '18' }]}>
+              <Ionicons name="call" size={14} color={theme.primary} />
+            </View>
+          </Pressable>
+        ) : null}
+
+        {regPhone !== '1212121212' && (
+          <View style={styles.contactRow}>
+            <MedButton
+              title="Call Hospital"
+              type="outline"
+              size="small"
+              style={{ flex: 1 }}
+              icon={<Ionicons name="call-outline" size={14} color={theme.primary} />}
+              onPress={() => Linking.openURL(`tel:${regPhone}`)}
+            />
+            {hasCoords && (
+              <MedButton
+                title="Directions"
+                type="outline"
+                size="small"
+                style={{ flex: 1 }}
+                icon={<Ionicons name="navigate-outline" size={14} color={theme.primary} />}
+                onPress={openMaps}
+              />
+            )}
+          </View>
+        )}
+
+        {/* For someone else badge if applicable */}
+        {apt.bookedBy && apt.bookedBy.id === userId && apt.patient?.patientProfile?.fullName && (
+          <View style={[styles.forRow, { backgroundColor: theme.primary + '15' }]}>
+            <Ionicons name="people-outline" size={14} color={theme.primary} />
+            <MedText style={[styles.forText, { color: theme.primary }]}>
+              For: {apt.patient.patientProfile.fullName}
+            </MedText>
+          </View>
+        )}
+
+        {/* Actions for Pending (mirrors web) */}
+        {apt.status === 'pending' && (
+          <View style={styles.actionRow}>
+            <MedButton
+              title="Cancel"
+              type="outline"
+              size="small"
+              style={{ flex: 1 }}
+              onPress={() => handleCancel(apt)}
+            />
+          </View>
+        )}
+
+        {/* Actions for Completed */}
+        {apt.status === 'completed' && (
+          <View style={styles.actionRow}>
+            <MedButton
+              title="Rate Doctor"
+              size="small"
+              style={{ flex: 1 }}
+              onPress={() => openRateReview(apt, 'doctor')}
+              icon={<Ionicons name="star-outline" size={14} color="#FFF" />}
+            />
+            {doctor?.hospital?.id ? (
+              <MedButton
+                title="Rate Hospital"
+                type="outline"
+                size="small"
+                style={{ flex: 1 }}
+                onPress={() => openRateReview(apt, 'hospital')}
+                icon={<Ionicons name="business-outline" size={14} color={theme.text} />}
+              />
+            ) : null}
+          </View>
+        )}
+      </View>
     );
-  };
-
-  const openEquipReschedule = async (booking: any) => {
-    setEquipReschedBooking(booking);
-    setEquipReschedVisible(true);
-    setSelectedEquipSlot('');
-    setEquipAvailSlots([]);
-    const today = new Date().toISOString().split('T')[0];
-    setEquipAvailDate(today);
-    await loadEquipAvail(booking.equipmentId, today);
-  };
-
-  const loadEquipAvail = async (equipmentId: number, date: string) => {
-    setLoadingEquipAvail(true);
-    setEquipAvailDate(date);
-    setSelectedEquipSlot('');
-    try {
-      const result = await dispatch(fetchEquipmentAvailability({ equipmentId, date })).unwrap();
-      setEquipAvailSlots(result.slots || []);
-    } catch { setEquipAvailSlots([]); }
-    finally { setLoadingEquipAvail(false); }
-  };
-
-  const handleEquipRescheduleConfirm = async () => {
-    if (!equipReschedBooking || !selectedEquipSlot) return;
-    const dateTime = `${equipAvailDate}T${selectedEquipSlot}:00+03:00`;
-    try {
-      await dispatch(rescheduleEquipmentBooking({
-        bookingId: equipReschedBooking.id,
-        dateTime,
-      })).unwrap();
-      setEquipReschedVisible(false);
-      setEquipReschedBooking(null);
-      dispatch(fetchMyEquipmentBookings());
-    } catch (err: any) {
-      Alert.alert('Error', err || 'Failed to reschedule booking');
-    }
-  };
-
-  const filteredAppointments = appointments.filter(apt => {
-    if (activeTab === 'All') return true;
-    return apt.status.toLowerCase() === activeTab.toLowerCase();
-  });
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'accepted': return theme.success;
-      case 'pending': return '#F59E0B';
-      case 'completed': return theme.secondary;
-      case 'declined': return '#EF4444';
-      default: return theme.muted;
-    }
-  };
-
-  const getBookingStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return theme.success;
-      case 'pending': return '#F59E0B';
-      case 'completed': return theme.secondary;
-      case 'declined': return '#EF4444';
-      case 'cancelled': return '#EF4444';
-      default: return theme.muted;
-    }
   };
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
-        <MedText variant="h1">My Appointments</MedText>
+      {/* BM Brand Header */}
+      <BMHeader />
+
+      {/* Title & Language Row */}
+      <View style={styles.titleSection}>
+        <MedText variant="h1" style={[styles.pageTitle, { color: theme.text }]}>
+          {t("myAppointments") || "My Appointments"}
+        </MedText>
+        <LanguagePicker />
       </View>
 
-      <View style={styles.topTabBar}>
-        {BOOKING_TABS.map(tab => (
-          <Pressable
-            key={tab}
-            onPress={() => setBookingTab(tab)}
-            style={[
-              styles.topTab,
-              bookingTab === tab && { borderBottomColor: theme.primary, borderBottomWidth: 2 },
-            ]}
-          >
-            <MedText
-              variant="metadata"
-              style={{ fontWeight: bookingTab === tab ? '700' : '400' }}
-              color={bookingTab === tab ? theme.text : theme.muted}
-            >
-              {tab}
-            </MedText>
-          </Pressable>
-        ))}
-      </View>
-
-      {bookingTab === 'Doctor' && (
-        <View style={styles.tabBar}>
-          {STATUS_TABS.map(tab => (
-            <Pressable 
-              key={tab} 
-              onPress={() => setActiveTab(tab)}
-              style={[
-                styles.tab, 
-                activeTab === tab && { borderBottomColor: theme.primary, borderBottomWidth: 2 }
-              ]}
-            >
-              <MedText 
-                variant="metadata" 
-                style={{ fontWeight: activeTab === tab ? '700' : '400' }}
-                color={activeTab === tab ? theme.text : theme.muted}
+      {/* Filter Tabs */}
+      <View style={styles.tabsContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+          {STATUS_TABS.map((tab) => {
+            const active = activeTab === tab;
+            return (
+              <Pressable
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                style={[
+                  styles.tabPill,
+                  active
+                    ? { backgroundColor: "#1E56A0", borderColor: "#1E56A0" }
+                    : { backgroundColor: theme.surface, borderColor: theme.border },
+                ]}
               >
-                {tab}
-              </MedText>
-            </Pressable>
-          ))}
-        </View>
-      )}
-
-      {bookingTab === 'Doctor' ? (
-        <ScrollView 
-          contentContainerStyle={styles.content}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} />}
-        >
-          {filteredAppointments.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={64} color={theme.border} />
-              <MedText variant="h2" style={{ marginTop: 16 }}>No appointments found</MedText>
-              <MedText variant="body" style={{ marginTop: 8, textAlign: 'center' }}>
-                Your {activeTab !== 'All' ? activeTab.toLowerCase() : ''} appointments will appear here.
-              </MedText>
-            </View>
-          ) : (
-            filteredAppointments.map((apt) => (
-              <MedCard key={apt.id} style={[styles.card, apt.bookedBy && apt.bookedBy.id === userId && { backgroundColor: colorScheme === 'dark' ? '#1E293B' : '#EFF6FF', borderLeftWidth: 4, borderLeftColor: '#3B82F6' }]}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.doctorInfo}>
-                    <MedText variant="h2">{apt.doctor?.fullName || 'Doctor'}</MedText>
-                    <MedText variant="metadata">{apt.doctor?.specializations && apt.doctor.specializations.length > 0 ? apt.doctor.specializations.join(", ") : apt.doctor?.specialization}</MedText>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(apt.status) + '20' }]}>
-                    <MedText variant="metadata" style={{ fontWeight: '700', textTransform: 'uppercase', fontSize: 10 }} color={getStatusColor(apt.status)}>
-                      {apt.status}
-                    </MedText>
-                  </View>
-                </View>
-
-                {apt.bookedBy && apt.bookedBy.id === userId && apt.patient?.patientProfile?.fullName && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, backgroundColor: '#3B82F6', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
-                    <Ionicons name="people-outline" size={14} color="#FFFFFF" />
-                    <MedText variant="metadata" style={{ marginLeft: 4, color: '#FFFFFF', fontWeight: '700' }}>
-                      For: {apt.patient.patientProfile.fullName}
-                    </MedText>
-                  </View>
-                )}
-
-                <View style={styles.divider} />
-
-                <View style={styles.details}>
-                  <View style={styles.detailRow}>
-                    <Ionicons name="calendar-outline" size={16} color={theme.muted} />
-                    <MedText variant="body" style={styles.detailText}>
-                      {formatDate(new Date(apt.dateTime), 'weekday-short')}
-                    </MedText>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Ionicons name="time-outline" size={16} color={theme.muted} />
-                    <MedText variant="body" style={styles.detailText}>
-                      {fmtTime(new Date(apt.dateTime))}
-                    </MedText>
-                  </View>
-                </View>
-
-                {apt.status === 'accepted' && (
-                  <View style={[styles.details, { marginTop: 8 }]}>
-                    <View style={styles.detailRow}>
-                      <Ionicons name="business-outline" size={16} color={theme.muted} />
-                      <MedText variant="body" style={styles.detailText}>
-                        {apt.doctor?.clinicName || 'Private Clinic'}
-                      </MedText>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Ionicons name="location-outline" size={16} color={theme.muted} />
-                      <MedText variant="body" style={styles.detailText}>
-                        {apt.doctor?.clinicAddress || 'Addis Ababa'}
-                      </MedText>
-                    </View>
-                  </View>
-                )}
-
-                {apt.status === 'declined' && apt.declineReason && (
-                  <View style={styles.reasonBox}>
-                    <MedText variant="metadata" color="#EF4444">Reason: {apt.declineReason}</MedText>
-                  </View>
-                )}
-
-                {(apt.status === 'pending' || apt.status === 'accepted') && (
-                  <View style={{ flexDirection: 'row', marginTop: 16, gap: 10 }}>
-                    <Pressable
-                      onPress={() => openReschedule(apt)}
-                      style={[styles.actionButton, { backgroundColor: theme.primary + '10', borderColor: theme.primary, borderWidth: 1, borderRadius: 8, flex: 1, padding: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }]}
-                    >
-                      <Ionicons name="calendar-outline" size={15} color={theme.primary} />
-                      <MedText variant="metadata" style={{ color: theme.primary, fontWeight: '600' }}>Reschedule</MedText>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => handleCancel(apt)}
-                      style={[styles.actionButton, { backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: 8, flex: 1, padding: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }]}
-                    >
-                      <Ionicons name="close-outline" size={15} color="#EF4444" />
-                      <MedText variant="metadata" style={{ color: '#EF4444', fontWeight: '600' }}>Cancel</MedText>
-                    </Pressable>
-                  </View>
-                )}
-
-                {apt.status === 'completed' && (
-                  <MedButton 
-                    title="Rate Doctor" 
-                    size="small" 
-                    onPress={() => {
-                      setSelectedAppointment(apt);
-                      loadReviews(apt);
-                      setRateModalVisible(true);
-                    }}
-                    style={{ marginTop: 16 }}
-                    icon={<Ionicons name="star-outline" size={16} color="white" />}
-                  />
-                )}
-              </MedCard>
-            ))
-          )}
+                <MedText
+                  style={[
+                    styles.tabText,
+                    { color: active ? "#FFFFFF" : theme.textSecondary, fontWeight: active ? "700" : "500" },
+                  ]}
+                >
+                  {tab}
+                </MedText>
+              </Pressable>
+            );
+          })}
         </ScrollView>
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.content}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={() => dispatch(fetchMyEquipmentBookings())} />}
-        >
-          {myBookings.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="cart-outline" size={64} color={theme.border} />
-              <MedText variant="h2" style={{ marginTop: 16 }}>No lab bookings yet</MedText>
-              <MedText variant="body" style={{ marginTop: 8, textAlign: 'center' }}>
-                Search for medical tools and book an appointment at a center near you.
-              </MedText>
-              <MedButton
-                title="Find Equipments"
-                onPress={() => router.push('/(tabs)/equipment')}
-                style={{ marginTop: 16 }}
-              />
-            </View>
-          ) : (
-            myBookings.map((booking: any) => (
-              <MedCard key={booking.id} style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.doctorInfo}>
-                    <MedText variant="h2">{booking.equipment?.name || 'Equipment'}</MedText>
-                    <MedText variant="metadata">
-                      {booking.equipment?.category?.replace('_', ' ') || 'Medical Tool'}
-                    </MedText>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: getBookingStatusColor(booking.status) + '20' }]}>
-                    <MedText
-                      variant="metadata"
-                      style={{ fontWeight: '700', textTransform: 'uppercase', fontSize: 10 }}
-                      color={getBookingStatusColor(booking.status)}
-                    >
-                      {booking.status}
-                    </MedText>
-                  </View>
-                </View>
+      </View>
 
-                <View style={styles.divider} />
-
-                <View style={styles.details}>
-                  <View style={styles.detailRow}>
-                    <Ionicons name="calendar-outline" size={16} color={theme.muted} />
-                    <MedText variant="body" style={styles.detailText}>
-                      {formatDate(new Date(booking.dateTime), 'weekday-short')}
-                    </MedText>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Ionicons name="time-outline" size={16} color={theme.muted} />
-                    <MedText variant="body" style={styles.detailText}>
-                      {fmtTime(new Date(booking.dateTime))}
-                    </MedText>
-                  </View>
-                </View>
-
-                {booking.notes && (
-                  <MedText variant="metadata" style={{ marginTop: 8, color: theme.muted }}>
-                    Notes: {booking.notes}
-                  </MedText>
-                )}
-
-                {(booking.status === 'pending' || booking.status === 'confirmed') && (
-                  <View style={{ flexDirection: 'row', marginTop: 16, gap: 10 }}>
-                    <Pressable
-                      onPress={() => openEquipReschedule(booking)}
-                      style={[styles.actionButton, { backgroundColor: theme.primary + '10', borderColor: theme.primary, borderWidth: 1 }]}
-                    >
-                      <Ionicons name="calendar-outline" size={15} color={theme.primary} />
-                      <MedText variant="metadata" style={{ color: theme.primary, fontWeight: '600' }}>Reschedule</MedText>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => handleEquipCancel(booking)}
-                      style={[styles.actionButton, { backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1 }]}
-                    >
-                      <Ionicons name="close-outline" size={15} color="#EF4444" />
-                      <MedText variant="metadata" style={{ color: '#EF4444', fontWeight: '600' }}>Cancel</MedText>
-                    </Pressable>
-                  </View>
-                )}
-
-              </MedCard>
-            ))
-          )}
-        </ScrollView>
-      )}
-
-      {/* Rating Modal */}
-      <Modal
-        visible={rateModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setRateModalVisible(false)}
+      {/* Appointment List */}
+      <ScrollView
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} />}
       >
+        {loading && appointments.length === 0 ? (
+          <ActivityIndicator color={theme.primary} style={{ marginTop: 40 }} />
+        ) : filteredAppointments.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={[styles.emptyIcon, { backgroundColor: theme.secondaryBg }]}>
+              <Ionicons name="calendar-outline" size={32} color={theme.textSecondary} />
+            </View>
+            <MedText style={[styles.emptyTitle, { color: theme.text }]}>
+              {t("noAppointments") || "No appointments found"}
+            </MedText>
+            <MedText style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+              {t("bookFirstAppointment") || "Book your first appointment to get started."}
+            </MedText>
+            <MedButton
+              title={t("findDoctors") || "Find Doctors"}
+              onPress={() => router.push("/(tabs)/doctors")}
+              style={{ marginTop: 20 }}
+            />
+          </View>
+        ) : (
+          filteredAppointments.map((apt) => renderAppointmentCard(apt))
+        )}
+      </ScrollView>
+
+      {/* Review Modal */}
+      <Modal visible={rateModalVisible} animationType="slide" transparent onRequestClose={() => setRateModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
             <View style={styles.modalHeader}>
-              <MedText variant="h2">Rate your Experience</MedText>
+              <MedText variant="h2">Rate Experience</MedText>
               <TouchableOpacity onPress={() => setRateModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.text} />
               </TouchableOpacity>
             </View>
-
-            <ScrollView contentContainerStyle={{ padding: 24 }}>
-              <View style={{ alignItems: 'center', marginBottom: 24 }}>
-                <MedText variant="body" color={theme.muted}>How was your visit with</MedText>
-                <MedText variant="h2" style={{ marginTop: 4 }}>{selectedAppointment?.doctor?.fullName}</MedText>
-
-                {existingReview ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#FEF3C7', borderRadius: 8 }}>
-                    <Ionicons name="create-outline" size={14} color="#92400E" />
-                    <MedText variant="metadata" style={{ color: '#92400E', marginLeft: 4, fontWeight: '500' }}>Editing your review</MedText>
-                  </View>
-                ) : null}
-                
-                <View style={styles.starRow}>
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <TouchableOpacity key={s} onPress={() => setRating(s)}>
-                      <Ionicons 
-                        name={s <= rating ? "star" : "star-outline"} 
-                        size={40} 
-                        color={s <= rating ? "#F59E0B" : theme.border} 
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </View>
+            <ScrollView contentContainerStyle={{ padding: 20 }}>
+              <MedText style={{ textAlign: 'center', color: theme.textSecondary }}>
+                {reviewTarget === 'hospital' ? 'How was your experience with the hospital?' : 'How was your experience with the doctor?'}
+              </MedText>
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <TouchableOpacity key={s} onPress={() => setRating(s)}>
+                    <Ionicons name={s <= rating ? 'star' : 'star-outline'} size={36} color={s <= rating ? '#F59E0B' : theme.border} />
+                  </TouchableOpacity>
+                ))}
               </View>
-
-              <MedText variant="metadata" style={{ marginBottom: 8 }}>YOUR COMMENT</MedText>
               <TextInput
                 style={[styles.commentInput, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
-                placeholder="Share your experience (optional)..."
-                placeholderTextColor={theme.muted}
+                placeholder="Share details of your visit (optional)..."
+                placeholderTextColor={theme.textSecondary}
                 multiline
                 value={comment}
                 onChangeText={setComment}
               />
-
-              <MedButton 
-                title={existingReview ? "Update Review" : "Submit Review"} 
-                onPress={handleSubmitReview} 
-                loading={submitting}
-                style={{ marginTop: 32 }} 
-              />
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Reschedule Modal */}
-      <Modal
-        visible={rescheduleModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setRescheduleModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.background, maxHeight: '80%' }]}>
-            <View style={styles.modalHeader}>
-              <MedText variant="h2">Reschedule Appointment</MedText>
-              <TouchableOpacity onPress={() => setRescheduleModalVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView contentContainerStyle={{ padding: 24 }}>
-              {rescheduleAppt && (
-                <MedCard style={{ padding: 16, marginBottom: 16 }}>
-                  <MedText variant="body" style={{ fontWeight: '500' }}>{rescheduleAppt.doctor?.fullName}</MedText>
-                  <MedText variant="metadata" style={{ marginTop: 2, color: theme.muted }}>
-                    {rescheduleAppt.doctor?.specialization}
-                  </MedText>
-                </MedCard>
-              )}
-
-              {loadingSchedules ? (
-                <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 32 }} />
-              ) : scheduleDates.length === 0 ? (
-                <View style={{ padding: 24, alignItems: 'center' }}>
-                  <Ionicons name="calendar-outline" size={40} color={theme.muted} />
-                  <MedText variant="body" style={{ color: theme.muted, marginTop: 12, textAlign: 'center' }}>No available schedules</MedText>
-                </View>
-              ) : (
-                <>
-                  <MedText variant="metadata" style={{ marginBottom: 10, fontWeight: '600' }}>SELECT DATE</MedText>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
-                    {scheduleDates.map((d: any) => (
-                      <Pressable
-                        key={d.id}
-                        onPress={() => setSelectedDateId(d.id)}
-                        style={[
-                          { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 10, marginRight: 10, borderWidth: 1 },
-                          selectedDateId === d.id
-                            ? { backgroundColor: theme.primary, borderColor: theme.primary }
-                            : { backgroundColor: theme.surface, borderColor: theme.border },
-                        ]}
-                      >
-                        <MedText variant="metadata" style={{ color: selectedDateId === d.id ? '#FFF' : theme.muted, fontWeight: '500', textAlign: 'center' }}>{d.day}</MedText>
-                        <MedText variant="body" style={{ color: selectedDateId === d.id ? '#FFF' : theme.text, marginTop: 4, fontWeight: '500', textAlign: 'center' }}>{d.date}</MedText>
-                      </Pressable>
-                    ))}
-                  </ScrollView>
-
-                  {slotsForDate.length === 0 ? (
-                    <View style={{ padding: 16, backgroundColor: '#FEF3F2', borderRadius: 10 }}>
-                      <MedText variant="body" style={{ color: '#B42318', fontSize: 13, textAlign: 'center' }}>No slots available for this date</MedText>
-                    </View>
-                  ) : (
-                    <>
-                      <MedText variant="metadata" style={{ marginBottom: 10, fontWeight: '600' }}>SELECT TIME</MedText>
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                        {slotsForDate.map((slot: any) => {
-                          const remaining = slot.maxPatients - slot._count.bookings;
-                          const isFull = remaining <= 0;
-                          const isSelected = selectedSlot?.id === slot.id;
-                          return (
-                            <Pressable
-                              key={slot.id}
-                              disabled={isFull}
-                              onPress={() => setSelectedSlot(slot)}
-                              style={[
-                                { flex: 1, minWidth: '45%', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
-                                isFull && { opacity: 0.4 },
-                                isSelected
-                                  ? { backgroundColor: theme.primary, borderColor: theme.primary }
-                                  : { backgroundColor: theme.surface, borderColor: theme.border },
-                              ]}
-                            >
-                              <MedText
-                                variant="body"
-                                style={{ fontWeight: '500', color: isSelected ? '#FFF' : theme.text, fontSize: 13 }}
-                              >
-                                {fmtTime(new Date(slot.startTime))}
-                              </MedText>
-                              <MedText
-                                variant="metadata"
-                                style={{ color: isSelected ? '#FFF' : theme.muted, fontSize: 10, marginTop: 2 }}
-                              >
-                                {isFull ? 'Full' : `${remaining} left`}
-                              </MedText>
-                            </Pressable>
-                          );
-                        })}
-                      </View>
-                    </>
-                  )}
-
-                  <MedButton
-                    title="Confirm Reschedule"
-                    onPress={handleRescheduleConfirm}
-                    disabled={!selectedSlot}
-                    style={{ marginTop: 24 }}
-                    textStyle={{ color: colorScheme === "dark" ? "#101828" : "#FFFFFF" }}
-                  />
-                </>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Equipment Reschedule Modal */}
-      <Modal
-        visible={equipReschedVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setEquipReschedVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
-            <View style={styles.modalHeader}>
-              <MedText variant="h2">Reschedule Lab Booking</MedText>
-              <TouchableOpacity onPress={() => setEquipReschedVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView contentContainerStyle={{ padding: 24 }}>
-              {equipReschedBooking && (
-                <MedCard style={{ padding: 16, marginBottom: 16 }}>
-                  <MedText variant="body" style={{ fontWeight: '500' }}>{equipReschedBooking.equipment?.name}</MedText>
-                  <MedText variant="metadata" style={{ marginTop: 2, color: theme.muted }}>
-                    {equipReschedBooking.equipment?.category?.replace('_', ' ') || 'Medical Tool'}
-                  </MedText>
-                  <View style={[styles.divider, { marginVertical: 10 }]} />
-                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#3B82F6', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 }}>
-                    <Ionicons name="calendar-outline" size={13} color="#FFFFFF" />
-                    <MedText variant="metadata" style={{ marginLeft: 5, color: '#FFFFFF', fontWeight: '700' }}>
-                      Current: {formatDate(new Date(equipReschedBooking.dateTime), 'weekday-short')} {' '}
-                      {fmtTime(new Date(equipReschedBooking.dateTime))}
-                    </MedText>
-                  </View>
-                </MedCard>
-              )}
-
-              <MedText variant="metadata" style={{ marginBottom: 10, fontWeight: '600' }}>SELECT DATE</MedText>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
-                {(() => {
-                  const dates: { day: string; date: string; iso: string }[] = [];
-                  for (let i = 0; i < 30; i++) {
-                    const d = new Date();
-                    d.setDate(d.getDate() + i);
-                    dates.push({
-                      day: d.toLocaleDateString('en-US', { weekday: 'short' }),
-                      date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                      iso: d.toISOString().split('T')[0],
-                    });
-                  }
-                  return dates;
-                })().map((d) => (
-                  <Pressable
-                    key={d.iso}
-                    onPress={() => equipReschedBooking && loadEquipAvail(equipReschedBooking.equipmentId, d.iso)}
-                    style={[
-                      { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 10, marginRight: 10, borderWidth: 1 },
-                      equipAvailDate === d.iso
-                        ? { backgroundColor: theme.primary, borderColor: theme.primary }
-                        : { backgroundColor: theme.surface, borderColor: theme.border },
-                    ]}
-                  >
-                    <MedText variant="metadata" style={{ color: equipAvailDate === d.iso ? '#FFF' : theme.muted, fontWeight: '500', textAlign: 'center' }}>{d.day}</MedText>
-                    <MedText variant="body" style={{ color: equipAvailDate === d.iso ? '#FFF' : theme.text, marginTop: 4, fontWeight: '500', textAlign: 'center' }}>{d.date}</MedText>
-                  </Pressable>
-                ))}
-              </ScrollView>
-
-              {loadingEquipAvail ? (
-                <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 16 }} />
-              ) : equipAvailSlots.length === 0 && equipAvailDate ? (
-                <View style={{ padding: 16, backgroundColor: '#FEF3F2', borderRadius: 10, marginBottom: 16 }}>
-                  <MedText variant="body" style={{ color: '#B42318', fontSize: 13, textAlign: 'center' }}>
-                    No available slots for this date
-                  </MedText>
-                </View>
-              ) : equipAvailSlots.length > 0 ? (
-                <>
-                  <MedText variant="metadata" style={{ marginBottom: 10, fontWeight: '600' }}>SELECT TIME</MedText>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    {equipAvailSlots.map((slot: any, idx: number) => {
-                      const isSelected = selectedEquipSlot === slot.start;
-                      const isBooked = slot.booked === true;
-                      const currentTime = equipReschedBooking
-                        // hour12:false stays 24h to match slot.start (HH:MM from API)
-                        ? new Date(equipReschedBooking.dateTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-                        : '';
-                      const currentDate = equipReschedBooking
-                        ? new Date(equipReschedBooking.dateTime).toISOString().split('T')[0]
-                        : '';
-                      const isCurrent = currentTime === slot.start && currentDate === equipAvailDate;
-                      return (
-                        <Pressable
-                          key={idx}
-                          disabled={isBooked || isCurrent}
-                          onPress={() => !isBooked && !isCurrent && setSelectedEquipSlot(slot.start)}
-                          style={[
-                            { flex: 1, minWidth: '45%', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
-                            isCurrent
-                              ? { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }
-                              : isBooked
-                                ? { backgroundColor: '#F9FAFB', borderColor: theme.border }
-                                : isSelected
-                                  ? { backgroundColor: theme.primary, borderColor: theme.primary }
-                                  : { backgroundColor: theme.surface, borderColor: theme.border },
-                          ]}
-                        >
-                          <MedText variant="body" style={{
-                            fontWeight: '500',
-                            color: isCurrent ? '#92400E' : isBooked ? '#D1D5DB' : isSelected ? '#FFF' : theme.text,
-                            fontSize: 13,
-                            textDecorationLine: isBooked ? 'line-through' : 'none',
-                          }}>
-                            {formatDisplayTime(slot.start, isEthiopian)} - {formatDisplayTime(slot.end, isEthiopian)}
-                          </MedText>
-                          {isCurrent && (
-                            <MedText variant="metadata" style={{ color: '#92400E', fontSize: 9, marginTop: 2, fontWeight: '700' }}>
-                              Current Booking
-                            </MedText>
-                          )}
-                          {isBooked && (
-                            <MedText variant="metadata" style={{ color: '#D1D5DB', fontSize: 9, marginTop: 2 }}>
-                              Booked
-                            </MedText>
-                          )}
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </>
-              ) : null}
-
-              <MedButton
-                title="Confirm Reschedule"
-                onPress={handleEquipRescheduleConfirm}
-                disabled={!selectedEquipSlot}
-                style={{ marginTop: 24 }}
-                textStyle={{ color: colorScheme === "dark" ? "#101828" : "#FFFFFF" }}
-              />
+              <MedButton title="Submit Review" onPress={handleSubmitReview} loading={submitting} style={{ marginTop: 20 }} />
             </ScrollView>
           </View>
         </View>
@@ -851,75 +458,165 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    padding: 20,
-  },
-  topTabBar: {
+  titleSection: {
     flexDirection: 'row',
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#D8E3F0',
-  },
-  topTab: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-  },
-  tabBar: {
-    flexDirection: 'row',
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#D8E3F0',
-  },
-  tab: {
-    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 12,
   },
-  content: {
-    padding: 20,
+  pageTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  tabsContainer: {
+    marginBottom: 12,
+  },
+  tabsScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  tabPill: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  tabText: {
+    fontSize: 13,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+    gap: 14,
   },
   card: {
-    marginBottom: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
   },
-  doctorInfo: {
+  doctorName: {
+    fontSize: 18,
+    fontWeight: '700',
     flex: 1,
   },
-  statusBadge: {
-    paddingHorizontal: 8,
+  statusPill: {
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 12,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#F2F4F7',
-    marginVertical: 12,
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
-  details: {
-    flexDirection: 'row',
-    gap: 20,
+  specialtyText: {
+    fontSize: 14,
+    marginTop: 4,
+    marginBottom: 10,
   },
-  detailRow: {
+  dateTimeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 20,
+    marginBottom: 12,
   },
-  detailText: {
-    marginLeft: 6,
-    fontSize: 14,
+  iconTextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  reasonBox: {
-    marginTop: 12,
-    padding: 10,
-    backgroundColor: '#FEF2F2',
-    borderRadius: 8,
+  metaValue: {
+    fontSize: 13,
+    fontWeight: '500',
   },
-  emptyState: {
-    marginTop: 80,
+  reasonText: {
+    fontSize: 13,
+    marginBottom: 10,
+  },
+  cardDivider: {
+    height: 1,
+    marginVertical: 10,
+  },
+  hospitalName: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  regRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  regText: {
+    fontSize: 13,
+  },
+  callBadge: {
+    marginLeft: 'auto',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+  },
+  forRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginTop: 10,
+    alignSelf: 'flex-start',
+  },
+  forText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 14,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
@@ -927,39 +624,32 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    height: '65%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 24,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: '#E2E8F0',
   },
-  starRow: {
+  starsRow: {
     flexDirection: 'row',
+    justifyContent: 'center',
     gap: 12,
-    marginTop: 20,
+    marginVertical: 18,
   },
   commentInput: {
-    height: 120,
-    borderRadius: 16,
+    height: 90,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 16,
-    fontSize: 16,
+    padding: 12,
     textAlignVertical: 'top',
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap:8,
+    fontSize: 14,
   },
 });

@@ -27,6 +27,22 @@ const PROFILE_ITEMS = [
     route: "/(doctor-tabs)/edit-professional"
   },
   {
+    id: "wallet",
+    title: "myWallet",
+    subtitle: "payoutSubtitle",
+    icon: "wallet-outline",
+    color: "#1565C0",
+    route: "/(doctor-tabs)/wallet"
+  },
+  {
+    id: "announcements",
+    title: "Announcements",
+    subtitle: "Updates & notices",
+    icon: "megaphone-outline",
+    color: "#8B5CF6",
+    route: "/announcements"
+  },
+  {
     id: "settings",
     title: "appSettings",
     subtitle: "securityPreferences",

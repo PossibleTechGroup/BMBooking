@@ -20,6 +20,7 @@ import { MedText } from "../../components/medconnect/MedText";
 import { MedButton } from "../../components/medconnect/MedButton";
 import { Colors } from "../../constants/theme";
 import { useColorScheme } from "../../hooks/use-color-scheme";
+import { useRouter } from "expo-router";
 import { RootState, AppDispatch } from "../../store";
 import { fetchDoctorProfileStatus, logout } from "../../store/slices/authSlice";
 import { createOnboardingStyles } from "../../constants/onboardingStyles";
@@ -30,6 +31,7 @@ const APPROVAL_CHECK_DURATION = 2000;
 export default function PendingReviewScreen() {
   const { t } = useTranslation();
   const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
   const styles = createOnboardingStyles(theme);
@@ -117,7 +119,9 @@ export default function PendingReviewScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <View />
+        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+          <Ionicons name="arrow-back" size={22} color={theme.text} />
+        </Pressable>
         <Pressable onPress={() => dispatch(logout())} style={styles.logoutBtn}>
           <Ionicons name="log-out-outline" size={24} color="#D92D20" />
           <MedText variant="metadata" style={{ color: "#D92D20", marginLeft: 4 }}>{t("logout")}</MedText>

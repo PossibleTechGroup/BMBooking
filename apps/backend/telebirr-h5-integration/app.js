@@ -55,6 +55,69 @@ app.get("/notify.html", (req, res) => {
 // Telebirr webhook (notify_url points here)
 app.post("/notify.html", handlePaymentNotify);
 
+// Reconciliation: check a BM Booking order's real status at the Telebirr
+// paygate. The async notify sometimes never arrives, so the success page
+// polls this endpoint; when the order is confirmed paid, the ledger entry
+// is recorded (same pipeline as the webhook) and the appointment booking
+// can proceed on the app side.
+const { queryOrderStatus } = require("./service/query-order-service");
+
+app.get("/order-status", async (req, res) => {
+  const refNo = String(req.query.refNo || "").trim();
+  if (!refNo || !/^ORD[A-Za-z0-9]+$/.test(refNo)) {
+    return res.json({ ok: false, paid: false, error: "invalid refNo" });
+  }
+  try {
+    const data = await queryOrderStatus(refNo);
+    const biz = (data && data.biz_content) || {};
+    const pick = (keys) => {
+      for (const k of keys) {
+        const v = biz[k];
+        if (v !== undefined && v !== null && String(v) !== "") return String(v);
+      }
+      return "";
+    };
+    const status = pick(["trade_status", "tradeStatus", "order_status", "orderStatus", "result"]);
+    const paid = isSuccessStatus(status);
+    const amount = pick(["total_amount", "totalAmount"]);
+    const transactionId = pick(["trans_id", "transId"]);
+    const paymentOrderId = pick(["payment_order_id", "paymentOrderId"]);
+
+    if (paid) {
+      const bmUrl = process.env.BM_BACKEND_URL || process.env.SHEGA_BACKEND_URL || "http://app:5000";
+      try {
+        await axios.post(
+          `${bmUrl}/api/payments/telebirr-notify`,
+          {
+            orderId: refNo,
+            status: "Completed",
+            amount,
+            transactionId,
+            raw: data,
+          },
+          { headers: { "Content-Type": "application/json" }, timeout: 10000 }
+        );
+        console.log("✅ Recorded reconciled order:", refNo, "amount:", amount);
+      } catch (error) {
+        console.error("❌ Failed to record reconciled order:", error.message);
+      }
+    }
+
+    return res.json({
+      ok: true,
+      paid,
+      orderId: refNo,
+      status,
+      amount,
+      paymentOrderId,
+      transactionId,
+    });
+  } catch (error) {
+    console.error("❌ queryOrder error:", error.message);
+    return res.status(500).json({ ok: false, paid: false, error: error.message });
+  }
+});
+
 // Intermediate redirect page — Telebirr requires http/https redirect_url,
 // this page then bounces the user to the app deep link (e.g. riderapp://)
 app.get("/payment-complete", (req, res) => {

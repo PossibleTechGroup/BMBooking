@@ -85,6 +85,12 @@ export default function DoctorTabLayout() {
         }}
       />
       <Tabs.Screen
+        name="wallet"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
         name="edit-professional"
         options={{
           href: null,

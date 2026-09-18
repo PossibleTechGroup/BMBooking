@@ -37,6 +37,7 @@ import { AppDispatch, RootState } from "../../store";
 import { clearError, requestOtp, resetOtpStatus, verifyOtp } from "../../store/slices/authSlice";
 import { SPRING_CONFIG, FadeInDownSpring } from "../../hooks/useAnimations";
 import { phoneNationalAutofill, smsOtpAutofill } from "../../utils/autofill";
+import { ethiopianPhoneDigits } from "../../utils/phone";
 import { OnboardingPager } from "../../components/OnboardingPager";
 import { storage } from "../../utils/storage";
 
@@ -104,6 +105,7 @@ export default function LoginScreen() {
 
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
   const [step, setStep] = useState<AuthStep>("phone");
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState<"patient" | "doctor" | null>(null);
   const [otpText, setOtpText] = useState("");
@@ -174,7 +176,7 @@ export default function LoginScreen() {
           phone: `+251${phone}`,
           code: cleanText,
           role: role || undefined,
-          isRegistration: !!role,
+          isRegistration: authMode === 'signup',
         })
       );
     }
@@ -188,6 +190,11 @@ export default function LoginScreen() {
       setErrorKey(prev => prev + 1);
       return;
     }
+    if (authMode === 'signup') {
+      dispatch(clearError());
+      setStep("role");
+      return;
+    }
     dispatch(clearError());
     const result = await dispatch(
       requestOtp({ phone: `+251${phone}`, isRegistration: false })
@@ -195,6 +202,7 @@ export default function LoginScreen() {
     if (requestOtp.rejected.match(result)) {
       const errorPayload = result.payload as string;
       if (errorPayload === 'errorRoleRequired') {
+        setAuthMode("signup");
         setStep("role");
       } else {
         shakePhone();
@@ -232,7 +240,7 @@ export default function LoginScreen() {
         phone: `+251${phone}`,
         code: otpText,
         role: role || undefined,
-        isRegistration: !!role,
+        isRegistration: authMode === 'signup',
       })
     );
   };
@@ -258,9 +266,30 @@ export default function LoginScreen() {
       exiting={SlideOutLeft.duration(200)}
       style={styles.stepContainer}
     >
+      <View style={styles.modeToggle}>
+        <Pressable
+          style={[styles.modeBtn, authMode === "login" && { backgroundColor: theme.primary }]}
+          onPress={() => { if (authMode !== "login") { setAuthMode("login"); dispatch(clearError()); } }}
+          disabled={loading}
+        >
+          <MedText variant="body" style={[styles.modeBtnText, { color: authMode === "login" ? "#FFF" : theme.textSecondary }]}>
+            {t("loginTab")}
+          </MedText>
+        </Pressable>
+        <Pressable
+          style={[styles.modeBtn, authMode === "signup" && { backgroundColor: theme.primary }]}
+          onPress={() => { if (authMode !== "signup") { setAuthMode("signup"); dispatch(clearError()); } }}
+          disabled={loading}
+        >
+          <MedText variant="body" style={[styles.modeBtnText, { color: authMode === "signup" ? "#FFF" : theme.textSecondary }]}>
+            {t("signupTab")}
+          </MedText>
+        </Pressable>
+      </View>
+
       <MedText variant="h1" style={styles.heading}>{t("login")}</MedText>
       <MedText variant="body" style={[styles.subtitle, { color: theme.muted }]}>
-        {t("loginSubtitle")}
+        {authMode === "signup" ? t("signupTabSubtitle") : t("loginTabSubtitle")}
       </MedText>
 
       <Animated.View style={phoneShakeStyle}>
@@ -282,7 +311,7 @@ export default function LoginScreen() {
             placeholderTextColor={theme.muted}
             value={phone}
             onChangeText={(v) => {
-              const digits = v.replace(/[^0-9]/g, '');
+              const digits = ethiopianPhoneDigits(v);
               setPhone(digits);
               if (error) dispatch(clearError());
             }}
@@ -344,8 +373,8 @@ export default function LoginScreen() {
         loading={loading}
       />
 
-      <Pressable style={styles.linkButton} onPress={() => { setStep("phone"); setRole(null); dispatch(clearError()); }}>
-        <MedText variant="metadata" color={theme.muted}>{t("back")}</MedText>
+      <Pressable style={styles.linkButton} onPress={() => { setStep("phone"); setRole(null); setAuthMode("login"); dispatch(clearError()); }}>
+        <MedText variant="metadata" color={theme.primary}>{t("switchToLogin")}</MedText>
       </Pressable>
     </Animated.View>
   );
@@ -438,7 +467,7 @@ export default function LoginScreen() {
           onPress={() => {
             dispatch(resetOtpStatus());
             setOtpText("");
-            setStep(role ? "role" : "phone");
+            setStep("phone");
           }}
         >
           <MedText variant="metadata" color={theme.primary}>{t("changePhone")}</MedText>
@@ -503,6 +532,9 @@ const styles = StyleSheet.create({
   topHeader: { paddingHorizontal: 20, paddingTop: 10, flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' },
   scrollContent: { padding: 24, flexGrow: 1, justifyContent: "flex-start" },
   stepContainer: { width: "100%", marginTop: 20 },
+  modeToggle: { flexDirection: "row", marginBottom: 24, borderRadius: 12, padding: 4, backgroundColor: "rgba(148,163,184,0.15)" },
+  modeBtn: { flex: 1, paddingVertical: 10, borderRadius: 9, alignItems: "center" },
+  modeBtnText: { fontSize: 15, fontWeight: "600" },
   heading: { marginBottom: 8 },
   subtitle: { marginBottom: 32 },
   mockCodeBanner: { backgroundColor: "#FFF4E5", borderColor: "#F59E0B", borderWidth: 1, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 20, alignItems: "center" },

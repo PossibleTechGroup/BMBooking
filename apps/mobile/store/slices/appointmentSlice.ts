@@ -21,8 +21,15 @@ export interface Appointment {
   doctor?: {
     fullName: string;
     specialization: string;
+    specializations?: string[];
     profilePicture?: string;
     clinicName?: string;
+    clinicAddress?: string;
+    hospital?: {
+      id: number;
+      name: string;
+      phone?: string;
+    };
   };
   patient?: {
     phone: string;

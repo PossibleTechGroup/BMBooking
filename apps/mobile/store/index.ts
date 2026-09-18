@@ -6,6 +6,7 @@ import doctorReducer from './slices/doctorSlice';
 import equipmentReducer from './slices/equipmentSlice';
 import announcementReducer from './slices/announcementSlice';
 import hospitalReducer from './slices/hospitalSlice';
+import walletReducer from './slices/walletSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     equipment: equipmentReducer,
     announcements: announcementReducer,
     hospitals: hospitalReducer,
+    wallet: walletReducer,
   },
 });
 

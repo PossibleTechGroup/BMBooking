@@ -10,6 +10,7 @@ const router = express.Router();
 
 router.get("/search", EquipmentController.search);
 router.get("/categories", EquipmentController.getCategories);
+router.get("/hospital/:id", EquipmentController.getHospitalDetail);
 router.get("/detail/:id", EquipmentController.getDetail);
 router.get("/announcements", EquipmentController.getAnnouncements);
 router.get(

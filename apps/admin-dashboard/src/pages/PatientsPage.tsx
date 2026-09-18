@@ -278,6 +278,9 @@ const PatientsPage: React.FC = () => {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                             <span style={{ fontWeight: 600, fontSize: '14px' }}>{b.equipment?.name || 'N/A'}</span>
                             <span style={{ fontSize: '12px', color: '#64748B' }}>{b.hospital?.name || ''}</span>
+                            <span style={{ fontSize: '11px', fontWeight: 700, color: '#3B82F6' }}>
+                              Equipment {Number(b.equipment?.price ?? 0)} ETB + Hospital fee {Number(b.hospital?.serviceFee?.amount ?? 50)} ETB
+                            </span>
                           </div>
                           <span style={s.dateBadge}>{formatDateTime(new Date(b.dateTime))}</span>
                           {b.status === 'completed' ? <CheckCircle size={14} color="#10B981" /> :

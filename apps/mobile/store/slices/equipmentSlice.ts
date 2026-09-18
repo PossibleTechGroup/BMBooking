@@ -8,6 +8,7 @@ export interface MedicalEquipment {
   id: number;
   name: string;
   category: string;
+  hospitalId: number | null;
   hospitalName: string;
   hospitalPhone: string;
   address: string;
@@ -15,6 +16,7 @@ export interface MedicalEquipment {
   latitude: number;
   longitude: number;
   cardPrice?: number | null;
+  serviceFee?: number | null;
   price?: number | null;
   duration: number;
   isOperational: boolean;
@@ -85,8 +87,8 @@ const initialState: EquipmentState = {
 };
 
 const getAuthHeader = (state: RootState) => {
-  const token = state.auth.token;
-  return { headers: { Authorization: `Bearer ${token}` } };
+  const token = state.auth?.token;
+  return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 };
 
 const parseCity = (address: string): string => {
@@ -101,6 +103,7 @@ const flattenEquipment = (item: any): MedicalEquipment => ({
   isOperational: item.isOperational,
   description: item.description || '',
   photo: item.photo || null,
+  hospitalId: item.hospital?.id != null ? Number(item.hospital.id) : null,
   hospitalName: item.hospital?.name || '',
   hospitalPhone: item.hospital?.phone || '',
   address: item.hospital?.address || '',
@@ -108,6 +111,7 @@ const flattenEquipment = (item: any): MedicalEquipment => ({
   latitude: item.hospital?.latitude || 0,
   longitude: item.hospital?.longitude || 0,
   cardPrice: item.hospital?.cardPrice != null ? Number(item.hospital.cardPrice) : null,
+  serviceFee: item.hospital?.serviceFee?.amount != null ? Number(item.hospital.serviceFee.amount) : null,
   price: item.price != null ? Number(item.price) : null,
   duration: item.duration || 30,
 });
@@ -117,8 +121,13 @@ export const searchEquipment = createAsyncThunk(
   async (params: { category?: string; city?: string; query?: string; isOperational?: string }, { getState, rejectWithValue }) => {
     try {
       const state = getState() as RootState;
-      const query = new URLSearchParams(params as any).toString();
-      const response = await axios.get(`${BASE_URL}/api/equipment/search?${query}`, getAuthHeader(state));
+      const qs: string[] = [];
+      (Object.keys(params) as (keyof typeof params)[]).forEach((key) => {
+        const value = params[key];
+        if (value != null && value !== '') qs.push(`${key}=${encodeURIComponent(value)}`);
+      });
+      const query = qs.length ? `?${qs.join('&')}` : '';
+      const response = await axios.get(`${BASE_URL}/api/equipment/search${query}`, getAuthHeader(state));
       return response.data.data.map(flattenEquipment);
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to search equipment');
@@ -172,6 +181,7 @@ const flattenBookingEquipment = (item: any): MedicalEquipment => ({
   isOperational: item.isOperational ?? true,
   description: item.description || '',
   photo: item.photo || null,
+  hospitalId: item.hospital?.id != null ? Number(item.hospital.id) : null,
   hospitalName: item.hospital?.name || '',
   hospitalPhone: item.hospital?.phone || '',
   address: item.hospital?.address || '',
@@ -179,6 +189,7 @@ const flattenBookingEquipment = (item: any): MedicalEquipment => ({
   latitude: item.hospital?.latitude || 0,
   longitude: item.hospital?.longitude || 0,
   cardPrice: item.hospital?.cardPrice != null ? Number(item.hospital.cardPrice) : null,
+  serviceFee: item.hospital?.serviceFee?.amount != null ? Number(item.hospital.serviceFee.amount) : null,
   price: item.price != null ? Number(item.price) : null,
   duration: item.duration || 30,
 });

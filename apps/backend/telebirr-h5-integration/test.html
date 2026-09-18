@@ -243,9 +243,10 @@
       let refOrigin = '';
       try { refOrigin = new URL(document.referrer).origin; } catch (e) { /* ignore */ }
       const returnTo = (refOrigin || 'https://bmbookingtelegrambot.possibletechplc.com') + '/patient/appointments';
+      const src = params.get('src') === 'tg' ? 'tg' : 'app';
       const redirectUrl = fromTelegram
         ? 'https://bmbookingapi.possibletechplc.com/api/payments/success-redirect?from=tg'
-        : baseUrl + '/success.html?returnTo=' + encodeURIComponent(returnTo);
+        : baseUrl + '/success.html?src=' + src + '&returnTo=' + encodeURIComponent(returnTo);
 
       const fd = new FormData(e.target);
       const body = {

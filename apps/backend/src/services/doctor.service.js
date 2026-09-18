@@ -7,6 +7,53 @@ const DAY_NAME_TO_NUM = {
   thursday: 4, friday: 5, saturday: 6
 };
 
+async function computeAvailability(doctorIds) {
+  if (!Array.isArray(doctorIds) || doctorIds.length === 0) return {};
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const schedules = await prisma.doctorSchedule.findMany({
+    where: {
+      doctorId: { in: doctorIds },
+      isActive: true,
+      date: { gte: today },
+    },
+    include: {
+      slots: {
+        include: { _count: { select: { bookings: true } } },
+        orderBy: { startTime: 'asc' },
+      },
+    },
+    orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+  });
+
+  const now = new Date();
+  const availability = {};
+  for (const s of schedules) {
+    if (availability[s.doctorId]) continue;
+    for (const slot of s.slots) {
+      if (new Date(slot.startTime) <= now) continue;
+      const booked = slot._count?.bookings ?? 0;
+      const max = slot.maxPatients ?? 1;
+      if (booked < max) {
+        availability[s.doctorId] = {
+          isAvailable: true,
+          nextAvailableSlot: slot.startTime.toISOString(),
+        };
+        break;
+      }
+    }
+  }
+
+  for (const id of doctorIds) {
+    if (!availability[id]) {
+      availability[id] = { isAvailable: false, nextAvailableSlot: null };
+    }
+  }
+  return availability;
+}
+
 async function generateSchedulesFromAvailability(profileId, hospitalId, availability) {
   if (!Array.isArray(availability) || availability.length === 0) return;
 
@@ -139,7 +186,7 @@ const DoctorService = {
   },
 
   getAllDoctors: async () => {
-    return await prisma.doctorProfile.findMany({
+    const doctors = await prisma.doctorProfile.findMany({
       where: { status: 'Approved' },
       include: {
         hospital: {
@@ -155,6 +202,8 @@ const DoctorService = {
       },
       orderBy: { rating: 'desc' }
     });
+    const availability = await computeAvailability(doctors.map((d) => d.id));
+    return doctors.map((d) => ({ ...d, ...availability[d.id] }));
   },
 
   searchDoctors: async ({ specialty, minRating, name }) => {
@@ -194,7 +243,7 @@ const DoctorService = {
       where.AND = andConditions;
     }
 
-    return await prisma.doctorProfile.findMany({
+    const doctors = await prisma.doctorProfile.findMany({
       where,
       include: {
         hospital: {
@@ -210,6 +259,8 @@ const DoctorService = {
       },
       orderBy: { rating: 'desc' }
     });
+    const availability = await computeAvailability(doctors.map((d) => d.id));
+    return doctors.map((d) => ({ ...d, ...availability[d.id] }));
   },
 
   createDoctorSchedule: async (data, userId) => {

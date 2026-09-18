@@ -8,6 +8,7 @@ interface MedTextProps {
   variant?: "h1" | "h2" | "body" | "metadata";
   style?: StyleProp<TextStyle> | TextStyle[];
   color?: string;
+  numberOfLines?: number;
 }
 
 export const MedText: React.FC<MedTextProps> = ({
@@ -15,6 +16,7 @@ export const MedText: React.FC<MedTextProps> = ({
   variant = "body",
   style,
   color,
+  numberOfLines,
 }) => {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
@@ -47,7 +49,10 @@ export const MedText: React.FC<MedTextProps> = ({
   };
 
   return (
-    <Text style={[getVariantStyle(), { color: getDefaultColor() }, style]}>
+    <Text
+      numberOfLines={numberOfLines}
+      style={[getVariantStyle(), { color: getDefaultColor() }, style]}
+    >
       {children}
     </Text>
   );
@@ -56,15 +61,15 @@ export const MedText: React.FC<MedTextProps> = ({
 const styles = StyleSheet.create({
   h1: {
     fontFamily: Fonts.primary,
-    fontSize: 22,
-    fontWeight: "600",
-    letterSpacing: -0.4,
-    lineHeight: 30,
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+    lineHeight: 28,
   },
   h2: {
     fontFamily: Fonts.primary,
     fontSize: 17,
-    fontWeight: "500",
+    fontWeight: "600",
     letterSpacing: -0.2,
     lineHeight: 24,
   },

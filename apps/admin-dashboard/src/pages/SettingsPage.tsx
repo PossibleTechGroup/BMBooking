@@ -17,21 +17,36 @@ import {
   Building2,
   Loader2,
   Search,
+  Package,
 } from 'lucide-react';
 import { adminPageStyles } from '../styles/adminPageStyles';
 import { PageHeader } from '../components/PageHeader';
+import {
+  fetchAdminHospitals as fetchEquipmentItems,
+  updateItem as updateEquipmentItem,
+} from '../store/slices/equipmentSlice';
 
 export const SettingsPage = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { hospitals, loading, error, success } = useSelector((state: RootState) => state.hospitals);
+  const { items: equipmentItems, loading: equipmentLoading } = useSelector((state: RootState) => state.equipment);
 
   const [search, setSearch] = useState('');
   const [editingFeeId, setEditingFeeId] = useState<number | null>(null);
   const [feeInputValue, setFeeInputValue] = useState('');
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const [equipmentSearch, setEquipmentSearch] = useState('');
+  const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
+  const [priceInputValue, setPriceInputValue] = useState('');
+  const [savingPriceId, setSavingPriceId] = useState<number | null>(null);
+
   useEffect(() => {
     dispatch(fetchHospitals({ page: 1, limit: 500 }));
+  }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchEquipmentItems());
   }, [dispatch]);
 
   useEffect(() => {
@@ -65,6 +80,31 @@ export const SettingsPage = () => {
   const stats = {
     hospitals: hospitals.length,
     withFee: hospitals.filter((h) => h.serviceFee !== null && h.serviceFee !== undefined).length,
+  };
+
+  const hostedEquipments = equipmentItems.filter((e: any) =>
+    e.name?.toLowerCase().includes(equipmentSearch.toLowerCase())
+  );
+
+  const handleSavePrice = async (id: number) => {
+    const amount = priceInputValue === '' ? null : Number(priceInputValue);
+    if (amount !== null && (isNaN(amount) || amount < 0)) {
+      setToast({ type: 'error', message: 'Invalid price' });
+      return;
+    }
+    setSavingPriceId(id);
+    const formData = new FormData();
+    formData.append('price', amount === null ? 'null' : JSON.stringify(amount));
+    const result = await dispatch(updateEquipmentItem({ id, formData }));
+    setSavingPriceId(null);
+    if (updateEquipmentItem.fulfilled.match(result)) {
+      setToast({ type: 'success', message: 'Equipment price updated.' });
+      dispatch(fetchEquipmentItems());
+    } else {
+      setToast({ type: 'error', message: (result.payload as string) || 'Failed to update price' });
+    }
+    setEditingPriceId(null);
+    setPriceInputValue('');
   };
 
   return (
@@ -205,6 +245,131 @@ export const SettingsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Equipment prices section */}
+      <div style={styles.section}>
+        <div style={styles.sectionHeader}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ ...styles.sectionIcon, background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
+              <Package size={18} color="#2563EB" />
+            </div>
+            <div>
+              <h2 style={styles.sectionTitle}>Equipment Prices</h2>
+              <p style={styles.sectionSubtitle}>
+                Set the price charged per equipment booking. Patients pay the equipment price plus the
+                hospital service fee.
+              </p>
+            </div>
+          </div>
+          <div style={styles.statChips}>
+            <span style={styles.statChip}>Equipment: <strong>{equipmentItems.length}</strong></span>
+          </div>
+        </div>
+
+        <div style={{ ...adminPageStyles.searchWrap, width: '100%', maxWidth: 400, marginBottom: 20 }}>
+          <Search size={16} color="#94A3B8" />
+          <input
+            style={adminPageStyles.searchInput}
+            placeholder="Search equipment..."
+            value={equipmentSearch}
+            onChange={(e) => setEquipmentSearch(e.target.value)}
+          />
+        </div>
+
+        {equipmentLoading && equipmentItems.length === 0 ? (
+          <div style={adminPageStyles.loadingWrap}>
+            <Loader2 size={28} className="spin" color="#94A3B8" />
+          </div>
+        ) : hostedEquipments.length === 0 ? (
+          <p style={adminPageStyles.emptyState}>No equipment found.</p>
+        ) : (
+          <div style={styles.tableWrap}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Equipment</th>
+                  <th style={styles.th}>Hospital</th>
+                  <th style={{ ...styles.th, width: 140 }}>Service Fee (ETB)</th>
+                  <th style={{ ...styles.th, width: 160 }}>Price (ETB)</th>
+                  <th style={{ ...styles.th, width: 140 }}>Total (ETB)</th>
+                  <th style={{ ...styles.th, textAlign: 'right', width: 160 }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hostedEquipments.map((it: any) => (
+                  <tr key={it.id} style={styles.tr}>
+                    <td style={styles.td}>
+                      <strong style={styles.hospitalName}>{it.name}</strong>
+                      <span style={styles.hospitalAddr}>{it.category}</span>
+                    </td>
+                    <td style={styles.td}>{it.hospitalName || '—'}</td>
+                    <td style={styles.td}>
+                      <span style={styles.feeDisplay}>
+                        {it.serviceFee !== null && it.serviceFee !== undefined && Number(it.serviceFee) > 0
+                          ? `${formatNum(Number(it.serviceFee))} ETB`
+                          : <span style={{ color: '#CBD5E1' }}>Default (50)</span>}
+                      </span>
+                    </td>
+                    <td style={styles.td}>
+                      {editingPriceId === it.id ? (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            placeholder="Amount"
+                            autoFocus
+                            style={styles.feeInput}
+                            value={priceInputValue}
+                            onChange={(e) => setPriceInputValue(e.target.value)}
+                          />
+                          <span style={styles.etbSuffix}>ETB</span>
+                        </div>
+                      ) : (
+                        <span style={styles.feeDisplay}>
+                          {it.price !== null && it.price !== undefined && Number(it.price) > 0
+                            ? `${formatNum(Number(it.price))} ETB`
+                            : <span style={{ color: '#CBD5E1' }}>Free</span>}
+                        </span>
+                      )}
+                    </td>
+                    <td style={styles.td}>
+                      <span style={{ ...styles.feeDisplay, color: '#2563EB' }}>
+                        {formatNum((Number(it.price) || 0) + (it.serviceFee !== null && it.serviceFee !== undefined ? Number(it.serviceFee) : 50))} ETB
+                      </span>
+                    </td>
+                    <td style={{ ...styles.td, textAlign: 'right' }}>
+                      {editingPriceId === it.id ? (
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                          <button type="button" style={styles.smallBtn} onClick={() => handleSavePrice(it.id)} disabled={savingPriceId === it.id}>
+                            {savingPriceId === it.id ? <Loader2 size={14} className="spin" /> : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            style={{ ...styles.smallBtn, color: '#64748B', background: 'none', border: '1px solid #E2E8F0' }}
+                            onClick={() => { setEditingPriceId(null); setPriceInputValue(''); }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          title="Edit equipment price"
+                          style={{ ...styles.editFeeBtn, color: '#2563EB', borderColor: '#3B82F6' }}
+                          onClick={() => { setEditingPriceId(it.id); setPriceInputValue(it.price !== null && it.price !== undefined ? String(it.price) : ''); }}
+                        >
+                          <Edit3 size={13} /> Edit Price
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -248,7 +413,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#475569',
   },
   tableWrap: { overflowX: 'auto', borderRadius: 12, border: '1px solid #E2E8F0' },
-  table: { width: '100%', borderCollapse: 'collapse', minWidth: 560 },
+  table: { width: '100%', borderCollapse: 'collapse', minWidth: 860 },
   th: {
     textAlign: 'left',
     padding: '12px 16px',

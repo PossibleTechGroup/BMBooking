@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
+import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { MedButton } from '../../components/medconnect/MedButton';
@@ -72,6 +73,7 @@ function SelectionChip({ label, selected, onPress, compact, theme }: ChipProps) 
 export default function PatientSetupScreen() {
   const { t } = useTranslation();
   const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const { isEthiopianCalendar } = useTimeFormat();
@@ -160,7 +162,16 @@ export default function PatientSetupScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
-        <LanguagePicker />
+        <View style={styles.headerLeft}>
+          <Pressable
+            onPress={() => router.back()}
+            style={[styles.backBtn, { borderColor: theme.border }]}
+            hitSlop={8}
+          >
+            <Ionicons name="arrow-back" size={20} color={theme.text} />
+          </Pressable>
+          <LanguagePicker />
+        </View>
         <Pressable
           onPress={() => dispatch(logout())}
           style={[styles.logoutBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
@@ -368,6 +379,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backBtn: {
+    padding: 6,
+    borderRadius: 10,
+    borderWidth: 1,
   },
   logoutBtn: {
     padding: 8,

@@ -28,8 +28,8 @@ if (Constants.appOwnership !== 'expo') {
 export const useNotifications = () => {
   const [expoPushToken, setExpoPushToken] = useState('');
   const [notification, setNotification] = useState<NotificationsType.Notification | undefined>(undefined);
-  const notificationListener = useRef<NotificationsType.Subscription>();
-  const responseListener = useRef<NotificationsType.Subscription>();
+  const notificationListener = useRef<NotificationsType.Subscription | undefined>(undefined);
+  const responseListener = useRef<NotificationsType.Subscription | undefined>(undefined);
   const dispatch = useDispatch<AppDispatch>();
   const { token, user } = useSelector((state: RootState) => state.auth);
 

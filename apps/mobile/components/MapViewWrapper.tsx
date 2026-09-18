@@ -13,6 +13,7 @@ type MapViewProps = {
 type MarkerProps = {
   coordinate: { latitude: number; longitude: number };
   title?: string;
+  pinColor?: string;
 };
 
 let NativeMapView: ComponentType<MapViewProps> | null = null;

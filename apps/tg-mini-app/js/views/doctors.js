@@ -111,6 +111,17 @@ const DoctorDetailView = (() => {
   let doctor = null;
   let schedules = [];
 
+  function haversineKm(aLat, aLng, bLat, bLng) {
+    const R = 6371;
+    const toRad = (x) => (x * Math.PI) / 180;
+    const dLat = toRad(bLat - aLat);
+    const dLng = toRad(bLng - aLng);
+    const s =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+  }
+
   const ICON = {
     arrowLeft: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>',
     stethoscope: '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>',
@@ -179,6 +190,32 @@ const DoctorDetailView = (() => {
           </div>` : ''}
         </div>
 
+        ${doctor.hospital ? `
+        <div class="card mt-8">
+          <h3 style="font-size:15px;font-weight:600;margin-bottom:12px">Hospital Location</h3>
+          <div class="card-row">
+            <span class="text-hint">Facility</span>
+            <span>${doctor.hospital.name || ''}</span>
+          </div>
+          <div class="card-row">
+            <span class="text-hint">Address</span>
+            <span>${doctor.hospital.address || doctor.clinicAddress || 'N/A'}</span>
+          </div>
+          ${doctor.hospital.phone ? `
+          <div class="card-row">
+            <span class="text-hint">Contact</span>
+            <span>${doctor.hospital.phone}</span>
+          </div>` : ''}
+          <div class="card-row">
+            <span class="text-hint">Distance</span>
+            <span id="doc-distance">Calculating...</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            ${doctor.hospital.phone ? `<a class="btn btn-outline" style="flex:1;text-align:center;text-decoration:none" href="tel:${doctor.hospital.phone}">Call</a>` : ''}
+            ${doctor.hospital.latitude && doctor.hospital.longitude ? `<a class="btn btn-outline" style="flex:1;text-align:center;text-decoration:none" href="https://www.google.com/maps?q=${doctor.hospital.latitude},${doctor.hospital.longitude}" target="_blank" rel="noopener">Directions</a>` : ''}
+          </div>
+        </div>` : ''}
+
         <h3 style="font-size:16px;font-weight:600;margin:16px 0 8px">Available Schedules</h3>
         <div id="doc-schedules">
           ${schedules.length === 0
@@ -203,6 +240,22 @@ const DoctorDetailView = (() => {
       `;
 
       container.querySelector('#doc-back').addEventListener('click', () => Router.goBack());
+
+      const hLoc = doctor.hospital;
+      const distEl = container.querySelector('#doc-distance');
+      if (distEl && hLoc?.latitude && hLoc?.longitude) {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const d = haversineKm(pos.coords.latitude, pos.coords.longitude, Number(hLoc.latitude), Number(hLoc.longitude));
+              distEl.textContent = `${d.toFixed(1)} km away`;
+            },
+            () => { distEl.textContent = 'Distance unavailable'; }
+          );
+        } else {
+          distEl.textContent = 'Distance unavailable';
+        }
+      }
 
       container.querySelector('#book-this-doctor').addEventListener('click', () => {
         Router.navigate('booking', { doctorId: id, doctor });

@@ -118,7 +118,7 @@ const EquipmentBookingService = {
   createBooking: async (patientId, data) => {
     const equipment = await prisma.medicalEquipment.findUnique({
       where: { id: data.equipmentId },
-      include: { hospital: true },
+      include: { hospital: { include: { serviceFee: true } } },
     });
     if (!equipment) throw new Error("Equipment not found");
     if (!equipment.isOperational) throw new Error("Equipment is not operational");
@@ -158,9 +158,16 @@ const EquipmentBookingService = {
     }
 
     // Payment enforcement — the fee is always derived server-side from the
-    // equipment price, and a verified Telebirr payment must exist for that
-    // amount before the booking can be created (same flow as doctor bookings).
-    const expectedFee = equipment.price ? Math.round(Number(equipment.price) * 100) / 100 : 0;
+    // equipment price plus the hospital service fee (same flow as doctor
+    // bookings), and a verified Telebirr payment must exist for that amount
+    // before the booking can be created.
+    const equipmentFee = equipment.price
+      ? Math.round(Number(equipment.price) * 100) / 100
+      : 0;
+    const hospitalFee = equipment.hospital?.serviceFee?.amount
+      ? Math.round(Number(equipment.hospital.serviceFee.amount) * 100) / 100
+      : 50;
+    const expectedFee = Math.round((equipmentFee + hospitalFee) * 100) / 100;
 
     if (expectedFee > 0) {
       const paidOrder = TelebirrLedger.consumeByAmount(expectedFee);

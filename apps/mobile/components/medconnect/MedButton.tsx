@@ -9,6 +9,7 @@ interface MedButtonProps {
   title: string;
   onPress: () => void;
   type?: "primary" | "secondary" | "outline";
+  size?: "small" | "medium";
   style?: ViewStyle;
   textStyle?: any;
   disabled?: boolean;
@@ -20,6 +21,7 @@ export const MedButton: React.FC<MedButtonProps> = ({
   title,
   onPress,
   type = "primary",
+  size = "medium",
   style,
   textStyle,
   disabled = false,
@@ -56,14 +58,14 @@ export const MedButton: React.FC<MedButtonProps> = ({
       case "primary":
         return { 
           backgroundColor: theme.primary,
-          shadowOpacity: 0.05,
-          elevation: 2,
+          shadowOpacity: 0,
+          elevation: 0,
         };
       case "secondary":
         return { 
-          backgroundColor: theme.secondary,
-          shadowOpacity: 0.05,
-          elevation: 2,
+          backgroundColor: theme.secondaryBg,
+          shadowOpacity: 0,
+          elevation: 0,
         };
       case "outline":
         return {
@@ -84,13 +86,13 @@ export const MedButton: React.FC<MedButtonProps> = ({
     }
     switch (type) {
       case "primary":
-        return { color: colorScheme === "dark" ? "#101828" : "#FFFFFF" };
+        return { color: colorScheme === "dark" ? "#0B1E33" : "#FFFFFF" };
       case "secondary":
-        return { color: "#FFFFFF" };
+        return { color: theme.text };
       case "outline":
         return { color: theme.text };
       default:
-        return { color: colorScheme === "dark" ? "#101828" : "#FFFFFF" };
+        return { color: colorScheme === "dark" ? "#0B1E33" : "#FFFFFF" };
     }
   };
 
@@ -103,7 +105,7 @@ export const MedButton: React.FC<MedButtonProps> = ({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         disabled={disabled || loading}
-        style={[styles.button, getButtonStyle(), style]}
+        style={[styles.button, size === "small" && styles.buttonSmall, getButtonStyle(), style]}
       >
         {loading ? (
           <ActivityIndicator color={getTextStyle().color} size="small" />
@@ -133,6 +135,10 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 10,
+  },
+  buttonSmall: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
   text: {
     fontFamily: Fonts.primary,

@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const { publicHospitalWhere } = require("../config/public-visibility");
 
 const EquipmentController = {
   search: async (req, res) => {
@@ -12,6 +13,7 @@ const EquipmentController = {
 
       const where = {};
       const andConditions = [];
+      where.hospital = { ...publicHospitalWhere };
 
       const VALID_CATEGORIES = [
         'MRI', 'CT_SCAN', 'DIALYSIS', 'ULTRASOUND', 'XRAY',
@@ -68,6 +70,7 @@ const EquipmentController = {
               latitude: true,
               longitude: true,
               cardPrice: true,
+              serviceFee: { select: { amount: true } },
             },
           },
         },
@@ -95,8 +98,8 @@ const EquipmentController = {
   getDetail: async (req, res) => {
     try {
       const { id } = req.params;
-      const item = await prisma.medicalEquipment.findUnique({
-        where: { id: parseInt(id) },
+      const item = await prisma.medicalEquipment.findFirst({
+        where: { id: parseInt(id), hospital: { ...publicHospitalWhere } },
         include: {
           hospital: {
             select: {
@@ -108,6 +111,7 @@ const EquipmentController = {
               latitude: true,
               longitude: true,
               cardPrice: true,
+              serviceFee: { select: { amount: true } },
             },
           },
         },
@@ -128,6 +132,12 @@ const EquipmentController = {
   getAnnouncements: async (req, res) => {
     try {
       const announcements = await prisma.equipmentAnnouncement.findMany({
+        where: {
+          OR: [
+            { hospitalId: null },
+            { hospital: { is: publicHospitalWhere } },
+          ],
+        },
         include: {
           hospital: { select: { id: true, name: true } },
           equipment: { select: { id: true, name: true, category: true } },
@@ -143,38 +153,55 @@ const EquipmentController = {
   getHospitalDetail: async (req, res) => {
     try {
       const { id } = req.params;
-      const equipment = await prisma.medicalEquipment.findUnique({
-        where: { id: parseInt(id) },
-        include: { hospital: true },
-      });
-
-      if (!equipment) {
-        return res
-          .status(404)
-          .json({ status: "fail", message: "Equipment not found" });
-      }
-
-      const allEquipment = await prisma.medicalEquipment.findMany({
-        where: { hospitalId: equipment.hospitalId },
-        include: {
-          hospital: {
-            select: { id: true, name: true, address: true, phone: true },
-          },
+      const hospital = await prisma.hospital.findFirst({
+        where: { id: parseInt(id), ...publicHospitalWhere },
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          phone: true,
+          email: true,
+          latitude: true,
+          longitude: true,
+          image: true,
+          description: true,
+          cardPrice: true,
+          rating: true,
+          totalReviews: true,
+          serviceFee: { select: { amount: true } },
         },
       });
 
-      const hospital = {
-        id: equipment.hospital.id,
-        name: equipment.hospital.name,
-        phone: equipment.hospital.phone,
-        address: equipment.hospital.address,
-        latitude: equipment.hospital.latitude,
-        longitude: equipment.hospital.longitude,
-        cardPrice: equipment.hospital.cardPrice,
-        equipment: allEquipment,
-      };
+      if (!hospital) {
+        return res
+          .status(404)
+          .json({ status: "fail", message: "Hospital not found" });
+      }
 
-      res.status(200).json({ status: "success", data: hospital });
+      const equipment = await prisma.medicalEquipment.findMany({
+        where: { hospitalId: hospital.id },
+        include: {
+          hospital: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              phone: true,
+              email: true,
+              latitude: true,
+              longitude: true,
+              cardPrice: true,
+              serviceFee: { select: { amount: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      res.status(200).json({
+        status: "success",
+        data: { ...hospital, equipment },
+      });
     } catch (err) {
       res.status(500).json({ status: "error", message: err.message });
     }

@@ -3,23 +3,19 @@ import { Platform } from 'react-native';
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const TELEBIRR = process.env.EXPO_PUBLIC_TELEBIRR_URL;
 const LOCAL_IP = process.env.EXPO_PUBLIC_LOCAL_IP;
+const LOCAL_API_PORT = process.env.EXPO_PUBLIC_LOCAL_API_PORT || '5000';
 
 const PRODUCTION_API = 'https://bmbookingapi.possibletechplc.com';
-const PRODUCTION_TELEBIRR = 'http://157.180.114.86:53402';
+const PRODUCTION_TELEBIRR = 'https://bmtelebirr.possibletechplc.com';
 
 const getBaseUrl = () => {
-  if (API_URL) return API_URL.replace(/\/$/, '');
-  if (__DEV__) {
-    if (Platform.OS === 'android') {
-      return `http://${LOCAL_IP || '10.0.2.2'}:52400`;
-    }
-    return 'http://localhost:52400';
+  if (API_URL && !API_URL.includes('localhost') && !API_URL.includes('10.0.2.2') && !API_URL.includes('10.47.')) {
+    return API_URL.replace(/\/$/, '');
   }
   return PRODUCTION_API;
 };
 
-export const TELEBIRR_URL =
-  (__DEV__ ? `http://${LOCAL_IP || '10.0.2.2'}:53402` : TELEBIRR || PRODUCTION_TELEBIRR);
+export const TELEBIRR_URL = TELEBIRR || PRODUCTION_TELEBIRR;
 
 export const BASE_URL = getBaseUrl();
 

@@ -96,6 +96,11 @@ export default function AdminMedicalToolsPage() {
     isOperational: true,
   });
 
+  const [toolRows, setToolRows] = useState<{ key: number; name: string; category: string; description: string }[]>([
+    { key: 1, name: '', category: 'MRI', description: '' },
+  ]);
+  const nextRowKey = useRef(2);
+
   useEffect(() => {
     fetchItems();
     fetchHospitals();
@@ -179,8 +184,23 @@ export default function AdminMedicalToolsPage() {
       description: '',
       isOperational: true,
     });
+    setToolRows([{ key: 1, name: '', category: 'MRI', description: '' }]);
+    nextRowKey.current = 2;
     setError('');
     setShowModal(true);
+  };
+
+  const addToolRow = () => {
+    setToolRows((prev) => [...prev, { key: nextRowKey.current, name: '', category: 'MRI', description: '' }]);
+    nextRowKey.current += 1;
+  };
+
+  const updateToolRow = (key: number, patch: Partial<{ name: string; category: string; description: string }>) => {
+    setToolRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+  };
+
+  const removeToolRow = (key: number) => {
+    setToolRows((prev) => (prev.length > 1 ? prev.filter((row) => row.key !== key) : prev));
   };
 
   const handleOpenEdit = (item: any) => {
@@ -201,24 +221,41 @@ export default function AdminMedicalToolsPage() {
     e.preventDefault();
     if (!formData.hospitalId) return;
 
-    const data = new FormData();
-    data.append('name', formData.name);
-    data.append('category', formData.category);
-    data.append('hospitalId', String(formData.hospitalId));
-    data.append('isOperational', String(formData.isOperational));
-    if (formData.description) data.append('description', formData.description);
-
     setLoading(true);
     setError('');
     try {
       if (isEditing && formData.id) {
+        const data = new FormData();
+        data.append('name', formData.name);
+        data.append('category', formData.category);
+        data.append('hospitalId', String(formData.hospitalId));
+        data.append('isOperational', String(formData.isOperational));
+        if (formData.description) data.append('description', formData.description);
+
         await api.put(`/admin/equipment/${formData.id}`, data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
       } else {
-        await api.post('/admin/equipment', data, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        const items = toolRows
+          .map((row) => ({
+            name: row.name.trim(),
+            category: row.category,
+            description: row.description.trim() || null,
+            isOperational: formData.isOperational,
+          }))
+          .filter((item) => item.name);
+
+        if (items.length === 0) {
+          setError('Enter at least one tool name.');
+          setLoading(false);
+          return;
+        }
+
+        await api.post(
+          '/admin/equipment/bulk',
+          { hospitalId: Number(formData.hospitalId), items },
+          { headers: { 'Content-Type': 'application/json' } }
+        );
       }
       setSuccess(true);
       await fetchItems();
@@ -393,35 +430,105 @@ export default function AdminMedicalToolsPage() {
                 <form onSubmit={handleSubmit} style={styles.form}>
                   <div style={styles.formSplit}>
                     <div style={styles.formLeft}>
-                      <div style={styles.inputGroup}>
-                        <label style={styles.label}>Tool Name</label>
-                        <input
-                          placeholder="Tool Name"
-                          style={styles.input}
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          required
-                          disabled={loading}
-                        />
-                      </div>
-
-                      <div style={styles.inputGroup}>
-                        <label style={styles.label}>Category & Status</label>
-                        <div style={{ display: 'flex', gap: 10 }}>
-                          <select
-                            style={{ ...styles.input, flex: 1 }}
-                            value={formData.category}
-                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      {isEditing ? (
+                        <div style={styles.inputGroup}>
+                          <label style={styles.label}>Tool Name</label>
+                          <input
+                            placeholder="Tool Name"
+                            style={styles.input}
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            required
                             disabled={loading}
-                          >
-                            {CATEGORIES.map((c) => (
-                              <option key={c} value={c}>
-                                {c.replace(/_/g, ' ')}
-                              </option>
+                          />
+                        </div>
+                      ) : (
+                        <div style={styles.inputGroup}>
+                          <label style={styles.label}>Tool / Service Names</label>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {toolRows.map((row) => (
+                              <div key={row.key} style={styles.toolRow}>
+                                <div style={styles.toolRowFields}>
+                                  <input
+                                    placeholder="e.g. X-Ray"
+                                    style={{ ...styles.input, flex: 1 }}
+                                    value={row.name}
+                                    onChange={(e) => updateToolRow(row.key, { name: e.target.value })}
+                                    required
+                                    disabled={loading}
+                                  />
+                                  <select
+                                    style={{ ...styles.input, width: 150 }}
+                                    value={row.category}
+                                    onChange={(e) => updateToolRow(row.key, { category: e.target.value })}
+                                    disabled={loading}
+                                  >
+                                    {CATEGORIES.map((c) => (
+                                      <option key={c} value={c}>
+                                        {c.replace(/_/g, ' ')}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <input
+                                  placeholder="Optional description"
+                                  style={styles.input}
+                                  value={row.description}
+                                  onChange={(e) => updateToolRow(row.key, { description: e.target.value })}
+                                  disabled={loading}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeToolRow(row.key)}
+                                  style={styles.removeRowBtn}
+                                  disabled={loading || toolRows.length <= 1}
+                                  title={toolRows.length <= 1 ? 'At least one row is required' : 'Remove row'}
+                                >
+                                  <X size={16} />
+                                </button>
+                              </div>
                             ))}
-                          </select>
+                          </div>
+                          <button type="button" onClick={addToolRow} style={styles.secondaryBtn} disabled={loading}>
+                            <Plus size={16} /> Add Another Service
+                          </button>
+                        </div>
+                      )}
+
+                      {isEditing && (
+                        <div style={styles.inputGroup}>
+                          <label style={styles.label}>Category & Status</label>
+                          <div style={{ display: 'flex', gap: 10 }}>
+                            <select
+                              style={{ ...styles.input, flex: 1 }}
+                              value={formData.category}
+                              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                              disabled={loading}
+                            >
+                              {CATEGORIES.map((c) => (
+                                <option key={c} value={c}>
+                                  {c.replace(/_/g, ' ')}
+                                </option>
+                              ))}
+                            </select>
+                            <select
+                              style={{ ...styles.input, flex: 1 }}
+                              value={formData.isOperational ? 'true' : 'false'}
+                              onChange={(e) => setFormData({ ...formData, isOperational: e.target.value === 'true' })}
+                              disabled={loading}
+                            >
+                              <option value="true">Available</option>
+                              <option value="false">Busy</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
+
+                      {!isEditing && (
+                        <div style={styles.inputGroup}>
+                          <label style={styles.label}>Status</label>
                           <select
-                            style={{ ...styles.input, flex: 1 }}
+                            style={styles.input}
                             value={formData.isOperational ? 'true' : 'false'}
                             onChange={(e) => setFormData({ ...formData, isOperational: e.target.value === 'true' })}
                             disabled={loading}
@@ -430,7 +537,7 @@ export default function AdminMedicalToolsPage() {
                             <option value="false">Busy</option>
                           </select>
                         </div>
-                      </div>
+                      )}
 
                       <div style={styles.inputGroup}>
                         <label style={styles.label}>Hospital *</label>
@@ -793,4 +900,25 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap',
   },
   hospitalHint: { fontSize: 12, color: '#64748B', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 },
+  toolRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    padding: 12,
+    border: '1px solid #E2E8F0',
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    position: 'relative' as React.CSSProperties['position'],
+  },
+  toolRowFields: { display: 'flex', gap: 10 },
+  removeRowBtn: {
+    position: 'absolute' as React.CSSProperties['position'],
+    top: 8,
+    right: 8,
+    border: 'none',
+    background: 'none',
+    color: '#EF4444',
+    cursor: 'pointer',
+    padding: 4,
+  },
 };

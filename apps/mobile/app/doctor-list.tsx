@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -11,17 +13,69 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch, useSelector } from "react-redux";
 import { MedButton } from "../components/medconnect/MedButton";
 import { MedCard } from "../components/medconnect/MedCard";
 import { MedText } from "../components/medconnect/MedText";
+import { getAssetUrl } from "../constants/api";
 import { Colors } from "../constants/theme";
 import { useColorScheme } from "../hooks/use-color-scheme";
-import { DOCTORS_BY_CATEGORY } from "../constants/doctors";
+import { useUserLocation } from "../hooks/useUserLocation";
+import { haversineKm } from "../utils/location";
+import { AppDispatch, RootState } from "../store";
+import { fetchDoctors } from "../store/slices/doctorSlice";
+
+const SPECIALTY_ALIASES: Record<string, string[]> = {
+  "dental": ["Dental", "Dentist", "Oral Health"],
+  "orthopedics": ["Orthopedics", "Orthopedics / Bone & Joint", "Bone"],
+  "cardiology": ["Cardiology", "Cardiology / Heart", "Heart"],
+  "dermatology": ["Dermatology", "Dermatology / Skin", "Skin"],
+  "eye": ["Eye Care / Ophthalmology", "Ophthalmology", "Eye Care"],
+  "neurology": ["Neurology", "Neurology / Brain & Nerves", "Brain"],
+  "ent": ["ENT / Ear, Nose & Throat", "ENT", "Ear"],
+  "gastroenterology": ["Gastroenterology", "Gastroenterology / Digestive"],
+  "pediatrics": ["Pediatrics", "Pediatrics / Children", "Pediatrician"],
+  "gynecology": ["Gynecology / Women's Health", "Gynecology", "Obstetrics"],
+  "urology": ["Urology", "Urologist"],
+  "psychiatry": ["Psychiatry", "Psychiatry / Mental Health", "Mental Health"],
+  "pulmonology": ["Pulmonology", "Pulmonology / Lungs", "Lungs"],
+  "laboratory": ["Laboratory / Lab Tests", "Laboratory", "Lab"],
+  "pharmacy": ["Pharmacy"],
+  "emergency": ["Emergency / 24/7", "Emergency"],
+  "general": ["General Checkup", "General Practice", "Family Medicine"],
+};
+
+const matchCategory = (doctor: any, category: string): boolean => {
+  if (!category) return true;
+  const key = category.toLowerCase();
+  const aliases = SPECIALTY_ALIASES[key] || [category];
+  const haystack = [
+    doctor.specialization,
+    (doctor.specializations || []).join(" "),
+    doctor.clinicName,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return aliases.some((a) => haystack.includes(a.toLowerCase()));
+};
+
 export default function DoctorListScreen() {
   const router = useRouter();
   const { category } = useLocalSearchParams();
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
+  const dispatch = useDispatch<AppDispatch>();
+  const { doctors, loading } = useSelector((state: RootState) => state.doctors);
+  const { latitude, longitude } = useUserLocation();
+
+  const distanceFor = (doctor: any): number | null => {
+    if (latitude == null || longitude == null) return null;
+    const lat = doctor?.hospital?.latitude;
+    const lng = doctor?.hospital?.longitude;
+    if (typeof lat !== "number" || typeof lng !== "number") return null;
+    return Math.round(haversineKm(latitude, longitude, lat, lng) * 10) / 10;
+  };
 
   const categoryKey = typeof category === "string" ? category : undefined;
 
@@ -32,16 +86,23 @@ export default function DoctorListScreen() {
     minExperience: 0,
   });
 
-  // Get doctors for current category
+  useFocusEffect(
+    useCallback(() => {
+      if (doctors.length === 0) dispatch(fetchDoctors());
+    }, [doctors.length, dispatch]),
+  );
+
+  // Get real doctors for current category
   const categoryDoctors = useMemo(() => {
-    return DOCTORS_BY_CATEGORY[categoryKey || "General"] || [];
-  }, [categoryKey]);
+    if (!categoryKey) return doctors;
+    return doctors.filter((d) => matchCategory(d, categoryKey));
+  }, [doctors, categoryKey]);
 
   // Filter doctors based on current filters
   const filteredDoctors = useMemo(() => {
     return categoryDoctors.filter((doctor) => {
-      const rating = parseFloat(doctor.rating);
-      const experience = doctor.experience;
+      const rating = parseFloat(String(doctor.rating || 0));
+      const experience = doctor.experienceYears || 0;
       return (
         rating >= filters.minRating &&
         experience >= filters.minExperience
@@ -69,22 +130,41 @@ export default function DoctorListScreen() {
       <MedCard style={styles.card}>
         <View style={styles.row}>
           <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person" size={32} color={theme.border} />
+            {item.profilePicture ? (
+              <View style={styles.avatarImgWrap}>
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                <Image
+                  source={{ uri: getAssetUrl(item.profilePicture) }}
+                  style={styles.avatarImg}
+                />
+              </View>
+            ) : (
+              <Ionicons name="person" size={32} color={theme.border} />
+            )}
           </View>
           <View style={styles.info}>
-            <MedText variant="h2">{item.name}</MedText>
+            <MedText variant="h2">{item.fullName}</MedText>
             <MedText variant="metadata">
-              {item.specialty} • {item.hospital}
+              {item.specialization || (item.specializations || []).join(", ")}
+              {item.hospital?.name ? ` • ${item.hospital.name}` : ""}
             </MedText>
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={14} color="#F59E0B" />
               <MedText variant="metadata" style={{ marginLeft: 4 }}>
-                {item.rating} ({item.reviews} reviews)
+                {item.rating ? item.rating.toFixed(1) : "0"} ({item.totalReviews || 0} reviews)
               </MedText>
+              {distanceFor(item) != null ? (
+                <View style={styles.ratingRow}>
+                  <Ionicons name="navigate-outline" size={14} color={theme.primary} />
+                  <MedText variant="metadata" style={{ marginLeft: 4, color: theme.primary }}>
+                    {distanceFor(item)!.toFixed(1)} km
+                  </MedText>
+                </View>
+              ) : null}
             </View>
             <View style={styles.doctorDetails}>
               <MedText variant="metadata" style={styles.detailText}>
-                {item.experience} years exp
+                {item.experienceYears || 0} years exp
               </MedText>
             </View>
             <Pressable
@@ -137,14 +217,18 @@ export default function DoctorListScreen() {
       <FlatList
         data={filteredDoctors}
         renderItem={renderDoctorItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <MedText variant="body" style={{ color: theme.muted }}>
-              No doctors match your filters
-            </MedText>
+            {loading ? (
+              <ActivityIndicator color={theme.primary} size="large" />
+            ) : (
+              <MedText variant="body" style={{ color: theme.muted }}>
+                No doctors match your filters
+              </MedText>
+            )}
           </View>
         }
       />
@@ -289,6 +373,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 16,
+  },
+  avatarImgWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarImg: {
+    width: 56,
+    height: 56,
   },
   info: {
     flex: 1,

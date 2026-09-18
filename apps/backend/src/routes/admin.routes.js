@@ -35,9 +35,11 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 const parseJSONFields = (req, res, next) => {
-  if (typeof req.body.operatingHours === "string") {
-    try { req.body.operatingHours = JSON.parse(req.body.operatingHours); }
-    catch { /* Joi validation will reject it */ }
+  for (const key of ["operatingHours", "price"]) {
+    if (typeof req.body[key] === "string") {
+      try { req.body[key] = JSON.parse(req.body[key]); }
+      catch { /* Joi validation will reject it */ }
+    }
   }
   next();
 };
@@ -74,6 +76,7 @@ router.get('/stats/active-patients', AdminController.getActivePatients);
 router.get('/stats/appointments', AdminController.getAppointmentStats);
 router.get('/stats/staff-performance', AdminController.getStaffPerformance);
 router.get('/stats/equipment-utilization', AdminController.getEquipmentUtilization);
+router.get('/analytics', AdminController.getAnalytics);
 
 // Hospitals & Receptionists
 router.get('/hospitals', AdminHospitalController.listHospitals);
@@ -90,6 +93,7 @@ router.delete('/receptionists/:id', AdminHospitalController.deleteReceptionist);
 
 // Item Management (Medical Equipment)
 router.post('/equipment', upload.single('photo'), parseJSONFields, validate(schemas.createEquipment), AdminEquipmentController.addItem);
+router.post('/equipment/bulk', parseJSONFields, AdminEquipmentController.addItems);
 router.put('/equipment/:id', upload.single('photo'), parseJSONFields, validate(schemas.updateEquipment), AdminEquipmentController.updateItem);
 router.delete('/equipment/:id', AdminEquipmentController.deleteItem);
 router.post('/equipment/announce', AdminEquipmentController.createAnnouncement);

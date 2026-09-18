@@ -10,6 +10,7 @@ import EquipmentPage from './pages/EquipmentPage';
 import HospitalSettingsPage from './pages/HospitalSettingsPage';
 import LegalPage from './pages/LegalPage';
 import NotificationsPage from './pages/NotificationsPage';
+import PatientsPage from './pages/PatientsPage';
 import Layout from './components/Layout';
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="doctors" element={<DoctorsPage />} />
           <Route path="schedules" element={<SchedulesPage />} />
           <Route path="appointments" element={<AppointmentsPage />} />
+          <Route path="patients" element={<PatientsPage />} />
           <Route path="equipment" element={<EquipmentPage />} />
           <Route path="hospital" element={<HospitalSettingsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />

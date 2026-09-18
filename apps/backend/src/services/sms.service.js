@@ -52,9 +52,9 @@ const SmsService = {
     const formattedDate = formatEthiopianLocalDateTimeDual(dateTime);
     const spec = specialization ? ` (${specialization})` : '';
     const loc = hospitalName ? ` at ${hospitalName}` : '';
-    const feeLine = fee != null ? ` Fee: ${Number(fee)} ETB.` : '';
+    const feeLine = fee != null && Number(fee) > 0 ? ` Your payment of ${Number(fee)} ETB was received successfully.` : '';
     const codeLine = confirmationCode ? ` Code: ${confirmationCode}.` : '';
-    const msg = `Dear ${patientName}, your appointment with Dr. ${doctorName}${spec} has been confirmed${loc} for ${formattedDate}.${feeLine}${codeLine} Please arrive 20 min early.`;
+    const msg = `Dear ${patientName}, you have successfully booked an appointment with Dr. ${doctorName}${spec}${loc} for ${formattedDate}.${feeLine}${codeLine} Please arrive 20 min early.`;
     return await SmsService.sendSms(phone, msg);
   },
 

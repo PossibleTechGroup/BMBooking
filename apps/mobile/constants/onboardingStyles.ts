@@ -14,6 +14,17 @@ export const createOnboardingStyles = (theme: any) => StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  backBtn: {
+    padding: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",

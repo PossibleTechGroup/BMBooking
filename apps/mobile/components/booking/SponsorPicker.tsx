@@ -8,6 +8,7 @@ import { BASE_URL } from '../../constants/api';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 import { MedText } from '../medconnect/MedText';
 import { nameAutofill, phoneNationalAutofill } from '../../utils/autofill';
+import { ethiopianPhoneDigits } from '../../utils/phone';
 import { MedCard } from '../medconnect/MedCard';
 import { MedButton } from '../medconnect/MedButton';
 import { RootState, AppDispatch } from '../../store';
@@ -111,7 +112,7 @@ export default function SponsorPicker({ onContinue }: SponsorPickerProps) {
   };
 
   const handlePhoneChange = (text: string) => {
-    const digits = text.replace(/\D/g, '');
+    const digits = ethiopianPhoneDigits(text);
     if (digits.length <= 9) {
       handleFieldChange('phone', PHONE_PREFIX + digits);
     }

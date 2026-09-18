@@ -4,6 +4,8 @@ import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAppSelector } from '@/lib/hooks';
+import { useI18n } from '@/lib/i18n/LanguageProvider';
+import LangSwitcher from '@/components/ui/lang-switcher';
 import { MedText } from '@/components/ui/med-text';
 import { MedCard } from '@/components/ui/med-card';
 import { MedButton } from '@/components/ui/med-button';
@@ -25,6 +27,7 @@ export default function DoctorsPageWrapper() {
 
 function DoctorsPage() {
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   const initialSpecialty = searchParams.get('specialty') || 'All';
 
   const { doctors, loading } = useAppSelector((s) => s.doctors);
@@ -59,8 +62,9 @@ function DoctorsPage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="px-5 pt-5 pb-3">
-        <MedText variant="h2" as="h2" className="text-[20px]">Find Doctors</MedText>
+      <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+        <MedText variant="h2" as="h2" className="text-[20px]">{t('findDoctors')}</MedText>
+        <LangSwitcher />
       </div>
 
       {/* Search */}
@@ -69,7 +73,7 @@ function DoctorsPage() {
           <Search size={20} className="text-muted flex-shrink-0" />
           <input
             type="text"
-            placeholder="Search by name, specialty, location..."
+            placeholder={t('doctorsSearchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted"
@@ -90,7 +94,7 @@ function DoctorsPage() {
               sortBy === s ? 'bg-primary text-white' : 'bg-surface border border-border text-text-secondary hover:border-primary/30'
             }`}
           >
-            {s === 'rating' ? 'Top Rated' : 'A-Z'}
+            {s === 'rating' ? t('topRated') : t('az')}
           </button>
         ))}
       </div>
@@ -115,10 +119,10 @@ function DoctorsPage() {
         <div className="px-5 pb-3 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="bg-surface border border-border rounded-[12px] p-4">
             <div className="flex justify-between items-center mb-3">
-              <MedText variant="body" className="text-[14px] font-medium">Filters</MedText>
+              <MedText variant="body" className="text-[14px] font-medium">{t('filtersTitle')}</MedText>
               <button onClick={() => { setShowFilters(false); setMinRating('All'); }}><X size={16} /></button>
             </div>
-            <MedText variant="metadata" className="mb-2">Minimum Rating</MedText>
+            <MedText variant="metadata" className="mb-2">{t('minRating')}</MedText>
             <div className="flex gap-2">
               {['All', '4+', '3+', '2+'].map((r) => (
                 <button key={r} onClick={() => setMinRating(r)}
@@ -133,7 +137,7 @@ function DoctorsPage() {
 
       {/* Counter */}
       <div className="px-5 pb-2">
-        <MedText variant="metadata" className="text-muted">{filteredDoctors.length} doctors found</MedText>
+        <MedText variant="metadata" className="text-muted">{t('doctorsFound', { n: filteredDoctors.length })}</MedText>
       </div>
 
       {/* List */}
@@ -182,7 +186,7 @@ function DoctorsPage() {
           ))
         ) : (
           <div className="text-center py-12">
-            <MedText variant="body" className="text-muted">No doctors found matching your criteria</MedText>
+            <MedText variant="body" className="text-muted">{t('noDoctorsFound')}</MedText>
           </div>
         )}
       </div>

@@ -60,7 +60,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="equipment"
         options={{
-          title: "Equipments",
+          title: "Equipment",
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name={focused ? "hardware-chip" : "hardware-chip-outline"}

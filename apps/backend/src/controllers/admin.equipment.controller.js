@@ -10,6 +10,7 @@ const AdminEquipmentController = {
         name,
         category,
         hospitalId,
+        price,
         operatingHours,
         duration,
         isOperational,
@@ -32,6 +33,7 @@ const AdminEquipmentController = {
           name,
           category,
           hospitalId,
+          price: price !== undefined && price !== null && price !== '' ? Number(price) : undefined,
           operatingHours: operatingHours || null,
           duration: duration || 30,
           isOperational,
@@ -54,6 +56,85 @@ const AdminEquipmentController = {
         },
       });
       res.status(201).json({ status: "success", data: item });
+    } catch (err) {
+      res.status(400).json({ status: "fail", message: err.message });
+    }
+  },
+
+  addItems: async (req, res) => {
+    try {
+      const { hospitalId, items } = req.body;
+
+      const hospital = await prisma.hospital.findUnique({
+        where: { id: hospitalId },
+      });
+      if (!hospital) {
+        return res
+          .status(404)
+          .json({ status: "fail", message: "Hospital not found" });
+      }
+      if (!Array.isArray(items) || items.length === 0) {
+        return res
+          .status(400)
+          .json({ status: "fail", message: "Provide at least one item to add" });
+      }
+
+      for (const item of items) {
+        if (item.name === undefined || item.name === null || String(item.name).trim() === '') {
+          return res
+            .status(400)
+            .json({ status: "fail", message: "Every item requires a name" });
+        }
+        const category = item.category || 'OTHER';
+        const created = await prisma.medicalEquipment.create({
+          data: {
+            name: String(item.name).trim(),
+            category,
+            hospitalId,
+            price: item.price !== undefined && item.price !== null && item.price !== '' ? Number(item.price) : undefined,
+            operatingHours: item.operatingHours || null,
+            duration: item.duration || 30,
+            isOperational: item.isOperational !== undefined ? Boolean(item.isOperational) : true,
+            description: item.description || null,
+          },
+          include: {
+            hospital: {
+              select: {
+                id: true,
+                name: true,
+                address: true,
+                phone: true,
+                email: true,
+                latitude: true,
+                longitude: true,
+                cardPrice: true,
+              },
+            },
+          },
+        });
+        console.log(`[AdminEquipment] Added "${item.name}" (${category}) to hospital ${hospitalId}`);
+      }
+
+      const added = await prisma.medicalEquipment.findMany({
+        where: { hospitalId },
+        orderBy: { id: "desc" },
+        include: {
+          hospital: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              phone: true,
+              email: true,
+              latitude: true,
+              longitude: true,
+              cardPrice: true,
+            },
+          },
+        },
+      });
+
+      res.status(201).json({ status: "success", data: added });
     } catch (err) {
       res.status(400).json({ status: "fail", message: err.message });
     }

@@ -7,10 +7,10 @@ const EquipmentView = (() => {
     equipment: [],
     categories: [],
     selectedCategory: null,
+    centers: [],
+    selectedCenter: null,
     selectedEquipment: null,
     date: '',
-    availableSlots: [],
-    selectedSlot: null,
     notes: '',
     totalPayable: 0,
     paymentDone: false,
@@ -36,8 +36,8 @@ const EquipmentView = (() => {
   function reset() {
     state = {
       step: 'list', searchQuery: '', equipment: [], categories: [],
-      selectedCategory: null, selectedEquipment: null, date: '',
-      availableSlots: [], selectedSlot: null, notes: '', totalPayable: 0,
+      selectedCategory: null, centers: [], selectedCenter: null,
+      selectedEquipment: null, date: '', notes: '', totalPayable: 0,
       paymentDone: false, loading: false, error: null, createdBooking: null,
     };
   }
@@ -49,7 +49,6 @@ const EquipmentView = (() => {
         date: state.date,
         notes: state.notes,
         totalPayable: state.totalPayable,
-        slot: state.selectedSlot,
       }));
     } catch {}
   }
@@ -108,6 +107,10 @@ const EquipmentView = (() => {
               <span><strong>${equipment.name}</strong></span>
             </div>
             <div class="payment-row">
+              <span>Hospital Fee</span>
+              <span>${feeBreakdown(equipment).hospFee} ETB</span>
+            </div>
+            <div class="payment-row">
               <span>Date</span>
               <span>${new Date(pending.date + 'T12:00:00').toLocaleDateString('en-US')}</span>
             </div>
@@ -124,7 +127,7 @@ const EquipmentView = (() => {
             I Already Paid — Verify Now
           </button>
         `;
-        container.querySelector('#eq-resume-back').addEventListener('click', () => renderDetail(container, equipment));
+        container.querySelector('#eq-resume-back').addEventListener('click', () => renderBooking(container, equipment));
         container.querySelector('#eq-resume-retry').addEventListener('click', () => {
           openPaymentUrl(pending.totalPayable);
           savePending();
@@ -169,7 +172,7 @@ const EquipmentView = (() => {
     `;
     container.querySelector('#eq-rv-back').addEventListener('click', () => {
       clearPending();
-      renderDetail(container, state.selectedEquipment);
+      renderBooking(container, state.selectedEquipment);
     });
     container.querySelector('#eq-rv-verify').addEventListener('click', async () => {
       const btn = container.querySelector('#eq-rv-verify');
@@ -197,17 +200,43 @@ const EquipmentView = (() => {
     }
   }
 
+  function feeBreakdown(item) {
+    const equipFee = item.price ? parseFloat(item.price) : (item.dailyRate ? parseFloat(item.dailyRate) : 0);
+    const hospFee = item.hospital?.serviceFee?.amount ? parseFloat(item.hospital.serviceFee.amount) : 50;
+    return { equipFee, hospFee, total: Math.round((equipFee + hospFee) * 100) / 100 };
+  }
+
+  function groupCenters(items) {
+    const map = new Map();
+    for (const it of items || []) {
+      const h = it.hospital;
+      const key = h?.id != null ? String(h.id) : (it.hospitalName || 'center');
+      let c = map.get(key);
+      if (!c) {
+        c = {
+          id: h?.id != null ? h.id : null,
+          name: h?.name || it.hospitalName || 'Diagnosis Center',
+          address: h?.address || '',
+          services: [],
+        };
+        map.set(key, c);
+      }
+      c.services.push(it);
+    }
+    return Array.from(map.values());
+  }
+
   async function renderList(container) {
     state.step = 'list';
     container.innerHTML = `
       <div class="view-header">
         <button class="view-header-back" id="eq-back">${ICON.back} Home</button>
-        <h1 class="view-header-title">Equipment</h1>
+        <h1 class="view-header-title">Diagnosis Centers</h1>
         <div class="view-header-spacer"></div>
       </div>
       <div class="search-bar glass-surface">
         ${ICON.search}
-        <input type="text" id="eq-search" placeholder="Search equipment..." value="${state.searchQuery}" />
+        <input type="text" id="eq-search" placeholder="Search services or centers..." value="${state.searchQuery}" />
       </div>
       <div id="eq-categories" class="sub-tabs mb-16"></div>
       <div id="eq-list">
@@ -256,39 +285,45 @@ const EquipmentView = (() => {
         query: state.searchQuery || undefined,
         category: state.selectedCategory || undefined,
       });
+      state.centers = groupCenters(state.equipment);
 
-      if (state.equipment.length === 0) {
+      if (state.centers.length === 0) {
         el.innerHTML = `
           <div class="empty-state">
             <div class="empty-state-icon">${ICON.search}</div>
-            <h3>No equipment found</h3>
+            <h3>No diagnosis centers found</h3>
             <p>Try a different search or category</p>
           </div>
         `;
         return;
       }
 
-      el.innerHTML = state.equipment.map(item => `
-        <div class="doctor-card" data-id="${item.id}">
-          <div class="doctor-avatar" style="background:var(--secondary-bg)">
-            <span style="font-size:11px;font-weight:600;color:var(--link);text-align:center;line-height:1.2">${CATEGORY_LABELS[item.category] || item.category}</span>
-          </div>
-          <div class="doctor-info">
-            <h3>${item.name}</h3>
-            <div class="specialty">${item.hospital?.name || ''}</div>
-            <div class="meta">
-              ${item.hospital?.address ? `<span class="meta-item">${ICON.location} ${item.hospital.address.substring(0, 30)}</span>` : ''}
+      el.innerHTML = state.centers.map(center => {
+        const chips = [...new Set(center.services.map(s => CATEGORY_LABELS[s.category] || s.category))].slice(0, 3);
+        return `
+          <div class="doctor-card" data-center="${center.id ?? center.name}">
+            <div class="doctor-avatar" style="background:var(--secondary-bg)">
+              <span style="font-size:10px;font-weight:700;color:var(--link);text-align:center;line-height:1.2">DIAGNOSIS<br>CENTER</span>
             </div>
+            <div class="doctor-info">
+              <div class="specialty" style="color:var(--link);font-size:11px;font-weight:700;letter-spacing:0.5px">DIAGNOSIS CENTER</div>
+              <h3>${center.name}</h3>
+              ${center.address ? `<div class="meta"><span class="meta-item">${ICON.location} ${center.address.substring(0, 40)}</span></div>` : ''}
+              <div class="meta">
+                <span class="meta-item">${center.services.length} ${center.services.length === 1 ? 'service' : 'services'}</span>
+                ${chips.map(c => `<span class="badge badge-pending" style="margin-left:6px">${c}</span>`).join('')}
+              </div>
+            </div>
+            <div class="doctor-chevron">${ICON.chevronRight}</div>
           </div>
-          <div class="doctor-chevron">${ICON.chevronRight}</div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
 
       el.querySelectorAll('.doctor-card').forEach(card => {
         card.addEventListener('click', () => {
-          const id = parseInt(card.dataset.id);
-          const item = state.equipment.find(e => e.id === id);
-          if (item) renderDetail(container, item);
+          const key = card.dataset.center;
+          const center = state.centers.find(c => String(c.id ?? c.name) === String(key));
+          if (center) renderCenter(container, center);
         });
       });
     } catch (err) {
@@ -296,15 +331,62 @@ const EquipmentView = (() => {
     }
   }
 
-  function renderDetail(container, item) {
-    state.step = 'detail';
-    state.selectedEquipment = item;
-    state.totalPayable = item.price ? parseFloat(item.price) : (item.dailyRate ? parseFloat(item.dailyRate) : 0);
+  function renderCenter(container, center) {
+    state.step = 'center';
+    state.selectedCenter = center;
 
     container.innerHTML = `
       <div class="view-header">
-        <button class="view-header-back" id="eq-detail-back">${ICON.back} Back</button>
-        <h1 class="view-header-title">Equipment</h1>
+        <button class="view-header-back" id="eq-center-back">${ICON.back} Back</button>
+        <h1 class="view-header-title">${center.name}</h1>
+        <div class="view-header-spacer"></div>
+      </div>
+      <div class="specialty" style="color:var(--link);font-size:11px;font-weight:700;letter-spacing:0.5px;margin-bottom:4px">DIAGNOSIS CENTER</div>
+      ${center.address ? `<div class="meta" style="margin-bottom:12px"><span class="meta-item">${ICON.location} ${center.address}</span></div>` : ''}
+      <div id="eq-center-services">
+        ${center.services.length === 0 ? '<div class="empty-state"><h3>No services listed yet</h3></div>' : ''}
+        ${center.services.map(item => {
+          const f = feeBreakdown(item);
+          const price = item.price != null ? `${item.price} ETB` : (item.dailyRate ? `${item.dailyRate} ETB` : 'Contact center');
+          return `
+            <div class="card" style="margin-bottom:12px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                <div style="min-width:0">
+                  <h3 style="font-size:16px;font-weight:600">${item.name}</h3>
+                  <div class="specialty" style="margin-top:2px;text-transform:capitalize">${(CATEGORY_LABELS[item.category] || item.category).toLowerCase()} • ${price} • ${item.duration || 30} min</div>
+                </div>
+                <span class="badge ${item.isOperational ? 'badge-completed' : 'badge-declined'}" style="flex-shrink:0">${item.isOperational ? 'Available' : 'Unavailable'}</span>
+              </div>
+              ${item.isOperational ? `
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
+                <span class="text-hint" style="font-size:13px">Hospital fee: <strong>${f.hospFee} ETB</strong></span>
+                <button class="btn btn-primary" data-book="${item.id}" style="padding:8px 18px;font-size:13px">Book</button>
+              </div>` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    container.querySelector('#eq-center-back').addEventListener('click', () => renderList(container));
+    container.querySelectorAll('[data-book]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = center.services.find(s => String(s.id) === String(btn.dataset.book));
+        if (item) renderBooking(container, item);
+      });
+    });
+  }
+
+  function renderBooking(container, item) {
+    state.step = 'booking';
+    state.selectedEquipment = item;
+    const f = feeBreakdown(item);
+    state.totalPayable = f.total;
+
+    container.innerHTML = `
+      <div class="view-header">
+        <button class="view-header-back" id="eq-bk-back">${ICON.back} Back</button>
+        <h1 class="view-header-title">Book Service</h1>
         <div class="view-header-spacer"></div>
       </div>
       <div class="card">
@@ -324,9 +406,13 @@ const EquipmentView = (() => {
         </div>
         ${(item.price || item.dailyRate) ? `
         <div class="card-row">
-          <span class="text-hint">Price</span>
+          <span class="text-hint">Service Fee</span>
           <span><strong>${item.price || item.dailyRate} ETB</strong></span>
         </div>` : ''}
+        <div class="card-row">
+          <span class="text-hint">Hospital Fee</span>
+          <span><strong>${f.hospFee} ETB</strong></span>
+        </div>
         ${item.hospital?.address ? `
         <div class="card-row">
           <span class="text-hint">Location</span>
@@ -335,7 +421,7 @@ const EquipmentView = (() => {
       </div>
 
       <div class="card mt-8">
-        <h3 style="font-size:15px;font-weight:600;margin-bottom:12px">Book This Equipment</h3>
+        <h3 style="font-size:15px;font-weight:600;margin-bottom:12px">Book This Service</h3>
         <div class="input-group">
           <label>Select Date</label>
           <div class="input-field">
@@ -355,17 +441,17 @@ const EquipmentView = (() => {
         </div>` : ''}
       </div>
 
-      <button class="btn btn-primary mt-16" id="eq-book-btn" ${!state.date || !item.isOperational ? 'disabled' : ''}>
+      <button class="btn btn-primary mt-16" id="eq-bk-btn" ${!state.date || !item.isOperational ? 'disabled' : ''}>
         ${!item.isOperational ? 'Currently Unavailable' : 'Continue to Payment'}
       </button>
     `;
 
-    container.querySelector('#eq-detail-back').addEventListener('click', () => renderList(container));
+    container.querySelector('#eq-bk-back').addEventListener('click', () => renderCenter(container, state.selectedCenter));
 
     const dateInput = container.querySelector('#eq-date');
     dateInput.addEventListener('change', (e) => {
       state.date = e.target.value;
-      const bookBtn = container.querySelector('#eq-book-btn');
+      const bookBtn = container.querySelector('#eq-bk-btn');
       if (bookBtn) bookBtn.disabled = !state.date || !item.isOperational;
     });
 
@@ -374,7 +460,7 @@ const EquipmentView = (() => {
       notesInput.addEventListener('input', (e) => { state.notes = e.target.value; });
     }
 
-    container.querySelector('#eq-book-btn').addEventListener('click', () => {
+    container.querySelector('#eq-bk-btn').addEventListener('click', () => {
       renderPayment(container);
     });
   }
@@ -390,8 +476,12 @@ const EquipmentView = (() => {
       </div>
       <div class="card">
         <div class="payment-row">
-          <span>Equipment Rental</span>
+          <span>Service</span>
           <span>${state.selectedEquipment.name}</span>
+        </div>
+        <div class="payment-row">
+          <span>Hospital Fee</span>
+          <span>${feeBreakdown(state.selectedEquipment).hospFee} ETB</span>
         </div>
         <div class="payment-row">
           <span>Date</span>
@@ -408,7 +498,7 @@ const EquipmentView = (() => {
       </button>
     `;
 
-    container.querySelector('#eq-pay-back').addEventListener('click', () => renderDetail(container, state.selectedEquipment));
+    container.querySelector('#eq-pay-back').addEventListener('click', () => renderBooking(container, state.selectedEquipment));
     container.querySelector('#eq-pay-btn').addEventListener('click', async () => {
       savePending();
       openPaymentUrl(state.totalPayable);
@@ -428,12 +518,12 @@ const EquipmentView = (() => {
       </div>
       <div class="card">
         <div class="card-row">
-          <span class="text-hint">Equipment</span>
+          <span class="text-hint">Service</span>
           <span><strong>${state.selectedEquipment.name}</strong></span>
         </div>
         <div class="card-row">
           <span class="text-hint">Hospital</span>
-          <span>${state.selectedEquipment.hospital?.name || ''}</span>
+          <span>${state.selectedEquipment.hospital?.name || state.selectedCenter?.name || ''}</span>
         </div>
         <div class="card-row">
           <span class="text-hint">Date</span>
@@ -457,7 +547,7 @@ const EquipmentView = (() => {
 
     container.querySelector('#eq-confirm-back').addEventListener('click', () => {
       if (state.totalPayable > 0) renderPayment(container);
-      else renderDetail(container, state.selectedEquipment);
+      else renderBooking(container, state.selectedEquipment);
     });
 
     container.querySelector('#eq-confirm-btn').addEventListener('click', async () => {
@@ -466,7 +556,7 @@ const EquipmentView = (() => {
       btn.disabled = true;
 
       try {
-        const dateTime = `${state.date}T${state.selectedSlot || '09:00'}:00.000Z`;
+        const dateTime = `${state.date}T09:00:00.000Z`;
         const booking = await API.createEquipmentBooking({
           equipmentId: state.selectedEquipment.id,
           dateTime,
@@ -494,7 +584,7 @@ const EquipmentView = (() => {
     container.innerHTML = `
       <div class="success-screen">
         <div class="check-icon">${ICON.check}</div>
-        <h2>Equipment Booked!</h2>
+        <h2>Service Booked!</h2>
         <p>Your booking request has been submitted.</p>
         <div class="card text-center">
           ${state.createdBooking ? `

@@ -810,6 +810,18 @@ export const addHospitalEquipment = createAsyncThunk(
   }
 );
 
+export const addHospitalEquipmentBulk = createAsyncThunk(
+  'hospital/addEquipmentBulk',
+  async (items: { name: string; category: string; price?: number; duration?: number; description?: string }[], { rejectWithValue }) => {
+    try {
+      const response = await api.post('/hospital/equipment/bulk', { items });
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to add equipment');
+    }
+  }
+);
+
 export const deleteHospitalEquipment = createAsyncThunk(
   'hospital/deleteEquipment',
   async (id: number, { rejectWithValue }) => {

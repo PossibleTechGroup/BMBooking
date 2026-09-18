@@ -1,20 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   Image,
   Pressable,
-  Linking,
-  Platform,
   ActivityIndicator,
-  TextInput,
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import { MapViewComponent as MapView, MarkerComponent as Marker, PROVIDER_GOOGLE } from '../components/MapViewWrapper';
 import { useDispatch, useSelector } from 'react-redux';
 import * as WebBrowser from 'expo-web-browser';
 import axios from 'axios';
@@ -25,10 +21,12 @@ import { MedButton } from '../components/medconnect/MedButton';
 import { Colors } from '../constants/theme';
 import { useColorScheme } from '../hooks/use-color-scheme';
 import { AppDispatch, RootState } from '../store';
-import { fetchItemDetail, clearSelectedItem, bookEquipment, fetchEquipmentAvailability, clearAvailability } from '../store/slices/equipmentSlice';
+import { fetchItemDetail, clearSelectedItem, bookEquipment, fetchEquipmentAvailability, clearAvailability, fetchHospitalDetail } from '../store/slices/equipmentSlice';
 import { BASE_URL, TELEBIRR_URL, getAssetUrl } from '../constants/api';
 import { formatDate, formatEthiopianLocalTime } from '../utils/ethiopianDate';
 import { useTimeFormat } from '../utils/timeFormat';
+import { useUserLocation } from '../hooks/useUserLocation';
+import { haversineKm } from '../utils/location';
 
 function getNext7Days() {
   const days = [];
@@ -69,6 +67,16 @@ export default function ItemDetailScreen() {
 
   const { selectedItem, loading, bookingLoading, error, availability, availabilityLoading } = useSelector((state: RootState) => state.equipment);
   const { token } = useSelector((state: RootState) => state.auth);
+  const equipmentHospitals = useSelector((state: RootState) => state.equipment.hospitals || []);
+  const { latitude, longitude } = useUserLocation();
+
+  const distanceKm = useMemo(() => {
+    if (latitude == null || longitude == null || !selectedItem) return null;
+    const lat = selectedItem.latitude;
+    const lng = selectedItem.longitude;
+    if (!lat || !lng) return null;
+    return Math.round(haversineKm(latitude, longitude, lat, lng) * 10) / 10;
+  }, [latitude, longitude, selectedItem]);
 
   const [showBooking, setShowBooking] = useState(false);
   const [selectedDateId, setSelectedDateId] = useState('');
@@ -81,6 +89,36 @@ export default function ItemDetailScreen() {
   const dates = getNext7Days();
   const availableSlots = availability?.slots || [];
 
+  const hospitalServices = useMemo(() => {
+    if (!selectedItem?.hospitalId) return [];
+    const found = equipmentHospitals.find((h: any) => String(h.id) === String(selectedItem.hospitalId));
+    return found?.equipment || [];
+  }, [equipmentHospitals, selectedItem]);
+
+  useEffect(() => {
+    if (selectedItem?.hospitalId) {
+      const existing = equipmentHospitals.find((h: any) => String(h.id) === String(selectedItem.hospitalId));
+      if (!existing) dispatch(fetchHospitalDetail(selectedItem.hospitalId));
+    }
+  }, [selectedItem?.hospitalId, dispatch, equipmentHospitals]);
+
+  useEffect(() => {
+    if (selectedItem?.id) {
+      const firstDate = dates[0]?.id ?? '';
+      setSelectedDateId(firstDate);
+      setSelectedTime('');
+      setNotes('');
+      setBookingSuccess(false);
+      setShowPayment(false);
+    }
+  }, [selectedItem?.id]);
+
+  const switchService = (service: any) => {
+    if (!service || service.id === selectedItem?.id) return;
+    dispatch(clearAvailability());
+    dispatch(fetchItemDetail(service.id));
+  };
+
   useEffect(() => {
     if (dates.length > 0) setSelectedDateId(dates[0].id);
   }, []);
@@ -92,10 +130,10 @@ export default function ItemDetailScreen() {
   }, [showBooking]);
 
   useEffect(() => {
-    if (showBooking && selectedDateId && id) {
-      dispatch(fetchEquipmentAvailability({ equipmentId: parseInt(id as string), date: selectedDateId }));
+    if (showBooking && selectedDateId && selectedItem?.id) {
+      dispatch(fetchEquipmentAvailability({ equipmentId: selectedItem.id, date: selectedDateId }));
     }
-  }, [showBooking, selectedDateId, dispatch, id]);
+  }, [showBooking, selectedDateId, dispatch, selectedItem?.id]);
 
   useEffect(() => {
     if (availableSlots.length > 0) {
@@ -106,7 +144,11 @@ export default function ItemDetailScreen() {
     }
   }, [availability]);
 
-  const feePerSlot = selectedItem?.price ?? 0;
+  const equipmentFee = selectedItem?.price ? Math.round(Number(selectedItem.price) * 100) / 100 : 0;
+  const hospitalFee = selectedItem?.serviceFee != null
+    ? Math.round(Number(selectedItem.serviceFee) * 100) / 100
+    : 50;
+  const feePerSlot = Math.round((equipmentFee + hospitalFee) * 100) / 100;
   const requiresPayment = feePerSlot > 0;
 
   const buildBookingAction = () => {
@@ -115,7 +157,7 @@ export default function ItemDetailScreen() {
     const appointmentDate = new Date(year, month - 1, day, hours, minutes);
     if (isNaN(appointmentDate.getTime())) return null;
     return {
-      equipmentId: parseInt(id as string),
+      equipmentId: selectedItem?.id ?? parseInt(id as string),
       dateTime: appointmentDate.toISOString(),
       notes: notes || undefined,
     };
@@ -166,7 +208,7 @@ export default function ItemDetailScreen() {
     }
     setPaymentProcessing(true);
     try {
-      const checkoutUrl = `${TELEBIRR_URL}/?amount=${encodeURIComponent(String(feePerSlot))}`;
+      const checkoutUrl = `${TELEBIRR_URL}/?amount=${encodeURIComponent(String(feePerSlot))}&src=app`;
       await WebBrowser.openBrowserAsync(checkoutUrl);
       const { data } = await axios.post(
         `${BASE_URL}/api/payments/verify-telebirr`,
@@ -192,19 +234,6 @@ export default function ItemDetailScreen() {
       dispatch(clearAvailability());
     };
   }, [dispatch, id]);
-
-  const openInMaps = () => {
-    if (!selectedItem) return;
-    const url = Platform.select({
-      ios: `maps:0,0?q=${selectedItem.hospitalName}@${selectedItem.latitude},${selectedItem.longitude}`,
-      android: `geo:0,0?q=${selectedItem.latitude},${selectedItem.longitude}(${selectedItem.hospitalName})`,
-    });
-    if (url) Linking.openURL(url);
-  };
-
-  const callHospital = () => {
-    if (selectedItem?.hospitalPhone) Linking.openURL(`tel:${selectedItem.hospitalPhone}`);
-  };
 
   if (loading) {
     return (
@@ -241,7 +270,7 @@ export default function ItemDetailScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.content}>
+        <View style={[styles.content, { backgroundColor: theme.surface }]}>
           <View style={styles.titleRow}>
             <View style={{ flex: 1 }}>
               <MedText variant="h1">{selectedItem.name}</MedText>
@@ -272,64 +301,78 @@ export default function ItemDetailScreen() {
                 <MedText variant="metadata" style={{ color: theme.muted }}>
                   {selectedItem.address}
                 </MedText>
+                {distanceKm != null ? (
+                  <View style={styles.distanceRow}>
+                    <Ionicons name="navigate-outline" size={14} color={theme.primary} />
+                    <MedText variant="metadata" style={{ color: theme.primary, marginLeft: 4, fontWeight: '600' }}>
+                      {distanceKm.toFixed(1)} km away
+                    </MedText>
+                  </View>
+                ) : null}
               </View>
             </View>
-            
-            <View style={styles.actionGrid}>
-              <Pressable 
-                onPress={callHospital}
-                style={[styles.glassButton, { backgroundColor: '#F3F4F6' }]}
-              >
-                <Ionicons name="call" size={20} color="#1F2937" />
-                <MedText variant="metadata" style={styles.buttonLabel}>{t('callCenter') || 'Call Center'}</MedText>
-              </Pressable>
-              
-              <Pressable 
-                onPress={openInMaps}
-                style={[styles.glassButton, { backgroundColor: theme.primary }]}
-              >
-                <Ionicons name="map" size={20} color="#FFF" />
-                <MedText variant="metadata" style={[styles.buttonLabel, { color: '#FFF' }]}>{t('getLocation') || 'Get Location'}</MedText>
-              </Pressable>
-            </View>
           </View>
+
+          <MedText variant="h2" style={styles.sectionTitle}>All services at {selectedItem.hospitalName}</MedText>
+          {hospitalServices.length === 0 ? (
+            <MedText variant="body" style={{ color: theme.muted }}>
+              Loading this hospital's services...
+            </MedText>
+          ) : (
+            hospitalServices.map((service: any) => {
+              const svcPrice = service.price != null ? `${service.price} ETB` : service.cardPrice != null ? `${service.cardPrice} ETB` : 'Contact hospital';
+              const isSelected = service.id === selectedItem.id;
+              const svcOperational = service.isOperational !== false;
+              return (
+                <Pressable
+                  key={service.id}
+                  onPress={() => switchService(service)}
+                  disabled={!svcOperational}
+                  style={[
+                    styles.serviceRow,
+                    { borderColor: isSelected ? theme.primary : theme.border, backgroundColor: isSelected ? theme.primary + '0F' : theme.surface },
+                    !svcOperational && { opacity: 0.5 },
+                  ]}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <View style={styles.serviceTitleRow}>
+                      <MedText variant="body" style={[styles.serviceName, { color: theme.text }]} numberOfLines={1}>
+                        {service.name}
+                      </MedText>
+                      {svcOperational ? (
+                        <View style={[styles.statusDot, { backgroundColor: isSelected ? theme.primary : '#16A34A' }]} />
+                      ) : (
+                        <View style={[styles.statusDot, { backgroundColor: '#DC2626' }]} />
+                      )}
+                    </View>
+                    <MedText variant="metadata" numberOfLines={1} style={{ marginTop: 2, textTransform: 'capitalize' }}>
+                      {(service.category || '').replace('_', ' ')} • {svcPrice}
+                    </MedText>
+                  </View>
+                  <Ionicons
+                    name={isSelected ? 'checkmark-circle' : 'chevron-forward'}
+                    size={20}
+                    color={isSelected ? theme.primary : theme.muted}
+                  />
+                </Pressable>
+              );
+            })
+          )}
 
           <MedText variant="h2" style={styles.sectionTitle}>Details</MedText>
           <MedText variant="body" style={{ color: theme.muted, lineHeight: 22 }}>
             {selectedItem.description || 'This specialized medical tool is available at the facility for patients requiring diagnostic or therapeutic care.'}
           </MedText>
 
-          <MedText variant="h2" style={styles.sectionTitle}>{t('locationOnMap') || 'Location on Map'}</MedText>
-          <MedCard style={styles.mapCard}>
-            <MapView
-              provider={PROVIDER_GOOGLE}
-              style={styles.map}
-              initialRegion={{
-                latitude: selectedItem.latitude,
-                longitude: selectedItem.longitude,
-                latitudeDelta: 0.005,
-                longitudeDelta: 0.005,
-              }}
-              scrollEnabled={true}
-              zoomEnabled={true}
-            >
-              <Marker
-                coordinate={{
-                  latitude: selectedItem.latitude,
-                  longitude: selectedItem.longitude,
-                }}
-                title={selectedItem.hospitalName}
-              />
-            </MapView>
-          </MedCard>
-
           {!showBooking && !bookingSuccess && (
-            <MedButton
-              title="Book Appointment"
-              onPress={() => setShowBooking(true)}
-              style={{ marginTop: 24 }}
-              icon={<Ionicons name="calendar-outline" size={18} color="#FFF" />}
-            />
+            <MedCard style={{ marginTop: 24, padding: 20, backgroundColor: theme.primary + '10' }}>
+              <MedText variant="h2" style={{ color: theme.primary }}>
+                Ready to book this diagnostic service?
+              </MedText>
+              <MedText variant="body" style={{ color: theme.muted, marginTop: 4 }}>
+                Choose a date and time. The center will confirm your booking.
+              </MedText>
+            </MedCard>
           )}
 
           {bookingSuccess && (
@@ -384,7 +427,7 @@ export default function ItemDetailScreen() {
                 ))}
               </ScrollView>
 
-              <MedText variant="metadata" style={styles.sectionLabel}>SELECT TIME</MedText>
+              <MedText variant="metadata" style={styles.sectionLabel}>AVAILABLE SLOTS</MedText>
               {availabilityLoading ? (
                 <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 20 }} />
               ) : availableSlots.length === 0 ? (
@@ -432,15 +475,21 @@ export default function ItemDetailScreen() {
                 </View>
               )}
 
-              <MedText variant="metadata" style={[styles.sectionLabel, { marginTop: 20 }]}>NOTES (OPTIONAL)</MedText>
-              <TextInput
-                style={[styles.notesInput, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
-                placeholder="e.g. I need assistance..."
-                placeholderTextColor={theme.muted}
-                multiline
-                value={notes}
-                onChangeText={setNotes}
-              />
+              <MedText variant="metadata" style={styles.sectionLabel}>FEE SUMMARY</MedText>
+              <View style={styles.feeSummary}>
+                <View style={styles.feeSummaryRow}>
+                  <MedText variant="body" style={{ color: theme.muted }}>Equipment cost</MedText>
+                  <MedText variant="body">{equipmentFee} ETB</MedText>
+                </View>
+                <View style={styles.feeSummaryRow}>
+                  <MedText variant="body" style={{ color: theme.muted }}>App Fee</MedText>
+                  <MedText variant="body">{hospitalFee} ETB</MedText>
+                </View>
+                <View style={[styles.feeSummaryRow, styles.feeSummaryTotal]}>
+                  <MedText variant="h2">Total</MedText>
+                  <MedText variant="h2">{feePerSlot} ETB</MedText>
+                </View>
+              </View>
 
               <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
                 <MedButton
@@ -469,8 +518,12 @@ export default function ItemDetailScreen() {
                   <MedText variant="body">{selectedItem.duration} min</MedText>
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <MedText variant="body" style={{ color: theme.muted }}>Price</MedText>
-                  <MedText variant="body">{selectedItem.price != null ? `${selectedItem.price} ETB` : '—'}</MedText>
+                  <MedText variant="body" style={{ color: theme.muted }}>Equipment Rental</MedText>
+                  <MedText variant="body">{equipmentFee} ETB</MedText>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <MedText variant="body" style={{ color: theme.muted }}>Hospital service fee</MedText>
+                  <MedText variant="body">{hospitalFee} ETB</MedText>
                 </View>
                 <View style={{ borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
                   <MedText variant="h2">Total</MedText>
@@ -503,6 +556,16 @@ export default function ItemDetailScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {!showBooking && !bookingSuccess && (
+        <View style={[styles.bookFooter, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <MedButton
+            title="Book Appointment"
+            onPress={() => setShowBooking(true)}
+            icon={<Ionicons name="calendar-outline" size={18} color="#FFF" />}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -513,21 +576,53 @@ const styles = StyleSheet.create({
   imageContainer: { height: 250, width: '100%' },
   image: { width: '100%', height: '100%' },
   backButton: { position: 'absolute', top: 50, left: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
-  content: { padding: 24, marginTop: -32, backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32 },
+  content: { padding: 24, marginTop: -32, borderTopLeftRadius: 32, borderTopRightRadius: 32 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   premiumCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, marginTop: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.05, shadowRadius: 20, elevation: 5, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
   hospitalInfoSection: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  distanceRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   iconCircle: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
-  actionGrid: { flexDirection: 'row', gap: 12 },
-  glassButton: { flex: 1, height: 56, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  buttonLabel: { fontWeight: '700', fontSize: 14 },
+  serviceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  serviceTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  serviceName: { fontSize: 15, fontWeight: '700', flexShrink: 1 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
   sectionTitle: { marginTop: 32, marginBottom: 12, fontSize: 18, fontWeight: '800' },
-  mapCard: { padding: 0, overflow: 'hidden', height: 220, borderRadius: 24, marginTop: 12 },
-  map: { ...StyleSheet.absoluteFillObject },
   sectionLabel: { fontSize: 12, fontWeight: '800', color: '#9CA3AF', marginBottom: 12, letterSpacing: 1 },
   dateCard: { width: 64, height: 80, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   timeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   timeChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14, borderWidth: 1, minWidth: '30%' },
-  notesInput: { marginTop: 12, borderRadius: 12, borderWidth: 1, padding: 14, height: 80, textAlignVertical: 'top', fontSize: 14 },
+  feeSummary: {
+    marginTop: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  feeSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 7,
+  },
+  feeSummaryTotal: {
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  bookFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
+    borderTopWidth: 1,
+  },
 });

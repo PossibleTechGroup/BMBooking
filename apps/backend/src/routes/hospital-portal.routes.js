@@ -81,6 +81,7 @@ router.delete("/schedules/:id", permissionMiddleware("schedules.manage"), recept
 // ─── Equipment ───────────────────────────────────────────────────────
 router.get("/equipment", permissionMiddleware("equipment.view"), receptionistController.getHospitalEquipment);
 router.post("/equipment", permissionMiddleware("equipment.manage"), upload.single("photo"), validate(schemas.createEquipmentByReceptionist), receptionistController.addEquipment);
+router.post("/equipment/bulk", permissionMiddleware("equipment.manage"), validate(schemas.createEquipmentBulkByReceptionist), receptionistController.addItems);
 router.delete("/equipment/:id", permissionMiddleware("equipment.manage"), receptionistController.deleteEquipment);
 router.patch("/equipment/:id/status", permissionMiddleware("equipment.manage"), receptionistController.updateEquipmentStatus);
 router.patch("/equipment/:id/operating-hours", permissionMiddleware("equipment.manage"), receptionistController.updateEquipmentOperatingHours);

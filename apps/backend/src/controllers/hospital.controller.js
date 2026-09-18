@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma');
 const { resolveServiceLabel } = require('../config/services.config');
+const { publicHospitalWhere } = require('../config/public-visibility');
 
 const haversine = (lat1, lon1, lat2, lon2) => {
   if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
@@ -13,10 +14,42 @@ const haversine = (lat1, lon1, lat2, lon2) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+const round1 = (n) => Math.round(n * 10) / 10;
+
+// Effective hospital rating: prefer the hospital's own reviews; fall back to
+// the average of its approved doctors' ratings when there are none yet.
+const effectiveRating = (hospital) => {
+  if (hospital.totalReviews > 0) return hospital.rating;
+  if (hospital.doctors && hospital.doctors.length > 0) {
+    return round1(
+      hospital.doctors.reduce((sum, d) => sum + (d.rating || 0), 0) / hospital.doctors.length,
+    );
+  }
+  return 0;
+};
+
+const mapHospital = (h) => ({
+  id: h.id,
+  name: h.name,
+  address: h.address,
+  image: h.image,
+  description: h.description,
+  phone: h.phone,
+  latitude: h.latitude,
+  longitude: h.longitude,
+  cardPrice: h.cardPrice === null ? null : Number(h.cardPrice),
+  serviceFee: h.serviceFee ? { amount: Number(h.serviceFee.amount) } : null,
+  services: h.services.map((s) => s.name),
+  doctorCount: h.doctors ? h.doctors.length : 0,
+  rating: effectiveRating(h),
+  totalReviews: h.totalReviews || 0,
+});
+
 const HospitalController = {
   listHospitals: async (req, res) => {
     try {
       const hospitals = await prisma.hospital.findMany({
+        where: publicHospitalWhere,
         select: {
           id: true,
           name: true,
@@ -28,6 +61,8 @@ const HospitalController = {
           longitude: true,
           cardPrice: true,
           serviceFee: true,
+          rating: true,
+          totalReviews: true,
           services: { select: { name: true } },
           doctors: {
             where: { status: 'Approved' },
@@ -37,28 +72,7 @@ const HospitalController = {
         orderBy: { name: 'asc' },
       });
 
-      const data = hospitals.map((h) => ({
-        id: h.id,
-        name: h.name,
-        address: h.address,
-        image: h.image,
-        description: h.description,
-        phone: h.phone,
-        latitude: h.latitude,
-        longitude: h.longitude,
-        cardPrice: h.cardPrice === null ? null : Number(h.cardPrice),
-        serviceFee: h.serviceFee ? { amount: Number(h.serviceFee.amount) } : null,
-        services: h.services.map((s) => s.name),
-        doctorCount: h.doctors.length,
-        rating:
-          h.doctors.length > 0
-            ? Math.round(
-                (h.doctors.reduce((sum, d) => sum + (d.rating || 0), 0) /
-                  h.doctors.length) *
-                  10,
-              ) / 10
-            : 0,
-      }));
+      const data = hospitals.map(mapHospital);
 
       res.status(200).json({ status: 'success', data });
     } catch (err) {
@@ -104,8 +118,9 @@ const HospitalController = {
         if (location) {
           hospitalWhere.push({ address: { contains: location, mode: "insensitive" } });
         }
+        hospitalWhere.push(publicHospitalWhere);
         const hospitals = await prisma.hospital.findMany({
-          where: hospitalWhere.length ? { AND: hospitalWhere, OR: undefined } : undefined,
+          where: { AND: hospitalWhere },
           select: {
             id: true,
             name: true,
@@ -116,6 +131,8 @@ const HospitalController = {
             latitude: true,
             longitude: true,
             cardPrice: true,
+            rating: true,
+            totalReviews: true,
             services: { select: { name: true } },
             serviceFee: true,
             doctors: {
@@ -132,23 +149,8 @@ const HospitalController = {
               ? haversine(userLat, userLng, h.latitude, h.longitude)
               : null;
           return {
-            id: h.id,
-            name: h.name,
-            address: h.address,
-            image: h.image,
-            description: h.description,
-            phone: h.phone,
-            latitude: h.latitude,
-            longitude: h.longitude,
-            cardPrice: h.cardPrice === null ? null : Number(h.cardPrice),
-            serviceFee: h.serviceFee ? { amount: Number(h.serviceFee.amount) } : null,
-            services: h.services.map((s) => s.name),
+            ...mapHospital(h),
             distanceKm: distanceKm === null ? null : Math.round(distanceKm * 10) / 10,
-            doctorCount: h.doctors.length,
-            rating:
-              h.doctors.length > 0
-                ? Math.round((h.doctors.reduce((s, d) => s + (d.rating || 0), 0) / h.doctors.length) * 10) / 10
-                : 0,
           };
         });
 
@@ -262,8 +264,8 @@ const HospitalController = {
           .json({ status: 'fail', message: 'Invalid hospital id' });
       }
 
-      const hospital = await prisma.hospital.findUnique({
-        where: { id },
+      const hospital = await prisma.hospital.findFirst({
+        where: { id, ...publicHospitalWhere },
         select: {
           id: true,
           name: true,
@@ -276,6 +278,8 @@ const HospitalController = {
           longitude: true,
           cardPrice: true,
           serviceFee: true,
+          rating: true,
+          totalReviews: true,
           services: { select: { name: true } },
           doctors: {
             where: { status: 'Approved' },
@@ -295,6 +299,17 @@ const HospitalController = {
             },
             orderBy: { rating: 'desc' },
           },
+          reviews: {
+            include: {
+              patient: {
+                select: {
+                  id: true,
+                  patientProfile: { select: { fullName: true } },
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+          },
         },
       });
 
@@ -307,21 +322,8 @@ const HospitalController = {
       res.status(200).json({
         status: 'success',
         data: {
-          id: hospital.id,
-          name: hospital.name,
-          address: hospital.address,
-          image: hospital.image,
-          description: hospital.description,
-          phone: hospital.phone,
+          ...mapHospital(hospital),
           email: hospital.email,
-          latitude: hospital.latitude,
-          longitude: hospital.longitude,
-          cardPrice:
-            hospital.cardPrice === null ? null : Number(hospital.cardPrice),
-          serviceFee: hospital.serviceFee
-            ? { amount: Number(hospital.serviceFee.amount) }
-            : null,
-          services: hospital.services.map((s) => s.name),
           doctors: hospital.doctors.map((d) => ({
             id: d.id,
             fullName: d.fullName,
@@ -336,6 +338,14 @@ const HospitalController = {
             clinicAddress: d.clinicAddress,
             baseHourlyRate:
               d.baseHourlyRate === null ? null : Number(d.baseHourlyRate),
+          })),
+          reviews: (hospital.reviews || []).map((r) => ({
+            id: r.id,
+            rating: r.rating,
+            comment: r.comment,
+            createdAt: r.createdAt,
+            patientName:
+              r.patient?.patientProfile?.fullName || `Patient ${r.patient?.id || ''}`,
           })),
         },
       });

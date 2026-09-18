@@ -17,10 +17,18 @@ interface DoctorProfile {
   clinicAddress: string;
   languages: string[];
   availability: any;
+  isAvailable?: boolean;
+  nextAvailableSlot?: string | null;
   specializations?: string[];
   hospital?: {
     id: number;
     name: string;
+    address?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    image?: string | null;
     cardPrice: string;
     serviceFee?: {
       amount: string;

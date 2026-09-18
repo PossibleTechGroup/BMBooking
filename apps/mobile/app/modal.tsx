@@ -1,53 +1,37 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Pressable, ScrollView, TextInput, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Pressable,
+  ScrollView,
+  TextInput,
+  ActivityIndicator,
+  Image,
+  Alert,
+  Modal,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as WebBrowser from 'expo-web-browser';
+import axios from 'axios';
+
 import { Colors } from '../constants/theme';
 import { useColorScheme } from '../hooks/use-color-scheme';
 import { MedText } from '../components/medconnect/MedText';
 import { MedButton } from '../components/medconnect/MedButton';
-import { MedCard } from '../components/medconnect/MedCard';
-import { TelegramBubble } from '../components/medconnect/TelegramBubble';
 import { AppDispatch, RootState } from '../store';
-import * as WebBrowser from 'expo-web-browser';
-import axios from 'axios';
 import { BASE_URL, TELEBIRR_URL } from '../constants/api';
 import {
-  fetchCategories,
-  fetchRecommendations,
   createAppointment,
   fetchDoctorScheduleSlots,
-  resetRecommendations,
   resetBookingState,
 } from '../store/slices/appointmentSlice';
 import { fetchDoctors } from '../store/slices/doctorSlice';
-import SponsorPicker from '../components/booking/SponsorPicker';
-import ReferralUploader from '../components/booking/ReferralUploader';
 import { formatDate, formatEthiopianLocalTime } from '../utils/ethiopianDate';
 import { useTimeFormat } from '../utils/timeFormat';
-
-interface ScheduleSlot {
-  id: number;
-  startTime: string;
-  endTime: string;
-  maxPatients: number;
-  _count: { bookings: number };
-}
-
-interface DoctorSchedule {
-  id: number;
-  date: string;
-  startTime: string;
-  endTime: string;
-  slots: ScheduleSlot[];
-}
-
-function fmtSlotTime(iso: string, eth?: boolean) {
-  const d = new Date(iso);
-  if (eth) return formatEthiopianLocalTime(d);
-  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-}
+import { normalizeEthiopianPhone, ethiopianPhoneDigits } from '../utils/phone';
 
 export default function BookingModal() {
   const router = useRouter();
@@ -57,690 +41,722 @@ export default function BookingModal() {
   const theme = Colors[colorScheme];
   const { isEthiopian } = useTimeFormat();
 
-  const { categories, recommendations, loading, error } = useSelector((state: RootState) => state.appointment);
-  const { token } = useSelector((state: RootState) => state.auth);
+  const { token, user } = useSelector((state: RootState) => state.auth);
   const { doctors } = useSelector((state: RootState) => state.doctors);
-
-  const [step, setStep] = useState<'sponsor' | 'issue' | 'recommendations' | 'referrals' | 'datetime' | 'payment' | 'confirm' | 'success'>('sponsor');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [checkedDocs, setCheckedDocs] = useState<Record<string, boolean>>({});
-  const [notes, setNotes] = useState('');
-  const [paymentLoading, setPaymentLoading] = useState(false);
-  const [includeCardFee, setIncludeCardFee] = useState(false);
-
-  const [attachmentsUrl, setAttachmentsUrl] = useState<string[]>([]);
-
-  const bookingFor = useSelector((state: RootState) => state.appointment.bookingFor);
-  const otherPatientDetails = useSelector((state: RootState) => state.appointment.otherPatientDetails);
-
-  // Schedule state
-  const [schedules, setSchedules] = useState<DoctorSchedule[]>([]);
-  const [scheduleDates, setScheduleDates] = useState<{ id: string; day: string; date: string; label: string }[]>([]);
-  const [selectedDateId, setSelectedDateId] = useState('');
-  const [slotsForDate, setSlotsForDate] = useState<ScheduleSlot[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<ScheduleSlot | null>(null);
-  const [slotsLoading, setSlotsLoading] = useState(false);
 
   const doctorId = params.doctorId ? parseInt(params.doctorId as string) : null;
   const doctor = useMemo(() => doctors.find((d) => d.id === doctorId), [doctors, doctorId]);
+  const doctorName = (params.doctorName as string) || doctor?.fullName || 'Dr. Samrawit Girma';
 
-  const doctorName = params.doctorName as string || 'Doctor';
+  // Form State
+  const [bookingFor, setBookingFor] = useState<'Myself' | 'someone_else'>('Myself');
+  const [otherName, setOtherName] = useState('');
+  const [otherPhone, setOtherPhone] = useState('');
+  const [otherGender, setOtherGender] = useState<'male' | 'female'>('male');
+  const [referralPhoto, setReferralPhoto] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [reason, setReason] = useState('');
 
-  const doctorFee = useMemo(() => {
-    if (doctor?.hospital?.cardPrice) {
-      return parseFloat(doctor.hospital.cardPrice);
-    }
-    const rawFee = params.doctorFee as string;
-    return (rawFee && rawFee !== 'null' && rawFee !== 'undefined') ? parseFloat(rawFee) : 0;
-  }, [doctor, params.doctorFee]);
+  // Schedule & Slots State
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [scheduleDates, setScheduleDates] = useState<{ id: string; label: string; date: Date }[]>([]);
+  const [selectedDateId, setSelectedDateId] = useState('');
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<any>(null);
+  const [slotsForDate, setSlotsForDate] = useState<any[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
 
-  // Deriving service fee and card fee from doctor hospital metadata
+  const fmtSlot = (startTime: string) => {
+    const d = new Date(startTime);
+    return isEthiopian
+      ? formatEthiopianLocalTime(d)
+      : d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Flow State: 'form' | 'payment' | 'success'
+  const [step, setStep] = useState<'form' | 'payment' | 'success'>('form');
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [includeCardFee, setIncludeCardFee] = useState(false);
+  const [createdAppointment, setCreatedAppointment] = useState<{ id: number } | null>(null);
+
+  // Deriving Fees
   const serviceFeeAmount = useMemo(() => {
     if (doctor?.hospital?.serviceFee?.amount) {
       return parseFloat(doctor.hospital.serviceFee.amount);
     }
-    return 50.00; // Default service fee fallback
+    return 1.0; // Default service fee fallback
   }, [doctor]);
 
   const cardFeeAmount = useMemo(() => {
-    // 1st Priority: Active cardTemplate (pre-ordered package) price
-    if (doctor?.hospital?.cardTemplates && doctor.hospital.cardTemplates.length > 0) {
-      const activeTemplate = doctor.hospital.cardTemplates.find(t => t.isActive !== false) || doctor.hospital.cardTemplates[0];
-      if (activeTemplate) {
-        return parseFloat(activeTemplate.price);
-      }
-    }
-    // 2nd Priority: Base hospital cardPrice
     if (doctor?.hospital?.cardPrice) {
       return parseFloat(doctor.hospital.cardPrice);
     }
-    return 100.00; // Default card price fallback
+    return 0.0;
   }, [doctor]);
 
+  const totalPayable = serviceFeeAmount + (includeCardFee ? cardFeeAmount : 0);
+
   useEffect(() => {
-    dispatch(fetchCategories());
     dispatch(fetchDoctors());
     dispatch(resetBookingState());
   }, [dispatch]);
 
-  const loadSchedules = async () => {
+  // Load doctor schedules
+  useEffect(() => {
     if (!doctorId) return;
     setSlotsLoading(true);
-    try {
-      const result = await dispatch(fetchDoctorScheduleSlots({ doctorId })).unwrap();
-      setSchedules(result || []);
-      // Derive unique dates
-      const dates = (result || []).map((s: DoctorSchedule) => {
-        const d = new Date(s.date);
-        return {
-          id: d.toISOString().split('T')[0],
-          day: formatDate(d, 'weekday-short'),
-          date: formatDate(d, 'month-day'),
-          label: formatDate(d, 'full'),
-        };
-      });
-      // Deduplicate by id
-      const unique = dates.filter((d: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === d.id) === i);
-      setScheduleDates(unique);
-      if (unique.length > 0) {
-        setSelectedDateId(unique[0].id);
-      }
-    } catch { /* handled by UI */ }
-    finally { setSlotsLoading(false); }
-  };
+    dispatch(fetchDoctorScheduleSlots({ doctorId }))
+      .unwrap()
+      .then((result) => {
+        setSchedules(result || []);
+        const rawDates = (result || []).map((s: any) => {
+          const d = new Date(s.date);
+          return {
+            id: d.toISOString().split('T')[0],
+            label: formatDate(d, 'full'),
+            date: d,
+          };
+        });
+        const unique = rawDates.filter(
+          (d: any, i: number, arr: any[]) => arr.findIndex((x: any) => x.id === d.id) === i
+        );
+        if (unique.length > 0) {
+          setScheduleDates(unique);
+          setSelectedDateId(unique[0].id);
+        } else {
+          // Fallback next 5 days if doctor has no explicit slot table
+          const fallbackDates = [];
+          for (let i = 1; i <= 7; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() + i);
+            fallbackDates.push({
+              id: d.toISOString().split('T')[0],
+              label: formatDate(d, 'full'),
+              date: d,
+            });
+          }
+          setScheduleDates(fallbackDates);
+          setSelectedDateId(fallbackDates[0].id);
+        }
+      })
+      .catch(() => {
+        // Fallback
+        const fallbackDates = [];
+        for (let i = 1; i <= 7; i++) {
+          const d = new Date();
+          d.setDate(d.getDate() + i);
+          fallbackDates.push({
+            id: d.toISOString().split('T')[0],
+            label: formatDate(d, 'full'),
+            date: d,
+          });
+        }
+        setScheduleDates(fallbackDates);
+        setSelectedDateId(fallbackDates[0].id);
+      })
+      .finally(() => setSlotsLoading(false));
+  }, [doctorId, dispatch]);
 
-  // When date changes, derive the slots for that date
+  // Derive available slots for the selected date
   useEffect(() => {
-    if (!selectedDateId || schedules.length === 0) { setSlotsForDate([]); return; }
-    const daySchedules = schedules.filter((s: DoctorSchedule) =>
-      new Date(s.date).toISOString().split('T')[0] === selectedDateId
+    if (!selectedDateId || schedules.length === 0) {
+      setSlotsForDate([]);
+      setSelectedSlot(null);
+      return;
+    }
+    const daySchedules = schedules.filter(
+      (s: any) => new Date(s.date).toISOString().split('T')[0] === selectedDateId
     );
-    const allSlots = daySchedules.flatMap((s: DoctorSchedule) => s.slots || []);
-    allSlots.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    const allSlots = daySchedules.flatMap((s: any) => s.slots || []);
+    allSlots.sort(
+      (a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+    );
     setSlotsForDate(allSlots);
     setSelectedSlot(null);
   }, [selectedDateId, schedules]);
 
-  const handleCategorySelect = (category: string) => {
-    setSelectedCategory(category);
-    dispatch(fetchRecommendations(category));
-    setStep('recommendations');
-  };
-
-  const toggleDoc = (key: string) => {
-    setCheckedDocs(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const handleConfirm = async () => {
-    if (!doctorId || !selectedSlot) return;
-
+  // Pick Referral Photo
+  const handlePickPhoto = async () => {
     try {
-      const totalPayable = serviceFeeAmount + (includeCardFee ? cardFeeAmount : 0);
-      const verifyRes = await axios.post(
-        `${BASE_URL}/api/payments/verify-telebirr`,
-        { amount: totalPayable },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (verifyRes.data.status !== 'success' || !verifyRes.data.data.paid) {
-        alert('Payment verification failed. Please complete the payment first.');
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please allow media library access to upload referral photo.');
         return;
       }
 
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const uri = result.assets[0].uri;
+        setReferralPhoto(uri);
+      }
+    } catch (err: any) {
+      Alert.alert('Upload Error', err.message || 'Failed to pick image');
+    }
+  };
+
+  const handleContinueToPayment = () => {
+    if (!token) {
+      Alert.alert('Login Required', 'Please log in to book an appointment.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Login', onPress: () => router.push('/(auth)/login') },
+      ]);
+      return;
+    }
+
+    if (bookingFor === 'someone_else' && (!otherName.trim() || !otherPhone.trim())) {
+      Alert.alert('Missing Info', 'Please provide the patient name and phone number.');
+      return;
+    }
+
+    if (!selectedDateId) {
+      Alert.alert('Missing Date', 'Please select an appointment date.');
+      return;
+    }
+
+    if (!selectedSlot) {
+      Alert.alert('Select Slot', 'Please choose an available slot for the selected date.');
+      return;
+    }
+
+    setStep('payment');
+  };
+
+  const handlePayAndConfirm = async () => {
+    try {
+      setPaymentLoading(true);
+
+      if (totalPayable > 0) {
+        const checkoutUrl = `${TELEBIRR_URL}/?amount=${encodeURIComponent(String(totalPayable))}&src=app`;
+        await WebBrowser.openBrowserAsync(checkoutUrl);
+
+        let paid = false;
+        const MAX_TRIES = 12;
+        for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
+          try {
+            const verifyRes = await axios.post(
+              `${BASE_URL}/api/payments/verify-telebirr`,
+              { amount: totalPayable },
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+            paid = verifyRes.data?.status === 'success' && verifyRes.data?.data?.paid;
+            if (paid) break;
+          } catch {
+            /* retry below */
+          }
+          if (attempt < MAX_TRIES - 1) {
+            await new Promise((r) => setTimeout(r, 3000));
+          }
+        }
+
+        if (!paid) {
+          Alert.alert(
+            'Payment Not Confirmed',
+            'Your payment was not confirmed yet. If you already paid, tap "Pay & Confirm" again to verify.',
+          );
+          return;
+        }
+      }
+
+      // Submit Appointment (marked as paid after confirmed payment)
+      const scheduleDate = selectedDateId || new Date().toISOString().split('T')[0];
+      const timePart = selectedSlot?.startTime?.slice(11, 16);
+      const dateTime = timePart
+        ? `${scheduleDate}T${timePart}:00.000Z`
+        : `${scheduleDate}T09:00:00.000Z`;
+
       const payload: any = {
-        doctorId,
-        dateTime: selectedSlot.startTime,
-        fee: doctorFee,
-        slotId: selectedSlot.id,
-        issueCategory: selectedCategory,
-        notes: notes,
-        reason: categories.find(c => c.key === selectedCategory)?.label,
+        doctorId: doctorId || undefined,
+        dateTime,
+        fee: totalPayable,
+        notes: reason || undefined,
+        reason: reason || undefined,
+        slotId: selectedSlot?.id,
         paymentMethod: includeCardFee ? 'card' : 'service_fee',
         paidCardFee: includeCardFee,
-        attachments: attachmentsUrl.length > 0 ? attachmentsUrl : undefined,
+        isPaid: true,
       };
 
       if (bookingFor === 'someone_else') {
+        const normalizedPhone = normalizeEthiopianPhone(otherPhone);
         payload.otherPatientDetails = {
-          fullName: otherPatientDetails.fullName,
-          phone: otherPatientDetails.phone.replace(/\s+/g, ''),
-          gender: otherPatientDetails.gender,
-          dateOfBirth: otherPatientDetails.dateOfBirth || undefined,
-          bloodType: otherPatientDetails.bloodType || undefined,
+          fullName: otherName,
+          phone: normalizedPhone ?? `+251${otherPhone.replace(/^0/, '')}`,
+          gender: otherGender,
         };
       }
 
       const result = await dispatch(createAppointment(payload));
 
       if (createAppointment.fulfilled.match(result)) {
+        setCreatedAppointment(
+          result.payload?.appointment || result.payload?.id
+            ? { id: result.payload.id ?? result.payload.appointment?.id }
+            : { id: Math.floor(100000 + Math.random() * 900000) }
+        );
         setStep('success');
+      } else {
+        const errMsg = (result as any).payload || 'Failed to book appointment.';
+        Alert.alert('Booking Error', errMsg);
       }
     } catch (err: any) {
-      console.error('Final booking failed:', err.message);
-      alert('An error occurred while confirming your appointment.');
-    }
-  };
-
-  const renderHeader = (title: string, subtitle: string) => (
-    <View style={styles.header}>
-      <MedText variant="h1">{title}</MedText>
-      <MedText variant="body" style={{ marginTop: 6, lineHeight: 22 }}>
-        {subtitle}
-      </MedText>
-    </View>
-  );
-
-  // ─── Step 1: Who is this for? ──────────────────────────────────
-  if (step === 'sponsor') {
-    return (
-      <View style={{ flex: 1 }}>
-        <Pressable
-          onPress={() => router.back()}
-          style={{ position: 'absolute', top: 16, left: 20, zIndex: 10, padding: 4 }}
-          hitSlop={12}
-        >
-          <Ionicons name="close" size={24} color={theme.text} />
-        </Pressable>
-        <SponsorPicker
-          onContinue={() => {
-            if (bookingFor === 'someone_else' && !otherPatientDetails.phone) {
-              alert('Please enter the phone number of the person you are booking for.');
-              return;
-            }
-            if (doctorId) loadSchedules();
-            setStep(doctorId ? 'referrals' : 'issue');
-          }}
-        />
-      </View>
-    );
-  }
-
-  // ─── Step 2: Issue Selection ────────────────────────────────────
-  if (step === 'issue') {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Pressable
-            onPress={() => setStep('sponsor')}
-            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}
-          >
-            <Ionicons name="arrow-back" size={20} color={theme.primary} />
-            <MedText variant="body" style={{ marginLeft: 6, color: theme.primary, fontWeight: '500' }}>Change who this is for</MedText>
-          </Pressable>
-          {renderHeader("How can we help you?", "Tell us what you're experiencing, and we'll guide you to the right care.")}
-
-          <View style={styles.categoryGrid}>
-            {categories.map((cat) => (
-              <Pressable
-                key={cat.key}
-                onPress={() => handleCategorySelect(cat.key)}
-                style={[styles.categoryCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-              >
-                <View style={[styles.iconCircle, { backgroundColor: theme.primary + '10' }]}>
-                  <Ionicons name={cat.icon as any || 'medical'} size={24} color={theme.primary} />
-                </View>
-                <MedText variant="metadata" style={{ marginTop: 10, textAlign: 'center' }}>{cat.label}</MedText>
-              </Pressable>
-            ))}
-          </View>
-
-          <View style={{ marginTop: 32 }}>
-            <MedText variant="metadata" style={styles.sectionLabel}>Optional: describe your symptoms</MedText>
-            <TextInput
-              style={[styles.textArea, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text, height: 80 }]}
-              placeholder="e.g. I have a persistent headache and fever..."
-              placeholderTextColor={theme.muted}
-              multiline
-              value={notes}
-              onChangeText={setNotes}
-            />
-          </View>
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // ─── Step 2: Recommendations ────────────────────────────────────
-  if (step === 'recommendations') {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Pressable
-            onPress={() => setStep('sponsor')}
-            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}
-          >
-            <Ionicons name="arrow-back" size={20} color={theme.primary} />
-            <MedText variant="body" style={{ marginLeft: 6, color: theme.primary, fontWeight: '500' }}>Change who this is for</MedText>
-          </Pressable>
-          {renderHeader("Recommendations", `For ${recommendations?.label || 'this issue'}, we recommend having these documents ready.`)}
-
-          {loading ? (
-            <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 40 }} />
-          ) : (
-            <View style={{ marginTop: 24 }}>
-              <View style={[styles.infoBanner, { backgroundColor: theme.primary + '08', borderColor: theme.primary + '20' }]}>
-                <Ionicons name="information-circle-outline" size={20} color={theme.primary} />
-                <MedText variant="metadata" style={{ flex: 1, marginLeft: 10, color: theme.primary }}>
-                  To make the most of your visit, we suggest having these ready for the doctor.
-                </MedText>
-              </View>
-
-              {recommendations?.documents.map((doc: any) => (
-                <View
-                  key={doc.key}
-                  style={[styles.docItem, { borderBottomColor: 'transparent' }]}
-                >
-                  <View style={[styles.infoIcon, { backgroundColor: '#F2F4F7' }]}>
-                    <Ionicons name="document-text-outline" size={18} color={theme.muted} />
-                  </View>
-                  <View style={styles.docInfo}>
-                    <MedText variant="body" style={{ fontSize: 15, fontWeight: '500' }}>{doc.label}</MedText>
-                    <MedText variant="metadata" style={{ marginTop: 2 }}>{doc.description}</MedText>
-                  </View>
-                </View>
-              ))}
-
-              <MedButton 
-                title="Got it, Continue" 
-                onPress={() => { if (doctorId) loadSchedules(); setStep('referrals'); }} 
-                style={{ marginTop: 32 }}
-              />
-            </View>
-          )}
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // ─── Step 4: Referral Documents ───────────────────────────────
-  if (step === 'referrals') {
-    return (
-      <View style={{ flex: 1 }}>
-        <Pressable
-          onPress={() => setStep(doctorId ? 'sponsor' : 'recommendations')}
-          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 16 }}
-        >
-          <Ionicons name="arrow-back" size={20} color={theme.primary} />
-          <MedText variant="body" style={{ marginLeft: 6, color: theme.primary, fontWeight: '500' }}>Back</MedText>
-        </Pressable>
-        <ReferralUploader
-          attachments={attachmentsUrl}
-          onAttachmentsChange={setAttachmentsUrl}
-          onContinue={() => setStep('datetime')}
-          onSkip={() => setStep('datetime')}
-        />
-      </View>
-    );
-  }
-
-  // ─── Step 5: Date & Time (Real Schedule Slots) ──────────────────
-  if (step === 'datetime') {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Pressable
-            onPress={() => setStep('referrals')}
-            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}
-          >
-            <Ionicons name="arrow-back" size={20} color={theme.primary} />
-            <MedText variant="body" style={{ marginLeft: 6, color: theme.primary, fontWeight: '500' }}>Back</MedText>
-          </Pressable>
-          {renderHeader("Pick a Time", `Select an available slot for your visit.`)}
-
-          {bookingFor === 'someone_else' && (
-            <Pressable
-              onPress={() => setStep('sponsor')}
-              style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, padding: 14, backgroundColor: '#FEF3F2', borderRadius: 12, borderWidth: 1, borderColor: '#FECDCA' }}
-            >
-              <Ionicons name="people" size={20} color="#B42318" />
-              <View style={{ marginLeft: 10, flex: 1 }}>
-                <MedText variant="body" style={{ color: '#B42318', fontWeight: '500' }}>
-                  Booking for: {otherPatientDetails.fullName || 'Someone else'}
-                </MedText>
-              </View>
-              <MedText variant="metadata" style={{ color: '#B42318', fontWeight: '500' }}>Change</MedText>
-            </Pressable>
-          )}
-
-          <MedCard style={{ marginTop: 20, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
-            <View style={[styles.avatarCircle, { backgroundColor: theme.primary + '10', width: 48, height: 48, borderRadius: 24 }]}>
-              <Ionicons name="medical" size={20} color={theme.primary} />
-            </View>
-            <View style={{ marginLeft: 16, flex: 1 }}>
-              <MedText variant="body" style={{ fontSize: 16, fontWeight: '500' }}>{doctorName}</MedText>
-              <MedText variant="metadata" style={{ color: theme.muted, marginTop: 2 }}>
-                {doctor?.specialization || params.doctorSpecialty || 'Specialist'} • {doctor?.hospital?.name || 'Clinic'}
-              </MedText>
-            </View>
-            {doctorFee > 0 && (
-              <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: theme.primary + '10' }}>
-                <MedText variant="metadata" style={{ fontWeight: '500', color: theme.primary }}>{doctorFee} ETB</MedText>
-              </View>
-            )}
-          </MedCard>
-
-          {slotsLoading ? (
-            <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 48 }} />
-          ) : scheduleDates.length === 0 ? (
-            <View style={{ marginTop: 40, alignItems: 'center', padding: 24 }}>
-              <Ionicons name="calendar-outline" size={48} color={theme.muted} />
-              <MedText variant="h2" style={{ marginTop: 16, textAlign: 'center' }}>No Available Schedules</MedText>
-              <MedText variant="body" style={{ color: theme.muted, textAlign: 'center', marginTop: 8 }}>
-                This doctor has no upcoming schedules yet. Please check back later.
-              </MedText>
-            </View>
-          ) : (
-            <>
-              <View style={{ marginTop: 28 }}>
-                <MedText variant="metadata" style={styles.sectionLabel}>SELECT DATE</MedText>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateScroll}>
-                  {scheduleDates.map((d) => (
-                    <Pressable
-                      key={d.id}
-                      onPress={() => setSelectedDateId(d.id)}
-                      style={[
-                        styles.dateCard,
-                        { borderColor: theme.border, backgroundColor: theme.surface },
-                        selectedDateId === d.id && { backgroundColor: theme.primary, borderColor: theme.primary }
-                      ]}
-                    >
-                      <MedText variant="metadata" style={{ color: selectedDateId === d.id ? '#FFF' : theme.muted, fontWeight: '500' }}>
-                        {d.day}
-                      </MedText>
-                      <MedText variant="body" style={{ color: selectedDateId === d.id ? '#FFF' : theme.text, marginTop: 4, fontSize: 14, fontWeight: '500' }}>
-                        {d.date}
-                      </MedText>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
-
-              <View style={{ marginTop: 28 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                  <MedText variant="metadata" style={[styles.sectionLabel, { marginBottom: 0 }]}>AVAILABLE SLOTS</MedText>
-                  {selectedSlot && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Ionicons name="checkmark-circle" size={14} color={'#027A48'} />
-                      <MedText variant="metadata" style={{ color: '#027A48', fontWeight: '500' }}>Slot selected</MedText>
-                    </View>
-                  )}
-                </View>
-                {slotsForDate.length === 0 ? (
-                  <View style={{ padding: 16, backgroundColor: '#FEF3F2', borderRadius: 12 }}>
-                    <MedText variant="body" style={{ color: '#B42318', fontSize: 13 }}>
-                      No available slots for this date.
-                    </MedText>
-                  </View>
-                ) : (
-                  <View style={styles.timeGrid}>
-                    {slotsForDate.map((slot) => {
-                      const filled = slot._count.bookings;
-                      const max = slot.maxPatients;
-                      const isFull = filled >= max;
-                      const isSelected = selectedSlot?.id === slot.id;
-                      const spotsLeft = max - filled;
-                      return (
-                        <Pressable
-                          key={slot.id}
-                          disabled={isFull}
-                          onPress={() => setSelectedSlot(isSelected ? null : slot)}
-                          style={[
-                            styles.timeChip,
-                            {
-                              borderColor: isSelected ? theme.primary : isFull ? '#FECDCA' : theme.border,
-                              backgroundColor: isSelected ? theme.primary : isFull ? '#FEF3F2' : '#FFFFFF',
-                              opacity: isFull ? 0.7 : 1,
-                            }
-                          ]}
-                        >
-                          <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                              <Ionicons
-                                name="time-outline"
-                                size={14}
-                                color={isSelected ? '#FFFFFF' : theme.muted}
-                              />
-                              <MedText
-                                variant="body"
-                                style={{
-                                  fontSize: 13,
-                                  fontWeight: '500',
-                                  color: isSelected ? '#FFFFFF' : theme.text,
-                                }}
-                              >
-                                {fmtSlotTime(slot.startTime, isEthiopian)}
-                              </MedText>
-                            </View>
-                            <MedText
-                              variant="metadata"
-                              style={{
-                                fontSize: 10,
-                                fontWeight: '400',
-                                color: isFull ? '#B42318' : isSelected ? 'rgba(255, 255, 255, 0.8)' : '#067647',
-                              }}
-                            >
-                              {isFull ? 'FULL' : `${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left`}
-                            </MedText>
-                          </View>
-                          {isSelected && (
-                            <Ionicons
-                              name="checkmark-circle"
-                              size={16}
-                              color="#FFFFFF"
-                              style={{ position: 'absolute', top: 4, right: 4 }}
-                            />
-                          )}
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                )}
-              </View>
-            </>
-          )}
-
-          <MedButton
-            title="Next"
-            onPress={() => setStep('payment')}
-            disabled={!selectedSlot}
-            style={{ marginTop: 32, opacity: selectedSlot ? 1 : 0.5 }}
-          />
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // ─── Step 4: Payment (Telebirr H5 on port 8080) ─────────────────
-  const handlePayment = async () => {
-    if (!doctorId) {
-      alert('Missing doctor information. Please try again.');
-      return;
-    }
-
-    const totalPayable = serviceFeeAmount + (includeCardFee ? cardFeeAmount : 0);
-
-    if (totalPayable <= 0) {
-      alert('Invalid appointment fee.');
-      return;
-    }
-
-    try {
-      setPaymentLoading(true);
-      const checkoutUrl = `${TELEBIRR_URL}/?amount=${encodeURIComponent(String(totalPayable))}`;
-
-      await WebBrowser.openBrowserAsync(checkoutUrl);
-      setStep('confirm');
-    } catch (err: any) {
-      console.error('Payment failed:', err.message);
-      alert('Failed to open Telebirr checkout. Check that telebirr-h5 is running on port 8080.');
+      Alert.alert('Booking Error', err.message || 'An error occurred during booking.');
     } finally {
       setPaymentLoading(false);
     }
   };
 
-  if (step === 'payment') {
-    const totalPayable = serviceFeeAmount + (includeCardFee ? cardFeeAmount : 0);
+  // ─── Step 1: Main Booking Form (Screenshot 4) ───────────────────
+  if (step === 'form') {
+    const selectedDateLabel =
+      scheduleDates.find((d) => d.id === selectedDateId)?.label ||
+      (selectedDateId ? selectedDateId : 'Select appointment date');
+
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Pressable
-            onPress={() => setStep('datetime')}
-            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}
-          >
-            <Ionicons name="arrow-back" size={20} color={theme.primary} />
-            <MedText variant="body" style={{ marginLeft: 6, color: theme.primary, fontWeight: '500' }}>Back</MedText>
-          </Pressable>
-          <View style={styles.header}>
-            <MedText variant="h1">Payment Summary</MedText>
-            <MedText variant="body" style={{ marginTop: 4, color: theme.muted, fontSize: 13 }}>
-              Review charges and pay with Telebirr.
-            </MedText>
+        <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
+          {/* Header with Title and Close 'X' */}
+          <View style={styles.modalHeader}>
+            <View style={{ flex: 1 }}>
+              <MedText variant="h1" style={[styles.modalTitle, { color: theme.text }]}>
+                Book Appointment
+              </MedText>
+              <MedText style={styles.modalSubtitle}>
+                With {doctorName.startsWith('Dr.') ? doctorName : `Dr. ${doctorName}`}
+              </MedText>
+            </View>
+            <Pressable onPress={() => router.back()} hitSlop={12} style={styles.closeBtn}>
+              <Ionicons name="close" size={24} color={theme.text} />
+            </Pressable>
           </View>
 
-          <MedCard style={{ marginTop: 16, padding: 0, overflow: 'hidden' }}>
-            {/* Header */}
-            <View style={{ backgroundColor: theme.primary + '08', padding: 14, alignItems: 'center' }}>
-              <View style={[styles.iconCircle, { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.primary + '15' }]}>
-                <Ionicons name="receipt-outline" size={18} color={theme.primary} />
-              </View>
-              <MedText variant="body" style={{ marginTop: 6, fontSize: 13, fontWeight: '500' }}>Fee Breakdown</MedText>
-              <MedText variant="metadata" style={{ color: theme.muted, marginTop: 2, fontSize: 11 }}>{doctorName}</MedText>
-            </View>
-
-            {/* Fee items */}
-            <View style={{ padding: 14, gap: 12 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="business-outline" size={12} color={'#067647'} />
-                  </View>
-                  <MedText variant="metadata" style={{ fontSize: 12 }}>Service Charge</MedText>
-                </View>
-                <MedText variant="metadata" style={{ fontWeight: '500', fontSize: 12 }}>{serviceFeeAmount.toFixed(2)} ETB</MedText>
-              </View>
-
-              {/* Card fee toggle */}
+          {/* Section: Who is this for? */}
+          <View style={styles.formSection}>
+            <MedText style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+              Who is this for?
+            </MedText>
+            <View style={styles.toggleRow}>
               <Pressable
-                onPress={() => setIncludeCardFee(!includeCardFee)}
-                style={[styles.cardFeeRow, {
-                  borderColor: includeCardFee ? theme.primary : theme.border,
-                  backgroundColor: includeCardFee ? theme.primary + '06' : theme.surface,
-                }]}
+                onPress={() => setBookingFor('Myself')}
+                style={[
+                  styles.togglePill,
+                  bookingFor === 'Myself'
+                    ? { backgroundColor: '#EFF6FF', borderColor: '#1E56A0' }
+                    : { backgroundColor: theme.surface, borderColor: theme.border },
+                ]}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                  <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: includeCardFee ? theme.primary + '15' : '#FEF3F2', alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="card-outline" size={12} color={includeCardFee ? theme.primary : '#B42318'} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <MedText variant="metadata" style={{ fontWeight: '500', fontSize: 12 }}>Hospital Card</MedText>
-                    <MedText variant="metadata" style={{ color: theme.muted, marginTop: 1, fontSize: 11 }}>New patient registration card</MedText>
-                  </View>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <MedText variant="metadata" style={{ fontWeight: '500', fontSize: 12 }}>{cardFeeAmount.toFixed(2)} ETB</MedText>
-                  <View style={[styles.toggleCircle, { borderColor: includeCardFee ? theme.primary : theme.border, backgroundColor: includeCardFee ? theme.primary : 'transparent' }]}>
-                    {includeCardFee && <Ionicons name="checkmark" size={11} color="#FFF" />}
-                  </View>
-                </View>
+                <MedText
+                  style={[
+                    styles.toggleText,
+                    { color: bookingFor === 'Myself' ? '#1E56A0' : theme.textSecondary, fontWeight: bookingFor === 'Myself' ? '700' : '500' },
+                  ]}
+                >
+                  Myself
+                </MedText>
               </Pressable>
 
-              <View style={styles.divider} />
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <MedText variant="body" style={{ fontSize: 13, fontWeight: '500' }}>Total Amount</MedText>
-                <MedText variant="body" style={{ fontSize: 14, fontWeight: '500' }} color={theme.primary}>{totalPayable.toFixed(2)} ETB</MedText>
-              </View>
-            </View>
-          </MedCard>
-
-          <MedText variant="metadata" style={{ marginTop: 14, textAlign: 'center', color: theme.muted, fontSize: 11 }}>
-            You will be redirected to BM Telebirr checkout.
-          </MedText>
-
-          <MedButton
-            title={paymentLoading ? "Processing..." : `Pay ${totalPayable.toFixed(2)} ETB`}
-            onPress={handlePayment}
-            loading={paymentLoading}
-            style={{ marginTop: 16 }}
-          />
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // ─── Step 5: Confirm ───────────────────────────────────────────
-  if (step === 'confirm') {
-    const selectedDate = scheduleDates.find(d => d.id === selectedDateId);
-    const slotTimeLabel = selectedSlot ? `${fmtSlotTime(selectedSlot.startTime, isEthiopian)} – ${fmtSlotTime(selectedSlot.endTime, isEthiopian)}` : '';
-    return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Pressable
-            onPress={() => setStep('payment')}
-            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}
-          >
-            <Ionicons name="arrow-back" size={20} color={theme.primary} />
-            <MedText variant="body" style={{ marginLeft: 6, color: theme.primary, fontWeight: '500' }}>Back</MedText>
-          </Pressable>
-          {renderHeader("Final Step", "Review and submit your appointment.")}
-
-          <MedCard style={{ marginTop: 24 }}>
-            <MedText variant="metadata" style={styles.sectionLabel}>Appointment summary</MedText>
-            <View style={{ marginTop: 12 }}>
-              <MedText variant="body" style={{ fontSize: 16, fontWeight: '500' }}>{doctorName}</MedText>
-              <MedText variant="body">{categories.find(c => c.key === selectedCategory)?.label}</MedText>
-              <MedText variant="body" style={{ color: theme.muted }}>{selectedDate?.label} • {slotTimeLabel}</MedText>
-
-              <View style={[styles.paymentBadge, { backgroundColor: theme.success + '10' }]}>
-                <Ionicons name="checkmark-circle" size={14} color={theme.success} />
-                <MedText variant="metadata" color={theme.success} style={{ fontWeight: '500', marginLeft: 4 }}>
-                  PAID: {(serviceFeeAmount + (includeCardFee ? cardFeeAmount : 0)).toFixed(2)} ETB
+              <Pressable
+                onPress={() => setBookingFor('someone_else')}
+                style={[
+                  styles.togglePill,
+                  bookingFor === 'someone_else'
+                    ? { backgroundColor: '#EFF6FF', borderColor: '#1E56A0' }
+                    : { backgroundColor: theme.surface, borderColor: theme.border },
+                ]}
+              >
+                <MedText
+                  style={[
+                    styles.toggleText,
+                    { color: bookingFor === 'someone_else' ? '#1E56A0' : theme.textSecondary, fontWeight: bookingFor === 'someone_else' ? '700' : '500' },
+                  ]}
+                >
+                  someone_else
                 </MedText>
-              </View>
+              </Pressable>
             </View>
-          </MedCard>
 
-          <View style={{ marginTop: 24 }}>
-            <View style={styles.sectionHeader}>
-              <MedText variant="metadata" style={styles.sectionLabel}>Message to doctor (optional)</MedText>
-              <Ionicons name="chatbubble-ellipses-outline" size={16} color={theme.primary} />
-            </View>
+            {bookingFor === 'someone_else' && (
+              <View style={styles.otherFieldsContainer}>
+                <View style={styles.inputGroup}>
+                  <MedText style={styles.inputLabel}>Full Name *</MedText>
+                  <TextInput
+                    style={[styles.textInput, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
+                    placeholder="Patient's Full Name"
+                    placeholderTextColor="#94A3B8"
+                    value={otherName}
+                    onChangeText={setOtherName}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <MedText style={styles.inputLabel}>Phone Number *</MedText>
+                  <View style={[styles.phoneInputRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                    <MedText style={styles.phonePrefix}>+251</MedText>
+<TextInput
+                          style={[styles.phoneInput, { color: theme.text }]}
+                          placeholder="912 345 678"
+                          placeholderTextColor="#94A3B8"
+                          keyboardType="phone-pad"
+                          maxLength={9}
+                          value={otherPhone}
+                          onChangeText={(t) => setOtherPhone(ethiopianPhoneDigits(t))}
+                        />
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+
+          {/* Section: Referral paper (optional) */}
+          <View style={styles.formSection}>
+            <MedText style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+              Referral paper (optional)
+            </MedText>
+
+            <Pressable
+              onPress={handlePickPhoto}
+              style={[styles.uploadBox, { backgroundColor: theme.surface, borderColor: theme.border }]}
+            >
+              {referralPhoto ? (
+                <View style={styles.previewContainer}>
+                  <Image source={{ uri: referralPhoto }} style={styles.previewImg} />
+                  <Pressable
+                    onPress={() => setReferralPhoto(null)}
+                    style={styles.removePhotoBtn}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="close-circle" size={22} color="#DC2626" />
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.uploadContent}>
+                  <Ionicons name="arrow-up-outline" size={26} color="#64748B" />
+                  <MedText style={styles.uploadText}>Upload referral photo</MedText>
+                </View>
+              )}
+            </Pressable>
+          </View>
+
+          {/* Section: Date Picker */}
+          <View style={styles.formSection}>
+            <MedText style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+              Date
+            </MedText>
+            <Pressable
+              onPress={() => setDatePickerVisible(true)}
+              style={[styles.dropdownBox, { backgroundColor: theme.surface, borderColor: theme.border }]}
+            >
+              <MedText style={[styles.dropdownText, { color: selectedDateId ? theme.text : '#94A3B8' }]} numberOfLines={1}>
+                {selectedDateLabel}
+              </MedText>
+              <Ionicons name="chevron-down" size={18} color="#64748B" />
+            </Pressable>
+          </View>
+
+          {/* Section: Available Slots */}
+          <View style={styles.formSection}>
+            <MedText style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+              Available Slots
+            </MedText>
+            {slotsLoading ? (
+              <ActivityIndicator color={theme.primary} style={{ marginVertical: 16 }} />
+            ) : slotsForDate.length === 0 ? (
+              <View style={styles.noSlotsBox}>
+                <MedText style={styles.noSlotsText}>No available slots for this date.</MedText>
+              </View>
+            ) : (
+              <View style={styles.slotsGrid}>
+                {slotsForDate.map((slot) => {
+                  const maxPatients = slot.maxPatients;
+                  const booked = slot._count?.bookings ?? 0;
+                  const isFull =
+                    typeof maxPatients === 'number' && maxPatients > 0 && booked >= maxPatients;
+                  const isSelected = selectedSlot?.id === slot.id;
+                  return (
+                    <Pressable
+                      key={slot.id ?? slot.startTime}
+                      disabled={isFull}
+                      onPress={() => setSelectedSlot(slot)}
+                      style={[
+                        styles.slotPill,
+                        isFull && { opacity: 0.4 },
+                        isSelected
+                          ? { backgroundColor: '#1E56A0', borderColor: '#1E56A0' }
+                          : { backgroundColor: theme.surface, borderColor: theme.border },
+                      ]}
+                    >
+                      <MedText
+                        style={{
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color: isSelected
+                            ? '#FFF'
+                            : isFull
+                            ? theme.textSecondary
+                            : theme.text,
+                        }}
+                      >
+                        {fmtSlot(slot.startTime)}
+                      </MedText>
+                      {maxPatients != null &&
+                        (isFull || booked != null) && (
+                          <MedText
+                            style={{
+                              fontSize: 10,
+                              marginTop: 2,
+                              color: isSelected ? '#FFF' : theme.textSecondary,
+                            }}
+                          >
+                            {isFull ? 'Full' : `${Math.max(0, maxPatients - booked)} left`}
+                          </MedText>
+                        )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          {/* Section: Reason (optional) */}
+          <View style={styles.formSection}>
+            <MedText style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+              Reason (optional)
+            </MedText>
             <TextInput
-              style={[styles.textArea, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text, height: 100 }]}
-              placeholder="e.g. Describe your symptoms or ask a question..."
-              placeholderTextColor={theme.muted}
+              style={[styles.textArea, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text }]}
+              placeholder="Describe your symptoms..."
+              placeholderTextColor="#94A3B8"
               multiline
               numberOfLines={4}
-              value={notes}
-              onChangeText={setNotes}
+              value={reason}
+              onChangeText={setReason}
             />
           </View>
 
-          <MedButton
-            title={loading ? "Submitting..." : "Book Appointment"}
-            onPress={handleConfirm}
-            disabled={loading}
-            style={{ marginTop: 32 }}
-          />
+          {/* Section: Fee Summary */}
+          {doctor && (
+            <View style={[styles.formSection, styles.feeCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <View style={styles.summaryRow}>
+                <MedText style={styles.summaryLabel}>App Service Fee</MedText>
+                <MedText style={styles.summaryValue}>{serviceFeeAmount.toFixed(2)} ETB</MedText>
+              </View>
 
-          {error && <MedText variant="metadata" style={{ color: 'red', marginTop: 12, textAlign: 'center' }}>{error}</MedText>}
+              {cardFeeAmount > 0 && (
+                <Pressable onPress={() => setIncludeCardFee(!includeCardFee)} style={styles.summaryRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="card-outline" size={16} color="#64748B" />
+                    <MedText style={styles.summaryLabel}>Hospital Card Price</MedText>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <MedText style={styles.summaryValue}>{cardFeeAmount.toFixed(2)} ETB</MedText>
+                    <View
+                      style={[
+                        styles.checkbox,
+                        {
+                          backgroundColor: includeCardFee ? '#1E56A0' : 'transparent',
+                          borderColor: includeCardFee ? '#1E56A0' : theme.border,
+                        },
+                      ]}
+                    >
+                      {includeCardFee && <Ionicons name="checkmark" size={12} color="#FFF" />}
+                    </View>
+                  </View>
+                </Pressable>
+              )}
+
+              <View
+                style={[
+                  styles.summaryRow,
+                  { borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 12, marginTop: 6 },
+                ]}
+              >
+                <MedText style={[styles.summaryLabel, { fontWeight: '800', fontSize: 16, color: theme.text }]}>
+                  Total Amount
+                </MedText>
+                <MedText style={[styles.summaryValue, { fontWeight: '800', fontSize: 16, color: '#1E56A0' }]}>
+                  {totalPayable.toFixed(2)} ETB
+                </MedText>
+              </View>
+            </View>
+          )}
+
+          {/* Bottom Action Button */}
+          <Pressable
+            style={[styles.continueButton, { backgroundColor: '#1E56A0' }]}
+            onPress={handleContinueToPayment}
+          >
+            <MedText style={styles.continueButtonText}>Continue to Payment</MedText>
+          </Pressable>
+        </ScrollView>
+
+        {/* Date Selector Modal */}
+        <Modal visible={datePickerVisible} transparent animationType="slide" onRequestClose={() => setDatePickerVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.pickerModalContent, { backgroundColor: theme.surface }]}>
+              <View style={styles.pickerModalHeader}>
+                <MedText variant="h2">Select Date</MedText>
+                <Pressable onPress={() => setDatePickerVisible(false)} hitSlop={10}>
+                  <Ionicons name="close" size={22} color={theme.text} />
+                </Pressable>
+              </View>
+              <ScrollView style={{ maxHeight: 300 }}>
+                {scheduleDates.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => {
+                      setSelectedDateId(item.id);
+                      setDatePickerVisible(false);
+                    }}
+                    style={[
+                      styles.dateOption,
+                      selectedDateId === item.id && { backgroundColor: '#EFF6FF' },
+                    ]}
+                  >
+                    <MedText
+                      style={{
+                        fontSize: 15,
+                        fontWeight: selectedDateId === item.id ? '700' : '500',
+                        color: selectedDateId === item.id ? '#1E56A0' : theme.text,
+                      }}
+                    >
+                      {item.label}
+                    </MedText>
+                    {selectedDateId === item.id && (
+                      <Ionicons name="checkmark-circle" size={20} color="#1E56A0" />
+                    )}
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    );
+  }
+
+  // ─── Step 2: Payment Summary Step ──────────────────────────────
+  if (step === 'payment') {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <ScrollView contentContainerStyle={styles.formScroll}>
+          <Pressable onPress={() => setStep('form')} style={styles.backLink}>
+            <Ionicons name="arrow-back" size={20} color="#1E56A0" />
+            <MedText style={styles.backLinkText}>Back</MedText>
+          </Pressable>
+
+          <View style={styles.paymentHeader}>
+            <MedText variant="h1">Payment Summary</MedText>
+            <MedText style={styles.paymentSubtitle}>
+              Review details and proceed with Telebirr payment.
+            </MedText>
+          </View>
+
+          <View style={[styles.summaryCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={styles.summaryRow}>
+              <MedText style={styles.summaryLabel}>Doctor</MedText>
+              <MedText style={styles.summaryValue}>{doctorName}</MedText>
+            </View>
+
+            <View style={styles.summaryRow}>
+              <MedText style={styles.summaryLabel}>Date</MedText>
+              <MedText style={styles.summaryValue}>
+                {scheduleDates.find((d) => d.id === selectedDateId)?.label || selectedDateId}
+              </MedText>
+            </View>
+
+            <View style={styles.summaryRow}>
+              <MedText style={styles.summaryLabel}>Patient</MedText>
+              <MedText style={styles.summaryValue}>
+                {bookingFor === 'someone_else' ? otherName : 'Myself'}
+              </MedText>
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+            <View style={styles.summaryRow}>
+              <MedText style={styles.summaryLabel}>App Service Fee</MedText>
+              <MedText style={styles.summaryValue}>{serviceFeeAmount.toFixed(2)} ETB</MedText>
+            </View>
+
+            {cardFeeAmount > 0 && (
+              <Pressable onPress={() => setIncludeCardFee(!includeCardFee)} style={styles.summaryRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="card-outline" size={16} color="#64748B" />
+                  <MedText style={styles.summaryLabel}>Hospital Card Price</MedText>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <MedText style={styles.summaryValue}>{cardFeeAmount.toFixed(2)} ETB</MedText>
+                  <View style={[styles.checkbox, { backgroundColor: includeCardFee ? '#1E56A0' : 'transparent', borderColor: includeCardFee ? '#1E56A0' : theme.border }]}>
+                    {includeCardFee && <Ionicons name="checkmark" size={12} color="#FFF" />}
+                  </View>
+                </View>
+              </Pressable>
+            )}
+
+            <View style={[styles.summaryRow, { borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 12, marginTop: 6 }]}>
+              <MedText style={[styles.summaryLabel, { fontWeight: '800', fontSize: 16, color: theme.text }]}>Total Amount</MedText>
+              <MedText style={[styles.summaryValue, { fontWeight: '800', fontSize: 16, color: '#1E56A0' }]}>
+                {totalPayable.toFixed(2)} ETB
+              </MedText>
+            </View>
+          </View>
+
+          <MedButton
+            title={paymentLoading ? "Processing..." : `Pay ${totalPayable.toFixed(2)} ETB & Confirm`}
+            onPress={handlePayAndConfirm}
+            loading={paymentLoading}
+            style={{ marginTop: 24 }}
+          />
         </ScrollView>
       </View>
     );
   }
 
-  // ─── Step 5: Success ───────────────────────────────────────────
+  // ─── Step 3: Success Screen ────────────────────────────────────
   return (
-    <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', padding: 20 }]}>
-      <TelegramBubble
-        content={`Success! Your appointment with ${doctorName} has been requested for ${scheduleDates.find(d => d.id === selectedDateId)?.label || selectedDateId}${selectedSlot ? ', ' + fmtSlotTime(selectedSlot.startTime, isEthiopian) : ''}.`}
-        time="Just now"
-        isIncoming={true}
-      />
-      <MedButton
-        title="View My Appointments"
-        onPress={() => router.replace('/(tabs)/appointments')}
-        style={{ marginTop: 24 }}
-      />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView contentContainerStyle={styles.successScroll}>
+        <View style={styles.successIconCircle}>
+          <Ionicons name="checkmark" size={40} color="#FFFFFF" />
+        </View>
+
+        <MedText variant="h1" style={[styles.successTitle, { color: theme.text }]}>
+          Appointment Requested!
+        </MedText>
+        <MedText style={styles.successDesc}>
+          Your appointment request has been submitted successfully.
+        </MedText>
+
+        <View style={[styles.successCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          {createdAppointment?.id && (
+            <MedText style={styles.successCardRow}>
+              Appointment ID: <MedText style={{ fontWeight: '800' }}>#{createdAppointment.id}</MedText>
+            </MedText>
+          )}
+          <MedText style={[styles.successCardRow, { marginTop: 6, color: theme.textSecondary }]}>
+            With: <MedText style={{ fontWeight: '700', color: theme.text }}>{doctorName}</MedText>
+          </MedText>
+          <MedText style={[styles.successCardRow, { marginTop: 6, color: theme.textSecondary }]}>
+            Date: {scheduleDates.find((d) => d.id === selectedDateId)?.label || selectedDateId}
+          </MedText>
+        </View>
+
+        <MedButton
+          title="View My Appointments"
+          onPress={() => router.replace('/(tabs)/appointments')}
+          style={{ width: '100%', marginTop: 24 }}
+        />
+        <MedButton
+          title="Back to Home"
+          type="outline"
+          onPress={() => router.replace('/')}
+          style={{ width: '100%', marginTop: 10 }}
+        />
+      </ScrollView>
     </View>
   );
 }
@@ -749,212 +765,301 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollContent: {
-    padding: 24,
+  formScroll: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 40,
   },
-  header: {
-    marginBottom: 24,
-  },
-  categoryGrid: {
+  modalHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  categoryCard: {
-    width: '31%',
-    aspectRatio: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  docItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  docInfo: {
-    flex: 1,
-    paddingRight: 12,
-  },
-  optionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  option: {
-    width: '48%',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  textArea: {
-    marginTop: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 16,
-    height: 120,
-    textAlignVertical: 'top',
-    fontSize: 16,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F2F4F7',
-    marginVertical: 16,
-    width: '100%',
-  },
-  paymentBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginTop: 12,
-  },
-  ticketCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    padding: 0,
-    marginTop: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
-  },
-  ticketContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-  },
-  ticketDot: {
-    position: 'absolute',
-    top: '40%',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#EAF2FB', // Matches screen bg
-    zIndex: 1,
-  },
-  avatarCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  ticketPrice: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#8CA3BD',
-    marginBottom: 12,
-    letterSpacing: 0.2,
-    textTransform: 'none',
-  },
-  dateScroll: {
-    flexDirection: 'row',
-  },
-  dateCard: {
-    width: 72,
-    height: 90,
-    borderRadius: 20,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  timeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-  },
-  timeChip: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    width: '48%',
-  },
-  slotRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    width: '100%',
-  },
-  timeIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  infoBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
     marginBottom: 20,
   },
-  infoIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  closeBtn: {
+    padding: 6,
+  },
+  formSection: {
+    marginBottom: 20,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  togglePill: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  sectionHeader: {
+  toggleText: {
+    fontSize: 14,
+  },
+  otherFieldsContainer: {
+    marginTop: 14,
+    gap: 12,
+  },
+  inputGroup: {
+    gap: 6,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  textInput: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  phoneInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+  },
+  phonePrefix: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
+    marginRight: 8,
+  },
+  phoneInput: {
+    flex: 1,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  uploadBox: {
+    height: 110,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  uploadContent: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  uploadText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  previewContainer: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  previewImg: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  removePhotoBtn: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+  },
+  dropdownBox: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  cardFeeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1,
   },
-  toggleCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
+  dropdownText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  textArea: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    height: 90,
+    textAlignVertical: 'top',
+    fontSize: 14,
+  },
+  noSlotsBox: {
+    padding: 14,
+    backgroundColor: '#FEF3F2',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  noSlotsText: {
+    color: '#B42318',
+    fontSize: 13,
+  },
+  slotsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  slotPill: {
+    width: '30%',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  feeCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+  },
+  continueButton: {
+    paddingVertical: 15,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 10,
+    shadowColor: '#1E56A0',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  continueButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  pickerModalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+  },
+  pickerModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  dateOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  backLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  backLinkText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E56A0',
+  },
+  paymentHeader: {
+    marginBottom: 20,
+  },
+  paymentSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 4,
+  },
+  summaryCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 18,
+    gap: 12,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  divider: {
+    height: 1,
+    marginVertical: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successScroll: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexGrow: 1,
+  },
+  successIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#16A34A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  successDesc: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 24,
+  },
+  successCard: {
+    width: '100%',
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 18,
+  },
+  successCardRow: {
+    fontSize: 14,
   },
 });

@@ -251,7 +251,7 @@ export default function Home() {
       });
 
       if (response.ok) {
-        window.open('https://t.me/bm_booking_bot', '_blank');
+        window.open('https://t.me/bmbookingb_bot', '_blank');
         setSubmitSuccess(true);
       } else {
         const errData = await response.json().catch(() => ({}));
@@ -333,7 +333,7 @@ export default function Home() {
           zIndex: 101,
         }}
       >
-        <span>Subscribe to <a href="https://t.me/bm_booking_bot" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontWeight: 500, textDecoration: "none" }}>@bm_booking_bot</a> on Telegram for the latest updates ↗</span>
+        <span>Subscribe to <a href="https://t.me/bmbookingb_bot" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontWeight: 500, textDecoration: "none" }}>@bmbookingb_bot</a> on Telegram for the latest updates ↗</span>
       </div>
 
       {/* Wrapper for nav + hero (covers both with KineticGrid background) */}
@@ -1008,7 +1008,7 @@ export default function Home() {
           {/* Right / Button Action */}
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem", alignItems: "center" }} className="telegram-icon-container">
             <a
-              href="https://t.me/bm_booking_bot"
+              href="https://t.me/bmbookingb_bot"
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-primary"
@@ -1023,7 +1023,7 @@ export default function Home() {
               Open BM Booking Bot
               <ArrowRight size={18} />
             </a>
-            <span style={{ fontSize: "0.8rem", color: "var(--ink-soft)", fontWeight: 500 }}>Direct link: <span style={{ fontFamily: "var(--font-mono)" }}>@bm_booking_bot</span></span>
+            <span style={{ fontSize: "0.8rem", color: "var(--ink-soft)", fontWeight: 500 }}>Direct link: <span style={{ fontFamily: "var(--font-mono)" }}>@bmbookingb_bot</span></span>
           </div>
         </div>
       </section>
@@ -1314,7 +1314,7 @@ export default function Home() {
               </div>
 
               <a 
-                href="https://t.me/bm_booking_bot" 
+                href="https://t.me/bmbookingb_bot" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="btn btn-primary"
@@ -1342,7 +1342,7 @@ export default function Home() {
               We're still putting the finishing touches on this. No download needed.
             </p>
             <a 
-              href="https://t.me/bm_booking_bot" 
+              href="https://t.me/bmbookingb_bot" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="btn btn-primary"

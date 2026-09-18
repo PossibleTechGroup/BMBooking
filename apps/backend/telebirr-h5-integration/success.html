@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Payment Successful — BM Booking</title>
+  <title>Payment Result — BM Booking</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -13,6 +13,7 @@
       --text-primary: #101828;
       --text-secondary: #667085;
       --success: #027A48;
+      --warn: #B54708;
       --border: #E4E7EC;
       --font: 'Inter', system-ui, sans-serif;
     }
@@ -40,11 +41,12 @@
       height: 72px;
       margin: 0 auto 24px;
       border-radius: 50%;
-      background: rgba(2, 122, 72, 0.08);
       display: flex;
       align-items: center;
       justify-content: center;
+      background: rgba(2, 122, 72, 0.08);
     }
+    .icon.warn { background: rgba(181, 71, 8, 0.08); }
     .icon svg {
       width: 36px;
       height: 36px;
@@ -54,6 +56,7 @@
       stroke-linecap: round;
       stroke-linejoin: round;
     }
+    .icon.warn svg { stroke: var(--warn); }
     h1 {
       font-size: 22px;
       font-weight: 600;
@@ -90,41 +93,94 @@
 </head>
 <body>
   <div class="card">
-    <div class="icon">
+    <div class="icon" id="statusIcon">
       <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
     </div>
-    <h1>Payment Successful</h1>
-    <p id="successMsg">Your Telebirr payment was completed. You can return to BM Booking App.</p>
-    <a href="https://bmbookingtelegrambot.possibletechplc.com/patient/appointments" class="btn" id="returnBtn">Return to BM Booking App</a>
-    <p class="meta" id="returnToTelegram" style="display:none;font-size:14px;color:var(--text-secondary);margin-bottom:16px;line-height:1.5">Your payment is received. Go back to Telegram and continue in the BM Booking chat.</p>
+    <h1 id="statusTitle">Payment Successful</h1>
+    <p id="successMsg">Your Telebirr payment was completed. Taking you back to the BM Booking app...</p>
+    <button class="btn" id="returnBtn">Back to BM Booking now</button>
+    <p class="meta" id="returnToTelegram" style="display:none;font-size:14px;color:var(--text-secondary);margin-bottom:16px;line-height:1.5">Returning you to the BM Booking app — your appointment is being saved.</p>
     <p class="meta" id="orderMeta"></p>
   </div>
   <script>
     const params = new URLSearchParams(window.location.search);
-    const fromTg = params.get('from') === 'tg';
+    // Source of the payment request: 'tg' = Telegram bot/mini-app, 'app' = mobile app.
+    const source = params.get('src') === 'tg' ? 'tg' : 'app';
+    const isTelegram = source === 'tg';
+
     const order = params.get('out_trade_no') || params.get('merch_order_id') || params.get('trade_no');
     const status = params.get('trade_status') || params.get('trade_status_desc');
+    const titleEl = document.getElementById('statusTitle');
+    const msgEl = document.getElementById('successMsg');
+    const iconEl = document.getElementById('statusIcon');
+    const btnEl = document.getElementById('returnBtn');
+
     if (order || status) {
       document.getElementById('orderMeta').textContent =
         [order && 'Order: ' + order, status && 'Status: ' + status].filter(Boolean).join(' · ');
     }
 
-    if (fromTg) {
-      // Inside Telegram's in-app browser a custom scheme (bmbooking://) cannot
-      // be opened and would show "Cannot get html". Keep the page self-contained
-      // so the user can simply go back to the chat and continue.
-      document.getElementById('returnBtn').style.display = 'none';
-      document.getElementById('successMsg').textContent =
-        'Your Telebirr payment was completed. Go back to Telegram to finish booking your appointment.';
-      document.getElementById('returnToTelegram').style.display = 'block';
-    } else {
-      // Return to the BM Booking web app (same origin the payment started from,
-      // so the pending booking in sessionStorage survives and the appointment
-      // is created automatically).
-      const returnTo = params.get('returnTo') || 'https://bmbookingtelegrambot.possibletechplc.com/patient/appointments';
-      const btn = document.getElementById('returnBtn');
-      if (btn) btn.href = returnTo;
+    const isOk = !status || /SUCCESS|COMPLETED/.test(status.toUpperCase());
+
+    // Return targets: Telegram bot deep link or mobile app deep link.
+    const TELEGRAM_HOME_URL = 'https://t.me/bmbookingb_bot/Bmbooking?startapp=home';
+    const MOBILE_APP_URL = 'bm-booking://payment-success';
+
+    const backLabel = isTelegram ? 'Telegram' : 'mobile app';
+
+    if (!isOk) {
+      iconEl.classList.add('warn');
+      iconEl.querySelector('path').setAttribute('d', 'M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z');
+      titleEl.textContent = 'Payment Not Completed';
+      msgEl.textContent = 'Telebirr did not confirm a payment. Returning you to the ' + backLabel + ' — you can try again from the app.';
     }
+
+    btnEl.textContent = 'Back to ' + (isTelegram ? 'Telegram now' : 'Mobile app now');
+
+    // Send the user back to wherever they started (bot -> bot, app -> app).
+    const returnUrl = isTelegram ? TELEGRAM_HOME_URL : MOBILE_APP_URL;
+    let returned = false;
+    const returnHome = () => {
+      if (returned) return;
+      returned = true;
+      document.getElementById('returnToTelegram').style.display = 'block';
+      msgEl.textContent = isOk
+        ? 'Payment confirmed — taking you back to the BM Booking ' + backLabel + '. Your appointment is being saved.'
+        : 'Heading back to the BM Booking ' + backLabel + ' — you can retry the payment from there.';
+      btnEl.style.display = 'none';
+      setTimeout(function () { window.location.replace(returnUrl); }, 1000);
+    };
+
+    const recorded = () => {
+      msgEl.textContent = 'Payment confirmed by Telebirr — taking you back to the BM Booking ' + backLabel + '. Your appointment is being saved.';
+    };
+
+    // Reconcile with the Telebirr paygate directly (the async webhook is
+    // sometimes never delivered). When confirmed, the H5 records the payment
+    // server-side and the app can finish the booking.
+    let reconcileAttempts = 0;
+    const reconcile = () => {
+      if (returned || !order || !/^ORD[A-Za-z0-9]+$/.test(order) || reconcileAttempts >= 30) return;
+      reconcileAttempts++;
+      fetch(window.location.origin + '/order-status?refNo=' + encodeURIComponent(order), { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((j) => {
+          if (j && j.paid) { recorded(); returnHome(); }
+          else setTimeout(reconcile, 2000);
+        })
+        .catch(() => setTimeout(reconcile, 2000));
+    };
+
+    reconcile();
+
+    // Give the reconcile a moment to confirm; then hand back to the source app.
+    setTimeout(returnHome, 9000);
+
+    // Manual fallback in case a browser blocks the automatic redirect.
+    btnEl.addEventListener('click', function (e) {
+      e.preventDefault();
+      returnHome();
+    });
   </script>
 </body>
 </html>

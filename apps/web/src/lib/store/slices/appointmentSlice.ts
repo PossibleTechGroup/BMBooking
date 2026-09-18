@@ -20,6 +20,12 @@ export interface Appointment {
     specialization: string;
     profilePicture?: string;
     clinicName?: string;
+    hospital?: {
+      id?: number;
+      name?: string;
+      phone?: string | null;
+      receptionistPhone?: string | null;
+    };
   };
   patient?: {
     phone: string;

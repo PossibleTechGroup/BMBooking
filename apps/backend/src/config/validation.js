@@ -281,6 +281,23 @@ const schemas = {
     photo: Joi.any(),
   }),
 
+  createEquipmentBulkByReceptionist: Joi.object({
+    items: Joi.array()
+      .items(
+        Joi.object({
+          name: Joi.string().min(2).max(200).required(),
+          category: Joi.string().valid(...equipmentCategories).required(),
+          price: Joi.number().min(0).optional(),
+          operatingHours: Joi.any(),
+          duration: Joi.number().integer().min(10).default(30),
+          isOperational: Joi.boolean().default(true),
+          description: Joi.string().max(1000).optional(),
+        })
+      )
+      .min(1)
+      .required(),
+  }),
+
   createEquipmentBookingByReceptionist: Joi.object({
     patientId: Joi.number().integer().required(),
     equipmentId: Joi.number().integer().required(),

@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { useEffect } from 'react';
-import { Calendar, Stethoscope, Wrench, LogOut, LayoutDashboard, ChevronLeft, ChevronRight, Building2, UserRound, Scale, Bell } from 'lucide-react';
+import { Calendar, Stethoscope, Wrench, LogOut, LayoutDashboard, ChevronLeft, ChevronRight, Building2, UserRound, Scale, Bell, HeartPulse } from 'lucide-react';
 import { logout } from '../store/slices/authSlice';
 import { fetchUnreadCount } from '../store/slices/notificationSlice';
 import type { RootState } from '../store';
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/doctors', icon: UserRound, label: 'Doctors' },
   { to: '/schedules', icon: Calendar, label: 'Schedules' },
   { to: '/appointments', icon: Stethoscope, label: 'Appointments' },
+  { to: '/patients', icon: HeartPulse, label: 'Patients' },
   { to: '/equipment', icon: Wrench, label: 'Equipment' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
   { to: '/hospital', icon: Building2, label: 'Hospital' },

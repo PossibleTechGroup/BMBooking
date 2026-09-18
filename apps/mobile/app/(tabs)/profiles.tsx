@@ -92,7 +92,7 @@ export default function ProfilesScreen() {
     <Pressable onPress={onPress}>
       <MedCard style={styles.settingCard}>
         <View style={styles.settingRow}>
-          <View style={[styles.settingIcon, { backgroundColor: "#F3F4F6" }]}>
+          <View style={[styles.settingIcon, { backgroundColor: theme.secondaryBg }]}>
             <Ionicons name={icon} size={20} color={theme.secondary} />
           </View>
           <View style={styles.settingContent}>
@@ -138,7 +138,7 @@ export default function ProfilesScreen() {
     value: boolean,
     onValueChange: (value: boolean) => void,
   ) => (
-    <View style={styles.switchRow}>
+    <View style={[styles.switchRow, { borderBottomColor: theme.border }]}>
       <View style={styles.switchText}>
         <MedText variant="body" style={styles.switchTitle}>
           {title}
@@ -150,7 +150,7 @@ export default function ProfilesScreen() {
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: "#D8E3F0", true: "#A6F4C5" }}
+        trackColor={{ false: theme.border, true: "#A6F4C5" }}
         thumbColor={value ? theme.success : "#FFFFFF"}
       />
     </View>
@@ -463,13 +463,115 @@ export default function ProfilesScreen() {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <View style={styles.header}>
-        <MedText variant="h1">Profile</MedText>
+        <MedText variant="h1" style={[styles.headerTitle, { color: theme.text }]}>Profile</MedText>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {/* Profile Header */}
+        <View style={styles.profileHeader}>
+          <MedText variant="h1" style={[styles.profileName, { color: theme.text }]}>
+            {displayName}
+          </MedText>
+          <MedText variant="body" style={[styles.profilePhone, { color: theme.textSecondary }]}>
+            {displayPhone}
+          </MedText>
+        </View>
+
+        {/* Personal Information */}
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <MedText style={[styles.cardSectionTitle, { color: theme.textSecondary }]}>
+            Personal Information
+          </MedText>
+          <View style={[styles.profileRow, { borderBottomColor: theme.border }]}>
+            <View style={styles.profileRowLeft}>
+              <Ionicons name="calendar-outline" size={16} color={theme.textSecondary} />
+              <MedText style={[styles.profileRowLabel, { color: theme.text }]}>Date of Birth</MedText>
+            </View>
+            <MedText style={[styles.profileRowValue, { color: theme.textSecondary }]}>
+              {patientProfile?.dateOfBirth ? formatDate(new Date(patientProfile.dateOfBirth), 'full') : 'Not set'}
+            </MedText>
+          </View>
+          <View style={[styles.profileRow, { borderBottomColor: theme.border }]}>
+            <View style={styles.profileRowLeft}>
+              <Ionicons name="male-female-outline" size={16} color={theme.textSecondary} />
+              <MedText style={[styles.profileRowLabel, { color: theme.text }]}>Gender</MedText>
+            </View>
+            <MedText style={[styles.profileRowValue, { color: theme.textSecondary }]}>
+              {patientProfile?.gender || 'Not set'}
+            </MedText>
+          </View>
+          <View style={[styles.profileRow, { borderBottomColor: theme.border }]}>
+            <View style={styles.profileRowLeft}>
+              <Ionicons name="water-outline" size={16} color={theme.textSecondary} />
+              <MedText style={[styles.profileRowLabel, { color: theme.text }]}>Blood Type</MedText>
+            </View>
+            <MedText style={[styles.profileRowValue, { color: theme.textSecondary }]}>
+              {patientProfile?.bloodType || 'Not set'}
+            </MedText>
+          </View>
+          <View style={styles.profileRow}>
+            <View style={styles.profileRowLeft}>
+              <Ionicons name="call-outline" size={16} color={theme.textSecondary} />
+              <MedText style={[styles.profileRowLabel, { color: theme.text }]}>Emergency</MedText>
+            </View>
+            <MedText style={[styles.profileRowValue, { color: theme.textSecondary }]}>
+              {patientProfile?.emergencyContact || 'Not set'}
+            </MedText>
+          </View>
+        </View>
+
+        {/* Preferences */}
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <MedText style={[styles.cardSectionTitle, { color: theme.textSecondary }]}>Preferences</MedText>
+
+          <MedText style={[styles.prefLabel, { color: theme.textSecondary }]}>Time Format</MedText>
+          <View style={styles.prefToggleRow}>
+            <Pressable
+              onPress={() => { if (isEthiopian) toggleTimeFormat(); }}
+              style={[styles.prefToggle, !isEthiopian && { borderColor: theme.primary, backgroundColor: theme.primary }, isEthiopian && { borderColor: theme.border, backgroundColor: 'transparent' }]}
+            >
+              <Ionicons name="time-outline" size={16} color={!isEthiopian ? '#FFFFFF' : theme.textSecondary} />
+              <MedText style={{ fontSize: 13, fontWeight: '500', color: !isEthiopian ? '#FFFFFF' : theme.textSecondary }}>
+                Standard (AM/PM)
+              </MedText>
+            </Pressable>
+            <Pressable
+              onPress={() => { if (!isEthiopian) toggleTimeFormat(); }}
+              style={[styles.prefToggle, isEthiopian && { borderColor: theme.primary, backgroundColor: theme.primary }, !isEthiopian && { borderColor: theme.border, backgroundColor: 'transparent' }]}
+            >
+              <Ionicons name="time-outline" size={16} color={isEthiopian ? '#FFFFFF' : theme.textSecondary} />
+              <MedText style={{ fontSize: 13, fontWeight: '500', color: isEthiopian ? '#FFFFFF' : theme.textSecondary }}>
+                Ethiopian
+              </MedText>
+            </Pressable>
+          </View>
+
+          <MedText style={[styles.prefLabel, { color: theme.textSecondary }]}>Calendar</MedText>
+          <View style={styles.prefToggleRow}>
+            <Pressable
+              onPress={() => { if (isEthiopianCalendar) toggleCalendar(); }}
+              style={[styles.prefToggle, !isEthiopianCalendar && { borderColor: theme.primary, backgroundColor: theme.primary }, isEthiopianCalendar && { borderColor: theme.border, backgroundColor: 'transparent' }]}
+            >
+              <Ionicons name="calendar-outline" size={16} color={!isEthiopianCalendar ? '#FFFFFF' : theme.textSecondary} />
+              <MedText style={{ fontSize: 13, fontWeight: '500', color: !isEthiopianCalendar ? '#FFFFFF' : theme.textSecondary }}>
+                Gregorian
+              </MedText>
+            </Pressable>
+            <Pressable
+              onPress={() => { if (!isEthiopianCalendar) toggleCalendar(); }}
+              style={[styles.prefToggle, isEthiopianCalendar && { borderColor: theme.primary, backgroundColor: theme.primary }, !isEthiopianCalendar && { borderColor: theme.border, backgroundColor: 'transparent' }]}
+            >
+              <Ionicons name="calendar-outline" size={16} color={isEthiopianCalendar ? '#FFFFFF' : theme.textSecondary} />
+              <MedText style={{ fontSize: 13, fontWeight: '500', color: isEthiopianCalendar ? '#FFFFFF' : theme.textSecondary }}>
+                Ethiopian
+              </MedText>
+            </Pressable>
+          </View>
+        </View>
+
         <View>
             <MedText variant="h2" style={styles.sectionTitle}>
               Account Settings
@@ -496,14 +598,6 @@ export default function ProfilesScreen() {
               "lock-closed-outline",
               () => setSettingsModal("privacy"),
             )}
-            {renderSettingRow(
-              "Date & Time",
-              isEthiopianCalendar
-                ? (isEthiopian ? "Ethiopian calendar · ቀን/ሌሊት" : "Ethiopian calendar · AM/PM")
-                : (isEthiopian ? "Gregorian calendar · ቀን/ሌሊት" : "Gregorian calendar · AM/PM"),
-              "time-outline",
-              () => setSettingsModal("timeformat"),
-            )}
 
 
             {/* Logout Button */}
@@ -512,11 +606,12 @@ export default function ProfilesScreen() {
                 onPress={() => dispatch(logout())}
                 style={({ pressed }) => [
                   styles.logoutBtn,
-                  pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] },
+                  { borderColor: theme.danger },
+                  pressed && { backgroundColor: theme.danger },
                 ]}
               >
-                <Ionicons name="log-out-outline" size={20} color="#D92D20" />
-                <MedText style={styles.logoutText}>Sign Out Account</MedText>
+                <Ionicons name="log-out-outline" size={18} color={theme.danger} />
+                <MedText style={[styles.logoutText, { color: theme.danger }]}>Logout</MedText>
               </Pressable>
             </View>
 
@@ -535,13 +630,76 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
     marginBottom: 16,
+  },
+  card: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  cardSectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 8,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  profileRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  profileRowLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  profileRowValue: {
+    fontSize: 14,
+  },
+  prefLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    paddingTop: 14,
+    paddingBottom: 8,
+  },
+  prefToggleRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  prefToggle: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    borderWidth: 1.5,
   },
   settingCard: {
     padding: 16,
@@ -579,7 +737,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
     paddingVertical: 14,
   },
   switchText: {
@@ -607,7 +764,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
   },
   modalBody: {
     padding: 20,
@@ -616,15 +772,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FCEBEB",
-    padding: 18,
-    borderRadius: 20,
-    gap: 10,
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
   },
   logoutText: {
-    color: "#D92D20",
-    fontWeight: "700",
-    fontSize: 16,
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  profileHeader: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  profileName: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: "center",
+  },
+  profilePhone: {
+    fontSize: 14,
+    marginTop: 2,
   },
   versionInfo: {
     marginTop: 40,

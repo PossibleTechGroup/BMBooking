@@ -270,8 +270,10 @@ const AdminController = {
         prisma.equipmentBooking.findMany({
           where: { patientId: userId },
           include: {
-            equipment: { select: { id: true, name: true, category: true } },
-            hospital: { select: { id: true, name: true } },
+            equipment: { select: { id: true, name: true, category: true, price: true } },
+            hospital: {
+              select: { id: true, name: true, serviceFee: { select: { amount: true } } },
+            },
           },
           orderBy: { dateTime: 'desc' },
         }),
@@ -392,6 +394,248 @@ const AdminController = {
             appointments: newAppointmentsWeek
           }
         }
+      });
+    } catch (err) {
+      res.status(500).json({ status: 'error', message: err.message });
+    }
+  },
+
+  getAnalytics: async (req, res) => {
+    try {
+      const { from, to, hospitalId, q } = req.query;
+      const start = from ? new Date(`${String(from).slice(0, 10)}T00:00:00.000Z`) : null;
+      const end = to ? new Date(`${String(to).slice(0, 10)}T23:59:59.999Z`) : null;
+      const dateWhere = {};
+      if (start) dateWhere.gte = start;
+      if (end) dateWhere.lte = end;
+      const selectedHospitalId = hospitalId ? parseInt(hospitalId, 10) : null;
+      const selectionWhere = selectedHospitalId ? { hospitalId: selectedHospitalId } : {};
+
+      const [hospitals, patientTotal, doctorTotal, equipmentTotal, appointmentTotal, paidAppointmentCount] =
+        await Promise.all([
+          prisma.hospital.findMany({
+            select: { id: true, name: true, address: true, phone: true },
+          }),
+          prisma.patientProfile.count(),
+          prisma.doctorProfile.count(),
+          prisma.medicalEquipment.count(),
+          prisma.appointment.count({ where: { createdAt: dateWhere } }),
+          prisma.appointment.count({ where: { isPaid: true, createdAt: dateWhere } }),
+        ]);
+
+      const [doctorsByHospital, equipmentByHospital] = await Promise.all([
+        prisma.doctorProfile.groupBy({
+          by: ['hospitalId'],
+          _count: { id: true },
+        }),
+        prisma.medicalEquipment.groupBy({
+          by: ['hospitalId'],
+          _count: { id: true },
+          _sum: { price: true },
+        }),
+      ]);
+
+      const [appointments, equipmentBookings, cards] = await Promise.all([
+        prisma.appointment.findMany({
+          where: {
+            ...(selectedHospitalId ? { doctor: { hospitalId: selectedHospitalId } } : {}),
+            createdAt: dateWhere,
+          },
+          select: {
+            id: true,
+            patientId: true,
+            fee: true,
+            isPaid: true,
+            status: true,
+            createdAt: true,
+            doctor: { select: { hospitalId: true, specialization: true } },
+          },
+        }),
+        prisma.equipmentBooking.findMany({
+          where: { ...selectionWhere, createdAt: dateWhere },
+          select: { id: true, patientId: true, hospitalId: true, fee: true, status: true },
+        }),
+        prisma.card.findMany({
+          where: { ...selectionWhere, createdAt: dateWhere },
+          select: { id: true, patientId: true, hospitalId: true, price: true, isPaid: true },
+        }),
+      ]);
+
+      const doctorMap = new Map(doctorsByHospital.map((d) => [d.hospitalId, d._count.id]));
+      const equipmentMap = new Map(equipmentByHospital.map((e) => [e.hospitalId, e._count.id]));
+
+      const rows = hospitals.map((h) => {
+        const patients = new Set();
+        const hospitalAppointments = selectedHospitalId
+          ? appointments
+          : appointments.filter((a) => a.doctor?.hospitalId === h.id);
+        const hospitalBookings = selectedHospitalId
+          ? equipmentBookings
+          : equipmentBookings.filter((b) => b.hospitalId === h.id);
+        const hospitalCards = selectedHospitalId
+          ? cards
+          : cards.filter((c) => c.hospitalId === h.id);
+
+        hospitalAppointments.forEach((a) => patients.add(a.patientId));
+        hospitalBookings.forEach((b) => patients.add(b.patientId));
+        hospitalCards.forEach((c) => patients.add(c.patientId));
+
+        const paidAppointments = hospitalAppointments.filter((a) => a.isPaid);
+        const revenueBookings = hospitalBookings.filter((b) => b.status === 'confirmed' || b.status === 'completed');
+        const paidCards = hospitalCards.filter((c) => c.isPaid);
+
+        const appointmentRevenue = paidAppointments.reduce((s, a) => s + Number(a.fee), 0);
+        const equipmentRevenue = revenueBookings.reduce((s, b) => s + Number(b.fee || 0), 0);
+        const cardRevenue = paidCards.reduce((s, c) => s + Number(c.price), 0);
+
+        return {
+          id: h.id,
+          name: h.name,
+          address: h.address,
+          phone: h.phone,
+          doctors: selectedHospitalId ? doctorTotal : (doctorMap.get(h.id) || 0),
+          patients: patients.size,
+          appointments: hospitalAppointments.length,
+          paidAppointments: paidAppointments.length,
+          appointmentRevenue,
+          equipment: selectedHospitalId ? equipmentTotal : (equipmentMap.get(h.id) || 0),
+          equipmentBookings: hospitalBookings.length,
+          equipmentRevenue,
+          cards: hospitalCards.length,
+          cardRevenue,
+          totalRevenue: Math.round((appointmentRevenue + equipmentRevenue + cardRevenue) * 100) / 100,
+        };
+      });
+
+      let hospitalRows = rows;
+      if (q) {
+        const term = String(q).toLowerCase().trim();
+        hospitalRows = rows.filter((r) => r.name.toLowerCase().includes(term));
+      }
+      hospitalRows.sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+      const paidAppointments = appointments.filter((a) => a.isPaid);
+      const revenueBookingsAll = equipmentBookings.filter((b) => b.status === 'confirmed' || b.status === 'completed');
+      const paidCardsAll = cards.filter((c) => c.isPaid);
+
+      const revenueBySource = {
+        appointments: Math.round(paidAppointments.reduce((s, a) => s + Number(a.fee), 0) * 100) / 100,
+        equipment: Math.round(revenueBookingsAll.reduce((s, b) => s + Number(b.fee || 0), 0) * 100) / 100,
+        cards: Math.round(paidCardsAll.reduce((s, c) => s + Number(c.price), 0) * 100) / 100,
+      };
+      const totalRevenue = Math.round((revenueBySource.appointments + revenueBySource.equipment + revenueBySource.cards) * 100) / 100;
+
+      const scopeWhere = selectedHospitalId
+        ? { hospitalId: selectedHospitalId }
+        : {};
+
+      const [docBySpec, docByStatus, patientGender, apptByStatus, eqByCategory, hospProfileStatus, registrationPipeline] =
+        await Promise.all([
+          prisma.doctorProfile.groupBy({
+            by: ['specialization'],
+            _count: { id: true },
+            orderBy: { _count: { id: 'desc' } },
+            take: 8,
+          }),
+          prisma.doctorProfile.groupBy({
+            by: ['status'],
+            _count: { id: true },
+          }),
+          prisma.patientProfile.groupBy({
+            by: ['gender'],
+            _count: { id: true },
+          }),
+          prisma.appointment.groupBy({
+            by: ['status'],
+            _count: { id: true },
+            where: {
+              ...(selectedHospitalId ? { doctor: { hospitalId: selectedHospitalId } } : {}),
+              createdAt: dateWhere,
+            },
+            orderBy: { _count: { id: 'desc' } },
+          }),
+          prisma.medicalEquipment.groupBy({
+            by: ['category'],
+            _count: { id: true },
+            where: scopeWhere,
+          }),
+          prisma.hospitalProfile.groupBy({
+            by: ['status'],
+            _count: { id: true },
+          }),
+          prisma.hospitalApplication.count(),
+        ]);
+
+      const [patientCreated, appointmentCreated] = await Promise.all([
+        prisma.patientProfile.findMany({ select: { createdAt: true } }),
+        prisma.appointment.findMany({ select: { createdAt: true } }),
+      ]);
+
+      const growthMap = new Map();
+      const now = new Date();
+      for (let m = 11; m >= 0; m--) {
+        const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - m, 1));
+        const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+        growthMap.set(key, { month: key, patients: 0, appointments: 0 });
+      }
+      patientCreated.forEach((p) => {
+        const key = `${p.createdAt.getUTCFullYear()}-${String(p.createdAt.getUTCMonth() + 1).padStart(2, '0')}`;
+        const bucket = growthMap.get(key);
+        if (bucket) bucket.patients += 1;
+      });
+      appointmentCreated.forEach((a) => {
+        const key = `${a.createdAt.getUTCFullYear()}-${String(a.createdAt.getUTCMonth() + 1).padStart(2, '0')}`;
+        const bucket = growthMap.get(key);
+        if (bucket) bucket.appointments += 1;
+      });
+
+      res.status(200).json({
+        status: 'success',
+        data: {
+          summary: {
+            hospitals: hospitals.length,
+            doctors: doctorTotal,
+            patients: patientTotal,
+            equipment: equipmentTotal,
+            appointments: appointmentTotal,
+            paidAppointments: paidAppointmentCount,
+            equipmentBookings: equipmentBookings.length,
+            cards: cards.length,
+            registrationPipeline,
+            revenue: totalRevenue,
+            revenueBySource,
+          },
+          branches: {
+            hospitals: {
+              total: hospitals.length,
+              approvals: hospProfileStatus.find((s) => s.status === 'APPROVED')?._count.id || 0,
+              pending: hospProfileStatus.find((s) => s.status === 'PENDING')?._count.id || 0,
+            },
+            doctors: {
+              total: doctorTotal,
+              bySpecialization: docBySpec.map((d) => ({ label: d.specialization, value: d._count.id })),
+              byStatus: docByStatus.map((d) => ({ label: d.status, value: d._count.id })),
+            },
+            patients: {
+              total: patientTotal,
+              byGender: patientGender.map((p) => ({ label: p.gender || 'Unspecified', value: p._count.id })),
+            },
+            appointments: {
+              total: appointmentTotal,
+              paid: paidAppointmentCount,
+              byStatus: apptByStatus.map((a) => ({ label: a.status, value: a._count.id })),
+            },
+            equipment: {
+              total: equipmentTotal,
+              operational: await prisma.medicalEquipment.count({
+                where: { ...scopeWhere, isOperational: true },
+              }),
+              byCategory: eqByCategory.map((e) => ({ label: e.category, value: e._count.id })),
+            },
+          },
+          hospitals: hospitalRows,
+          growth: Array.from(growthMap.values()),
+        },
       });
     } catch (err) {
       res.status(500).json({ status: 'error', message: err.message });

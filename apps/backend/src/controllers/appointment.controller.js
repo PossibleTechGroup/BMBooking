@@ -22,6 +22,7 @@ const AppointmentController = {
         paymentMethod,
         cardId,
         paidCardFee,
+        isPaid,
         otherPatientDetails,
       } = req.body;
 
@@ -48,6 +49,7 @@ const AppointmentController = {
           paymentMethod: paymentMethod || 'service_fee',
           cardId: cardId ? parseInt(cardId) : undefined,
           paidCardFee: paidCardFee === true || paidCardFee === 'true',
+          isPaid: isPaid === true || isPaid === 'true',
           otherPatientDetails,
         },
       );

@@ -21,14 +21,14 @@ export const MedCard: React.FC<MedCardProps> = ({ children, style }) => {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    // Subtle elevation
+    // Subtle shadow (matches bot card shadow 0 1px 3px rgba(0,0,0,0.08))
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -7,43 +7,48 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
-  Dimensions,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { MedText } from '../../components/medconnect/MedText';
-import { MedCard } from '../../components/medconnect/MedCard';
-import { MedButton } from '../../components/medconnect/MedButton';
+import { BMHeader } from '../../components/BMHeader';
 import { Colors } from '../../constants/theme';
 import { useColorScheme } from '../../hooks/use-color-scheme';
+import { useUserLocation } from '../../hooks/useUserLocation';
+import { haversineKm } from '../../utils/location';
 import { AppDispatch, RootState } from '../../store';
-import { 
-  searchEquipment, 
-  fetchEquipmentCategories, 
-  fetchEquipmentAnnouncements 
+import {
+  searchEquipment,
+  fetchEquipmentCategories,
 } from '../../store/slices/equipmentSlice';
-import { LanguagePicker } from '../../components/LanguagePicker';
-import { useTranslation } from 'react-i18next';
-import { formatDate } from '../../utils/ethiopianDate';
 
-const { width } = Dimensions.get('window');
-
-const CATEGORY_ICONS: Record<string, any> = {
-  MRI: 'scan-outline',
-  CT_SCAN: 'barcode-outline',
-  DIALYSIS: 'water-outline',
-  ULTRASOUND: 'pulse-outline',
-  XRAY: 'body-outline',
-  VENTILATOR: 'air-outline',
-  ECG: 'heart-outline',
-  MAMMOGRAPHY: 'female-outline',
-  DEFIBRILLATOR: 'flash-outline',
-  OTHER: 'medical-outline',
+const CATEGORY_LABELS: Record<string, string> = {
+  MRI: 'MRI',
+  CT_SCAN: 'CT SCAN',
+  DIALYSIS: 'DIALYSIS',
+  ULTRASOUND: 'ULTRASOUND',
+  XRAY: 'X-Ray',
+  VENTILATOR: 'VENTILATOR',
+  ECG: 'ECG',
+  MAMMOGRAPHY: 'MAMMOGRAPHY',
+  DEFIBRILLATOR: 'DEFIBRILLATOR',
+  OTHER: 'OTHER',
 };
+
+interface CenterGroup {
+  hospitalId: number | null;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  phone: string;
+  services: any[];
+}
 
 export default function EquipmentScreen() {
   const { t } = useTranslation();
@@ -52,247 +57,423 @@ export default function EquipmentScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
 
-  const { searchResults, categories, announcements, loading } = useSelector(
+  const { searchResults, categories, loading, error } = useSelector(
     (state: RootState) => state.equipment
   );
+  const { latitude, longitude } = useUserLocation();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     dispatch(fetchEquipmentCategories());
-    dispatch(fetchEquipmentAnnouncements());
-    handleSearch();
-  }, [dispatch]);
-
-  const onRefresh = useCallback(() => {
-    dispatch(fetchEquipmentCategories());
-    dispatch(fetchEquipmentAnnouncements());
-    dispatch(searchEquipment({ 
-      category: selectedCategory || '', 
-      query: searchQuery || '' 
-    }));
+    dispatch(
+      searchEquipment({
+        category: selectedCategory || '',
+        query: searchQuery || '',
+      })
+    );
   }, [dispatch, selectedCategory, searchQuery]);
 
-  const handleSearch = () => {
-    dispatch(searchEquipment({ 
-      category: selectedCategory || '', 
-      query: searchQuery || '' 
-    }));
-  };
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const onRefresh = useCallback(() => {
+    load();
+  }, [load]);
 
   const onCategoryPress = (category: string) => {
-    const newCategory = selectedCategory === category ? null : category;
+    const newCategory = selectedCategory === category ? null : category || null;
     setSelectedCategory(newCategory);
-    dispatch(searchEquipment({ 
-      category: newCategory || '', 
-      query: searchQuery || '' 
-    }));
   };
 
-  const renderAnnouncement = ({ item }: { item: any }) => (
-    <MedCard style={styles.announcementCard}>
-      <View style={styles.announcementHeader}>
-        <View style={[styles.announcementIcon, { backgroundColor: theme.primary + '10' }]}>
-          <Ionicons name="megaphone-outline" size={20} color={theme.primary} />
-        </View>
-        <MedText variant="metadata" style={{ flex: 1, marginLeft: 8 }}>
-          {formatDate(new Date(item.createdAt), 'medium')}
-        </MedText>
-      </View>
-      <MedText variant="h2" style={{ marginTop: 8 }}>{item.title}</MedText>
-      <MedText variant="body" style={{ marginTop: 4, color: theme.muted }}>
-        {item.message}
-      </MedText>
-      {item.hospitalName && (
-        <View style={styles.announcementFooter}>
-          <Ionicons name="location-outline" size={14} color={theme.muted} />
-          <MedText variant="metadata" style={{ marginLeft: 4 }}>
-            {item.hospitalName}
-          </MedText>
-        </View>
-      )}
-    </MedCard>
-  );
+  const centers = useMemo<CenterGroup[]>(() => {
+    const map = new Map<number | string, CenterGroup>();
+    for (const item of searchResults || []) {
+      const key = item.hospitalId != null ? item.hospitalId : item.hospitalName;
+      if (key == null || !key) continue;
+      let group = map.get(key);
+      if (!group) {
+        group = {
+          hospitalId: item.hospitalId != null ? item.hospitalId : null,
+          name: item.hospitalName || 'Diagnosis Center',
+          address: item.address || '',
+          latitude: item.latitude || 0,
+          longitude: item.longitude || 0,
+          phone: item.hospitalPhone || '',
+          services: [],
+        };
+        map.set(key, group);
+      }
+      group.services.push(item);
+    }
+    return Array.from(map.values());
+  }, [searchResults]);
 
-  const renderEquipmentItem = ({ item }: { item: any }) => (
-    <Pressable onPress={() => router.push(`/item-detail?id=${item.id}`)}>
-      <MedCard style={styles.equipmentCard}>
-        <View style={styles.equipmentInfo}>
-          <View style={{ flex: 1 }}>
-            <MedText variant="h2">{item.name}</MedText>
-            <MedText variant="metadata" style={{ color: theme.primary }}>
-              {t(item.category) || item.category.replace('_', ' ')}
+  const distanceFor = (center: CenterGroup): number | null => {
+    if (latitude == null || longitude == null) return null;
+    if (!center.latitude || !center.longitude) return null;
+    return Math.round(haversineKm(latitude, longitude, center.latitude, center.longitude) * 10) / 10;
+  };
+
+  const renderCenterCard = ({ item }: { item: CenterGroup }) => {
+    const distanceKm = distanceFor(item);
+    const availableCount = item.services.filter((s) => s.isOperational !== false).length;
+    const chips = item.services.slice(0, 3);
+
+    return (
+      <Pressable
+        style={[styles.centerCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+        onPress={() => router.push({ pathname: '/center-detail', params: { id: item.hospitalId } })}
+      >
+        <View style={styles.cardRow}>
+          {/* Left Icon in Rounded Box */}
+          <View style={[styles.centerAvatar, { backgroundColor: '#F1F5F9' }]}>
+            <Ionicons name="business-outline" size={24} color="#1E56A0" />
+          </View>
+
+          {/* Middle Info */}
+          <View style={styles.centerInfo}>
+            <MedText style={[styles.centerTag, { color: theme.primary }]}>
+              DIAGNOSIS CENTER
             </MedText>
-            
-            <View style={styles.hospitalInfo}>
-              <Ionicons name="business-outline" size={14} color={theme.muted} />
-              <MedText variant="body" style={styles.hospitalName}>
-                {item.hospitalName}
+            <MedText variant="body" style={[styles.centerName, { color: theme.text }]} numberOfLines={1}>
+              {item.name}
+            </MedText>
+
+            {item.address ? (
+              <View style={styles.metaRow}>
+                <Ionicons name="location-outline" size={13} color="#64748B" />
+                <MedText style={styles.metaText} numberOfLines={1}>
+                  {item.address}
+                </MedText>
+              </View>
+            ) : null}
+
+            <View style={styles.metaRow}>
+              <Ionicons name="navigate-outline" size={13} color={theme.primary} />
+              <MedText style={[styles.distanceText, { color: theme.primary }]}>
+                {distanceKm != null ? `${distanceKm.toFixed(1)} km away` : 'Distance unavailable'}
+              </MedText>
+              <Ionicons name="pulse-outline" size={13} color="#64748B" style={{ marginLeft: 8 }} />
+              <MedText style={styles.metaText}>
+                {availableCount} {availableCount === 1 ? 'service' : 'services'}
               </MedText>
             </View>
 
-            <View style={styles.locationInfo}>
-              <Ionicons name="location-outline" size={14} color={theme.muted} />
-              <MedText variant="metadata" style={{ marginLeft: 4 }}>
-                {item.address}
-              </MedText>
-            </View>
+            {chips.length > 0 ? (
+              <View style={styles.chipRow}>
+                {chips.map((s, idx) => (
+                  <View key={`${s.id}-${idx}`} style={[styles.chip, { backgroundColor: theme.secondaryBg }]}>
+                    <MedText style={styles.chipText} numberOfLines={1}>
+                      {CATEGORY_LABELS[s.category] || s.category}
+                    </MedText>
+                  </View>
+                ))}
+                {item.services.length > chips.length ? (
+                  <MedText style={[styles.moreText, { color: theme.textSecondary }]}>
+                    +{item.services.length - chips.length} more
+                  </MedText>
+                ) : null}
+              </View>
+            ) : null}
           </View>
 
-          <View style={styles.statusContainer}>
-            <View style={[
-              styles.statusBadge, 
-              { backgroundColor: item.isOperational ? '#ECFDF3' : '#FEF3F2' }
-            ]}>
-              <View style={[
-                styles.statusDot, 
-                { backgroundColor: item.isOperational ? '#027A48' : '#D92D20' }
-              ]} />
-              <MedText 
-                variant="metadata" 
-                style={{ color: item.isOperational ? '#027A48' : '#D92D20', fontWeight: 'bold' }}
-              >
-                {item.isOperational ? t('avail') : t('busy')}
-              </MedText>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.border} style={{ marginTop: 12 }} />
+          {/* Right Arrow */}
+          <View style={styles.chevron}>
+            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
           </View>
         </View>
-      </MedCard>
-    </Pressable>
-  );
+      </Pressable>
+    );
+  };
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView stickyHeaderIndices={[1]} showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} />}
-      >
-        <View style={styles.header}>
-          <MedText variant="h1">Equipments</MedText>
-          <View style={{ marginTop: 8, alignSelf: 'flex-start' }}>
-            <LanguagePicker />
-          </View>
-          <MedText variant="body" style={{ color: theme.muted, marginTop: 12 }}>
-            Find MRI, CT Scan, X-ray, Ultrasound & more near you
-          </MedText>
+      {/* BM Brand Header */}
+      <BMHeader />
+
+      {/* Page Title */}
+      <View style={styles.titleRow}>
+        <MedText variant="h1" style={[styles.pageTitle, { color: theme.text }]}>
+          {t('diagnosisCenters') || 'Diagnosis Centers'}
+        </MedText>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchWrap}>
+        <View style={[styles.searchBar, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Ionicons name="search-outline" size={18} color="#94A3B8" />
+          <TextInput
+            style={[styles.searchInput, { color: theme.text }]}
+            placeholder={t("searchEquipmentPlaceholder") || "Search services or centers..."}
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={load}
+            returnKeyType="search"
+          />
         </View>
+      </View>
 
-        <View style={[styles.searchContainer, { backgroundColor: theme.background }]}>
-          <View style={[styles.searchBar, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Ionicons name="search-outline" size={20} color={theme.muted} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder={t("searchByNameOrCity") || "Search by name or city..."}
-              placeholderTextColor={theme.muted}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearch}
-            />
-          </View>
-
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
-            contentContainerStyle={styles.categoriesList}
+      {/* Horizontal Category Pills */}
+      <View style={styles.categoryScrollWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesList}
+        >
+          <Pressable
+            style={[
+              styles.subTab,
+              !selectedCategory
+                ? { backgroundColor: '#1E56A0', borderColor: '#1E56A0' }
+                : { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+            onPress={() => onCategoryPress('')}
           >
-            {categories.map((cat) => (
+            <MedText
+              style={[
+                styles.subTabText,
+                { color: !selectedCategory ? '#FFFFFF' : theme.textSecondary, fontWeight: !selectedCategory ? '700' : '500' },
+              ]}
+            >
+              All
+            </MedText>
+          </Pressable>
+          {categories.map((cat) => {
+            const active = selectedCategory === cat.category;
+            return (
               <Pressable
                 key={cat.category}
-                onPress={() => onCategoryPress(cat.category)}
                 style={[
-                  styles.categoryChip,
-                  { 
-                    backgroundColor: selectedCategory === cat.category ? theme.primary : theme.surface,
-                    borderColor: theme.border
-                  }
+                  styles.subTab,
+                  active
+                    ? { backgroundColor: '#1E56A0', borderColor: '#1E56A0' }
+                    : { backgroundColor: theme.surface, borderColor: theme.border },
                 ]}
+                onPress={() => onCategoryPress(cat.category)}
               >
-                <Ionicons 
-                  name={CATEGORY_ICONS[cat.category] || 'medical-outline'} 
-                  size={16} 
-                  color={selectedCategory === cat.category ? '#FFF' : theme.primary} 
-                />
-                <MedText 
-                  variant="metadata" 
-                  style={{ 
-                    marginLeft: 6, 
-                    color: selectedCategory === cat.category ? '#FFF' : theme.text,
-                    fontWeight: '600'
-                  }}
+                <MedText
+                  style={[
+                    styles.subTabText,
+                    { color: active ? '#FFFFFF' : theme.textSecondary, fontWeight: active ? '700' : '500' },
+                  ]}
                 >
-                  {t(cat.category) || cat.category.replace('_', ' ')}
+                  {CATEGORY_LABELS[cat.category] || cat.category}
                 </MedText>
               </Pressable>
-            ))}
-          </ScrollView>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Centers List */}
+      {loading && centers.length === 0 ? (
+        <ActivityIndicator color={theme.primary} style={{ marginTop: 40 }} />
+      ) : error && centers.length === 0 ? (
+        <View style={styles.emptyState}>
+          <View style={[styles.emptyIcon, { backgroundColor: theme.secondaryBg }]}>
+            <Ionicons name="cloud-offline-outline" size={32} color={theme.textSecondary} />
+          </View>
+          <MedText style={[styles.emptyTitle, { color: theme.text }]}>
+            {t("equipmentLoadError") || "Couldn't load diagnosis centers"}
+          </MedText>
+          <MedText style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+            {error || (t("checkYourConnection") || "Check your connection and try again.")}
+          </MedText>
+          <Pressable
+            style={[styles.retryButton, { backgroundColor: theme.primary }]}
+            onPress={load}
+          >
+            <MedText style={styles.retryButtonText}>Retry</MedText>
+          </Pressable>
         </View>
-
-        {announcements.length > 0 && !selectedCategory && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MedText variant="h2">Announcements</MedText>
-              <Ionicons name="notifications-outline" size={18} color={theme.primary} />
-            </View>
-            <FlatList
-              data={announcements}
-              renderItem={renderAnnouncement}
-              keyExtractor={(item) => item.id.toString()}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              snapToInterval={width * 0.85 + 16}
-              decelerationRate="fast"
-              contentContainerStyle={{ paddingHorizontal: 20 }}
-            />
+      ) : centers.length === 0 ? (
+        <View style={styles.emptyState}>
+          <View style={[styles.emptyIcon, { backgroundColor: theme.secondaryBg }]}>
+            <Ionicons name="business-outline" size={32} color={theme.textSecondary} />
           </View>
-        )}
-
-        {searchResults.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MedText variant="h2">
-                {selectedCategory ? `${t(selectedCategory) || selectedCategory.replace('_', ' ')} Equipments` : 'All Equipments'}
-              </MedText>
-              {loading && <ActivityIndicator size="small" color={theme.primary} />}
-            </View>
-
-            <FlatList
-              data={searchResults}
-              renderItem={renderEquipmentItem}
-              keyExtractor={(item) => item.id.toString()}
-              scrollEnabled={false}
-              contentContainerStyle={{ paddingHorizontal: 20 }}
-            />
-          </View>
-        )}
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
+          <MedText style={[styles.emptyTitle, { color: theme.text }]}>
+            {t("noEquipmentFound") || "No diagnosis centers found"}
+          </MedText>
+          <MedText style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+            {t("tryDifferentCategory") || "Try selecting another category or different search terms."}
+          </MedText>
+        </View>
+      ) : (
+        <FlatList
+          data={centers}
+          renderItem={renderCenterCard}
+          keyExtractor={(item) => String(item.hospitalId ?? item.name)}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} />}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
-  searchContainer: { paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
-  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, paddingHorizontal: 12, height: 50, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
-  searchInput: { flex: 1, fontSize: 16, marginLeft: 8 },
-  categoriesList: { paddingHorizontal: 20, gap: 10 },
-  categoryChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 100, borderWidth: 1 },
-  section: { marginTop: 24 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 },
-  announcementCard: { width: width * 0.85, marginRight: 16, padding: 16 },
-  announcementHeader: { flexDirection: 'row', alignItems: 'center' },
-  announcementIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  announcementFooter: { flexDirection: 'row', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)' },
-  equipmentCard: { marginBottom: 12, padding: 16 },
-  equipmentInfo: { flexDirection: 'row', justifyContent: 'space-between' },
-  hospitalInfo: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  hospitalName: { marginLeft: 6, fontWeight: '600' },
-  locationInfo: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  statusContainer: { alignItems: 'flex-end' },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  statusDot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
-  emptyState: { alignItems: 'center', justifyContent: 'center', padding: 40 },
+  container: {
+    flex: 1,
+  },
+  titleRow: {
+    paddingHorizontal: 16,
+    paddingTop: 2,
+    paddingBottom: 12,
+  },
+  pageTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  searchWrap: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    padding: 0,
+  },
+  categoryScrollWrap: {
+    marginBottom: 12,
+  },
+  categoriesList: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  subTab: {
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  subTabText: {
+    fontSize: 13,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+    gap: 12,
+  },
+  centerCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  centerAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centerInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  centerTag: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  centerName: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  metaText: {
+    fontSize: 12,
+    color: '#64748B',
+    flexShrink: 1,
+  },
+  distanceText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  chipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  moreText: {
+    fontSize: 11,
+    fontWeight: '600',
+    alignSelf: 'center',
+  },
+  chevron: {
+    justifyContent: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
 });

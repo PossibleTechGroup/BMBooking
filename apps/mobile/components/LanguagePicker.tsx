@@ -33,15 +33,18 @@ export const LanguagePicker = () => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
-        style={[styles.trigger, { backgroundColor: theme.surface, borderColor: theme.border }]} 
+      <TouchableOpacity
+        style={[styles.trigger, { backgroundColor: theme.secondaryBg }]}
         onPress={() => setModalVisible(true)}
       >
-        <Ionicons name="language" size={18} color={theme.primary} />
-        <MedText variant="metadata" style={styles.triggerText}>
+        <Ionicons name="globe-outline" size={16} color={theme.text} />
+        <MedText
+          variant="body"
+          style={[styles.triggerText, { color: theme.text }]}
+        >
           {currentLanguage.label}
         </MedText>
-        <Ionicons name="chevron-down" size={14} color={theme.muted} />
+        <Ionicons name="chevron-down" size={12} color={theme.text} />
       </TouchableOpacity>
 
       <Modal
@@ -55,7 +58,12 @@ export const LanguagePicker = () => {
           activeOpacity={1} 
           onPress={() => setModalVisible(false)}
         >
-          <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+          >
             <MedText variant="h2" style={styles.modalTitle}>{t('selectLanguage')}</MedText>
             <FlatList
               data={languages}
@@ -98,13 +106,14 @@ const styles = StyleSheet.create({
   trigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 5,
   },
   triggerText: {
+    fontSize: 13,
+    fontWeight: '600',
     marginRight: 2,
   },
   modalOverlay: {
@@ -116,13 +125,14 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '100%',
-    maxWidth: 340,
-    borderRadius: 20,
-    padding: 24,
+    maxWidth: 220,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
-    shadowRadius: 24,
+    shadowRadius: 16,
     elevation: 8,
   },
   modalTitle: {

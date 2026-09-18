@@ -21,6 +21,8 @@ interface DoctorProfile {
     name: string;
     cardPrice: string;
     serviceFee?: { amount: string } | null;
+    address?: string;
+    phone?: string;
     latitude?: number;
     longitude?: number;
   } | null;

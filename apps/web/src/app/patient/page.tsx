@@ -2,10 +2,13 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { fetchHospitals } from '@/lib/store/slices/hospitalSlice';
 import { MedText } from '@/components/ui/med-text';
 import { MedCard } from '@/components/ui/med-card';
+import { useI18n } from '@/lib/i18n/LanguageProvider';
+import LangSwitcher from '@/components/ui/lang-switcher';
 import { Search, ArrowRight, MapPin, Phone, Heart, Stethoscope, Brain, Baby, Bone, Eye, Cpu, Hospital, Navigation } from 'lucide-react';
 
 const SERVICES = [
@@ -19,9 +22,23 @@ const SERVICES = [
 
 export default function PatientHomePage() {
   const dispatch = useAppDispatch();
+  const router = useRouter();
+  const { t } = useI18n();
   const { user } = useAppSelector((s) => s.auth);
   const { hospitals, loading } = useAppSelector((s) => s.hospital);
   const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    // If an unpaid booking is pending (e.g. the user just paid and came back
+    // to the home page), send them to My Appointments so it auto-finishes,
+    // then that page returns them here once it's done.
+    try {
+      const pending = JSON.parse(localStorage.getItem('bm_pending_booking') || 'null');
+      if (pending?.doctorId) {
+        router.replace('/patient/appointments');
+      }
+    } catch (e) { /* ignore */ }
+  }, [router]);
 
   useEffect(() => {
     if (!hospitals.length) {
@@ -43,17 +60,20 @@ export default function PatientHomePage() {
   return (
     <div className="p-5 max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <MedText variant="metadata">Welcome back</MedText>
-          <MedText variant="h2" as="h2" className="mt-0.5">{user?.patientProfile?.fullName || user?.phone || 'Guest'}</MedText>
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-3 mb-6">
+        <div className="min-w-0 flex-1">
+          <MedText variant="metadata">{t('welcomeBack')}</MedText>
+          <MedText variant="h2" as="h2" className="mt-0.5 truncate">{user?.patientProfile?.fullName || user?.phone || 'Guest'}</MedText>
         </div>
-        <Link href="/patient/equipment">
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-foreground text-white rounded-[8px] hover:opacity-90 transition-opacity cursor-pointer">
-            <Cpu size={16} />
-            <MedText variant="metadata" className="text-[13px] font-bold text-white">Book Imaging & Diagnostic Centers</MedText>
-          </div>
-        </Link>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <LangSwitcher />
+          <Link href="/patient/equipment">
+            <div className="flex items-center justify-center gap-2 px-3.5 py-2 bg-foreground text-white rounded-[8px] hover:opacity-90 transition-opacity cursor-pointer">
+              <Cpu size={16} className="flex-shrink-0" />
+              <MedText variant="metadata" className="text-[12px] font-bold text-white leading-snug">{t('bookImaging')}</MedText>
+            </div>
+          </Link>
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -62,7 +82,7 @@ export default function PatientHomePage() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search hospitals by name, location..."
+          placeholder={t('searchHospitals')}
           className="w-full bg-transparent outline-none text-[15px] text-text placeholder:text-muted"
         />
       </div>
@@ -70,9 +90,9 @@ export default function PatientHomePage() {
       {/* Services - compact horizontal */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-3">
-          <MedText variant="metadata" className="text-text-secondary text-[13px] tracking-[0.3px]">Services</MedText>
+          <MedText variant="metadata" className="text-text-secondary text-[13px] tracking-[0.3px]">{t('services')}</MedText>
           <Link href="/patient/services" className="text-[13px] text-primary font-medium flex items-center gap-0.5">
-            View All Services <ArrowRight size={13} />
+            {t('viewAllServices')} <ArrowRight size={13} />
           </Link>
         </div>
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
@@ -95,7 +115,7 @@ export default function PatientHomePage() {
             <div className="w-14 h-14 rounded-[18px] bg-primary/10 flex items-center justify-center border border-dashed border-primary/40 hover:scale-105 transition-transform">
               <Search size={22} className="text-primary" />
             </div>
-            <MedText variant="metadata" className="text-center text-[12px] leading-tight">More</MedText>
+            <MedText variant="metadata" className="text-center text-[12px] leading-tight">{t('more')}</MedText>
           </Link>
         </div>
       </div>
@@ -103,13 +123,13 @@ export default function PatientHomePage() {
       {/* Hospitals Grid */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
-          <MedText variant="metadata" className="text-text-secondary text-[13px] tracking-[0.3px]">Hospitals</MedText>
+          <MedText variant="metadata" className="text-text-secondary text-[13px] tracking-[0.3px]">{t('hospitals')}</MedText>
           <div className="flex items-center gap-2">
             <Link href="/patient/services" className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium bg-surface border border-primary/40 text-primary hover:border-primary/70">
               <Navigation size={13} />
-              Near Me
+              {t('nearMe')}
             </Link>
-            <MedText variant="metadata" className="text-muted">{filteredHospitals.length} available</MedText>
+            <MedText variant="metadata" className="text-muted">{t('available')}</MedText>
           </div>
         </div>
 
@@ -120,7 +140,7 @@ export default function PatientHomePage() {
         ) : filteredHospitals.length === 0 ? (
           <div className="text-center py-12">
             <Hospital size={40} className="text-border mx-auto mb-3" />
-            <MedText variant="body" className="text-text-secondary">No hospitals found</MedText>
+            <MedText variant="body" className="text-text-secondary">{t('noHospitalsFound')}</MedText>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -146,13 +166,13 @@ export default function PatientHomePage() {
                       )}
                       <div className="flex items-center gap-1 mt-1">
                         <Stethoscope size={12} className="text-muted" />
-                        <MedText variant="metadata">{h.doctorCount || 0} doctors</MedText>
+                        <MedText variant="metadata">{t('doctorsCount', { n: h.doctorCount || 0 })}</MedText>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-4">
                     <div className="text-[12px] text-primary font-medium flex items-center gap-1">
-                      View hospital <ArrowRight size={12} />
+                      {t('viewHospital')} <ArrowRight size={12} />
                     </div>
                     {h.phone && (
                       <div className="flex items-center gap-1 text-muted">

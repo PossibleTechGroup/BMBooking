@@ -1,27 +1,19 @@
 import React from "react";
-import { View, StyleSheet, Pressable, Image } from "react-native";
+import { View, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { MedCard } from "../medconnect/MedCard";
 import { MedText } from "../medconnect/MedText";
+import { DoctorAvatar } from "./DoctorAvatar";
 import { getAssetUrl } from "../../constants/api";
 
 interface DoctorCardProps {
   item: any;
   theme: any;
   t: (key: string) => string;
-  distance: number | null;
   onPress: () => void;
-  onBook: () => void;
+  distanceKm?: number | null;
 }
 
-export const DoctorCard: React.FC<DoctorCardProps> = ({
-  item,
-  theme,
-  t,
-  distance,
-  onPress,
-  onBook,
-}) => {
+export const DoctorCard: React.FC<DoctorCardProps> = ({ item, theme, t, onPress, distanceKm }) => {
   const getSpecs = (d: any): string => {
     if (d.specializations?.length) return d.specializations.join(", ");
     return d.specialization || "";
@@ -35,104 +27,174 @@ export const DoctorCard: React.FC<DoctorCardProps> = ({
     .substring(0, 2)
     .toUpperCase();
 
-  const cardPrice = item.hospital?.cardPrice;
-  const displayFee = cardPrice ? `${parseFloat(cardPrice).toLocaleString()} ETB` : null;
+  const photoUri = item.profilePicture ? getAssetUrl(item.profilePicture) : null;
+
+  const availabilityLabel =
+    item.isAvailable === true
+      ? t("availableNow") || "Available"
+      : item.isAvailable === false
+      ? t("busyNow") || "Busy"
+      : null;
 
   return (
-    <Pressable onPress={onPress}>
-      <MedCard style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        <View style={styles.row}>
-          {item.profilePicture ? (
-            <Image source={{ uri: getAssetUrl(item.profilePicture) }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: theme.primary + "12" }]}>
-              <MedText style={{ fontSize: 16, fontWeight: "600", color: theme.primary }}>{initials}</MedText>
-            </View>
-          )}
-          <View style={styles.info}>
-            <MedText variant="body" style={[styles.name, { color: theme.text }]}>{item.fullName}</MedText>
-            <MedText variant="metadata" color={theme.muted} style={{ marginTop: 1 }}>
-              {getSpecs(item)}
-            </MedText>
-            <View style={styles.metaRow}>
-              <Ionicons name="star" size={12} color="#F59E0B" />
-              <MedText variant="metadata" style={[styles.metaText, { color: theme.text }]}>
-                {item.rating?.toFixed(1) || "0.0"}
+    <Pressable
+      onPress={onPress}
+      style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+    >
+      <DoctorAvatar
+        uri={photoUri}
+        initials={initials}
+        theme={theme}
+        style={[styles.avatar, { backgroundColor: theme.secondaryBg }]}
+        imageStyle={styles.avatarImg}
+        initialsStyle={styles.initials}
+      />
+      <View style={styles.info}>
+        <View style={styles.nameRow}>
+          <MedText variant="body" style={[styles.name, { color: theme.text }]} numberOfLines={1}>
+            {item.fullName}
+          </MedText>
+          {availabilityLabel ? (
+            <View
+              style={[
+                styles.availBadge,
+                {
+                  backgroundColor: item.isAvailable
+                    ? `${theme.success}18`
+                    : `${theme.textSecondary}18`,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.availDot,
+                  {
+                    backgroundColor: item.isAvailable ? theme.success : theme.textSecondary,
+                  },
+                ]}
+              />
+              <MedText
+                variant="metadata"
+                style={[
+                  styles.availText,
+                  { color: item.isAvailable ? theme.success : theme.textSecondary },
+                ]}
+              >
+                {availabilityLabel}
               </MedText>
-              <MedText variant="metadata" color={theme.border}> • </MedText>
-              <MedText variant="metadata" style={[styles.metaText, { color: theme.text }]}>
-                {item.experienceYears}yr
-              </MedText>
-              {distance !== null && (
-                <>
-                  <MedText variant="metadata" color={theme.border}> • </MedText>
-                  <Ionicons name="location-outline" size={11} color={theme.muted} />
-                  <MedText variant="metadata" style={[styles.metaText, { color: theme.text }]}>
-                    {distance < 1 ? `${(distance * 1000).toFixed(0)}m` : `${distance.toFixed(1)}km`}
-                  </MedText>
-                </>
-              )}
-              {displayFee && (
-                <>
-                  <MedText variant="metadata" color={theme.border}> • </MedText>
-                  <MedText variant="metadata" style={[styles.metaText, { color: theme.text, fontWeight: "600" }]}>
-                    {displayFee}
-                  </MedText>
-                </>
-              )}
             </View>
-          </View>
-          <Pressable onPress={onBook} style={[styles.bookBtn, { backgroundColor: theme.primary }]}>
-            <MedText variant="metadata" color="#FFF" style={{ fontWeight: "600", fontSize: 11 }}>
-              {t("book")}
-            </MedText>
-          </Pressable>
+          ) : null}
         </View>
-      </MedCard>
+        <MedText style={[styles.specialty, { color: theme.textSecondary }]} numberOfLines={1}>
+          {getSpecs(item)}
+        </MedText>
+        <View style={styles.meta}>
+          <View style={styles.metaItem}>
+            <Ionicons name="star" size={12} color={theme.textSecondary} />
+            <MedText variant="metadata" style={styles.metaText}>
+              {item.rating || "0"}
+            </MedText>
+          </View>
+          <View style={styles.metaItem}>
+            <Ionicons name="time-outline" size={12} color={theme.textSecondary} />
+            <MedText variant="metadata" style={styles.metaText}>
+              {item.experienceYears || 0} {t("years")}
+            </MedText>
+          </View>
+          <View style={styles.metaItem}>
+            <Ionicons name="card-outline" size={12} color={theme.textSecondary} />
+            <MedText variant="metadata" style={styles.metaText}>
+              {item.hospital?.cardPrice || 0} ETB
+            </MedText>
+          </View>
+          {distanceKm != null && distanceKm >= 0 ? (
+            <View style={styles.metaItem}>
+              <Ionicons name="navigate-outline" size={12} color={theme.primary} />
+              <MedText variant="metadata" style={[styles.metaText, { color: theme.primary }]}>
+                {distanceKm.toFixed(1)} km
+              </MedText>
+            </View>
+          ) : null}
+        </View>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
     </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  row: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-  },
-  avatarFallback: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImg: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 28,
+  },
+  initials: {
+    fontSize: 18,
+    fontWeight: "700",
   },
   info: {
     flex: 1,
-    marginLeft: 12,
+    minWidth: 0,
   },
   name: {
+    fontSize: 16,
     fontWeight: "600",
-    fontSize: 14,
   },
-  metaRow: {
+  nameRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 3,
+    gap: 8,
+  },
+  availBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  availDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  availText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  specialty: {
+    fontSize: 13,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  meta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 3,
   },
   metaText: {
-    fontSize: 11,
-  },
-  bookBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    marginLeft: 8,
+    fontSize: 12,
+    color: "#5A6B80",
   },
 });

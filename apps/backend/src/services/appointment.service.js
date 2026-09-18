@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const TelebirrLedger = require("../lib/telebirrLedger");
 const WalletService = require("./wallet.service");
 const { NotificationService, NOTIFICATION_TYPES } = require("./notification.service");
 const SmsService = require("./sms.service");
@@ -96,6 +97,7 @@ const AppointmentService = {
       attachments: data.attachments || null,
       status,
       paymentMethod: isReceptionist ? 'none' : (data.paymentMethod || "service_fee"),
+      isPaid: data.isPaid === true || data.isPaid === 'true',
     };
     if (data.slotId) {
       createData.slotId = data.slotId;
@@ -117,7 +119,7 @@ const AppointmentService = {
     }
 
     if (!isReceptionist) {
-      if (feeDoctor?.hospitalId) {
+      if (data.fee === undefined && feeDoctor?.hospitalId) {
         const feeHospital = await prisma.hospital.findUnique({
           where: { id: feeDoctor.hospitalId },
           select: { cardPrice: true },
@@ -235,6 +237,34 @@ const AppointmentService = {
     }
     if (!confirmationCode) throw new Error("Failed to generate unique confirmation code");
     createData.confirmationCode = confirmationCode;
+
+    // Payment enforcement — a fee-bearing appointment that is not covered by
+    // an existing hospital card and not created by a receptionist requires a
+    // verified Telebirr payment before it can be booked. The payment is
+    // consumed server-side so the confirmation (SMS/push) is only emitted
+    // after the payment was successfully checked.
+    if (
+      !isReceptionist &&
+      !data.cardId &&
+      createData.paymentMethod !== 'none' &&
+      Number(createData.fee) > 0
+    ) {
+      const expectedFee = Math.round(Number(createData.fee) * 100) / 100;
+      const paidOrder = TelebirrLedger.consumeByAmount(expectedFee);
+      if (paidOrder) {
+        createData.isPaid = true;
+        console.log(
+          `💳 [APPOINTMENT] Payment verified: order ${paidOrder.orderId} (${expectedFee} ETB, tx: ${paidOrder.transactionId})`,
+        );
+      } else {
+        console.log(
+          `⛔ [APPOINTMENT] No verified payment of ${expectedFee} ETB — booking blocked`,
+        );
+        throw new Error(
+          `Payment of ${expectedFee} ETB is required before booking. Please complete the Telebirr payment first.`,
+        );
+      }
+    }
 
     const appointment = await prisma.appointment.create({
       data: createData,
@@ -363,17 +393,22 @@ const AppointmentService = {
       );
 
       // SMS notification to actual patient
-      if (user?.phone) {
-        await SmsService.sendAppointmentConfirmation(
-          user.phone,
-          patientName,
-          doctorName,
-          data.dateTime,
-          doctor?.specialization,
-          doctor?.hospital?.name,
-          Number(appointment.fee),
-          appointment.confirmationCode,
-        );
+      const smsPhone = data.otherPatientPhone || user?.phone || data.otherPatientDetails?.phone;
+      if (smsPhone) {
+        try {
+          await SmsService.sendAppointmentConfirmation(
+            smsPhone,
+            patientName,
+            doctorName,
+            data.dateTime,
+            doctor?.specialization,
+            doctor?.hospital?.name,
+            Number(appointment.fee),
+            appointment.confirmationCode,
+          );
+        } catch (err) {
+          console.error("[SMS] Failed to send booking SMS:", err.message);
+        }
       }
 
       // If booked for someone else, also notify the sponsor
@@ -423,7 +458,7 @@ const AppointmentService = {
   },
 
   getPatientAppointments: async (patientId) => {
-    return await prisma.appointment.findMany({
+    const appointments = await prisma.appointment.findMany({
       where: {
         OR: [
           { patientId },
@@ -461,13 +496,51 @@ const AppointmentService = {
             profilePicture: true,
             clinicName: true,
             hospital: {
-              select: { name: true },
+              select: {
+                id: true,
+                name: true,
+                phone: true,
+                address: true,
+                latitude: true,
+                longitude: true,
+              },
             },
           },
         },
       },
       orderBy: { dateTime: "desc" },
     });
+
+    const hospitalIds = [...new Set(
+      appointments
+        .map((a) => a.doctor?.hospital?.id)
+        .filter(Boolean),
+    )];
+    let receptionistPhones = {};
+    if (hospitalIds.length) {
+      const receptionists = await prisma.receptionistProfile.findMany({
+        where: { hospitalId: { in: hospitalIds } },
+        select: {
+          hospitalId: true,
+          user: { select: { phone: true } },
+        },
+      });
+      for (const r of receptionists) {
+        if (r.user?.phone && !receptionistPhones[r.hospitalId]) {
+          receptionistPhones[r.hospitalId] = r.user.phone;
+        }
+      }
+    }
+
+    return appointments.map((a) => ({
+      ...a,
+      doctor: {
+        ...a.doctor,
+        hospital: a.doctor?.hospital
+          ? { ...a.doctor.hospital, receptionistPhone: receptionistPhones[a.doctor.hospital.id] || null }
+          : a.doctor?.hospital,
+      },
+    }));
   },
 
   // ─── Doctor Actions ────────────────────────────────────────────────

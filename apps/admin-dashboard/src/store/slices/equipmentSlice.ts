@@ -123,6 +123,7 @@ const adminEquipmentSlice = createSlice({
           latitude: item.hospital?.latitude ?? 0,
           longitude: item.hospital?.longitude ?? 0,
           cardPrice: item.hospital?.cardPrice != null ? Number(item.hospital.cardPrice) : null,
+          serviceFee: item.hospital?.serviceFee?.amount != null ? Number(item.hospital.serviceFee.amount) : null,
         }));
       })
       .addCase(addItem.pending, (state) => {
@@ -144,6 +145,7 @@ const adminEquipmentSlice = createSlice({
           latitude: item.hospital?.latitude ?? 0,
           longitude: item.hospital?.longitude ?? 0,
           cardPrice: item.hospital?.cardPrice != null ? Number(item.hospital.cardPrice) : null,
+          serviceFee: item.hospital?.serviceFee?.amount != null ? Number(item.hospital.serviceFee.amount) : null,
         });
       })
       .addCase(updateItem.pending, (state) => {

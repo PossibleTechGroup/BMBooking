@@ -30,7 +30,7 @@ function AppContent() {
   );
 
     // Initialize Push Notifications
-    // useNotifications();
+    useNotifications();
 
   useEffect(() => {
     Font.loadAsync(Ionicons.font).then(() => setFontsLoaded(true));
@@ -67,7 +67,7 @@ function AppContent() {
     if (isCheckingAuth || segments.length === 0) return;
 
     // Navigation Logic
-    const currentSegment = segments[0];
+    const currentSegment = String(segments[0]);
 
     if (!token || !user) {
       if (currentSegment !== "(auth)") {
@@ -95,14 +95,15 @@ function AppContent() {
           router.replace("/(doctor-onboarding)/setup");
         }
       } else if (doctorProfileStatus === "Approved") {
-        if (!inDoctorTabs && currentSegment !== "modal") {
+        const inApprovedHelpers = currentSegment === "announcements";
+        if (!inDoctorTabs && currentSegment !== "modal" && !inApprovedHelpers) {
           router.replace("/(doctor-tabs)");
         }
       }
     } else if (user.role === "patient") {
       const inPatientTabs = currentSegment === "(tabs)";
       const inPatientOnboarding = currentSegment === "(patient-onboarding)";
-      const inAllowedPages = currentSegment === "doctor" || currentSegment === "modal" || currentSegment === "doctor-list" || currentSegment === "item-detail";
+      const inAllowedPages = currentSegment === "doctor" || currentSegment === "modal" || currentSegment === "doctor-list" || currentSegment === "item-detail" || currentSegment === "announcements" || currentSegment === "hospital-detail" || currentSegment === "hospitals" || currentSegment === "center-detail";
 
       if (patientProfileStatus === "None") {
         if (!inPatientOnboarding) {
@@ -146,7 +147,9 @@ function AppContent() {
         <Stack.Screen name="doctor/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="item-detail" options={{ headerShown: false }} />
         <Stack.Screen name="announcements" options={{ headerShown: false }} />
+        <Stack.Screen name="hospitals" options={{ headerShown: false }} />
         <Stack.Screen name="hospital-detail" options={{ headerShown: false }} />
+        <Stack.Screen name="center-detail" options={{ headerShown: false }} />
         <Stack.Screen
           name="modal"
           options={{ presentation: "modal", headerShown: false }}

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import {
   fetchHospitalEquipment,
-  addHospitalEquipment,
+  addHospitalEquipmentBulk,
   deleteHospitalEquipment,
   toggleHospitalEquipmentStatus,
   updateHospitalEquipment,
@@ -29,6 +29,30 @@ interface EqForm {
 
 const emptyForm: EqForm = { id: null, name: '', category: '', price: '', duration: '60', description: '' };
 
+const CATEGORIES = [
+  { value: 'MRI', label: 'MRI' },
+  { value: 'CT_SCAN', label: 'CT Scan' },
+  { value: 'DIALYSIS', label: 'Dialysis' },
+  { value: 'ULTRASOUND', label: 'Ultrasound' },
+  { value: 'XRAY', label: 'X-Ray' },
+  { value: 'VENTILATOR', label: 'Ventilator' },
+  { value: 'ECG', label: 'ECG' },
+  { value: 'MAMMOGRAPHY', label: 'Mammography' },
+  { value: 'DEFIBRILLATOR', label: 'Defibrillator' },
+  { value: 'OTHER', label: 'Other' },
+];
+
+interface EqDraftRow {
+  key: number;
+  name: string;
+  category: string;
+  price: string;
+  duration: string;
+  description: string;
+}
+
+const emptyDraftRow = (key: number): EqDraftRow => ({ key, name: '', category: 'OTHER', price: '', duration: '30', description: '' });
+
 function todayStr() {
   const now = new Date();
   const m = String(now.getMonth() + 1).padStart(2, '0');
@@ -45,6 +69,8 @@ export default function HospitalEquipmentPage() {
   const [bookingDate, setBookingDate] = useState(todayStr());
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<EqForm>(emptyForm);
+  const [draftRows, setDraftRows] = useState<EqDraftRow[]>([]);
+  const [nextRowKey, setNextRowKey] = useState(1);
   const [saving, setSaving] = useState(false);
   const [declineId, setDeclineId] = useState<number | null>(null);
   const [declineReason, setDeclineReason] = useState('');
@@ -61,6 +87,8 @@ export default function HospitalEquipmentPage() {
 
   const openCreate = () => {
     setForm(emptyForm);
+    setDraftRows([emptyDraftRow(nextRowKey)]);
+    setNextRowKey((k) => k + 1);
     setShowModal(true);
   };
 
@@ -77,7 +105,6 @@ export default function HospitalEquipmentPage() {
   };
 
   const handleSubmit = async () => {
-    if (!form.name.trim()) return;
     setSaving(true);
     if (form.id) {
       await dispatch(updateHospitalEquipment({
@@ -89,13 +116,16 @@ export default function HospitalEquipmentPage() {
         description: form.description.trim() || null,
       }));
     } else {
-      const fd = new FormData();
-      fd.append('name', form.name.trim());
-      fd.append('category', form.category.trim());
-      if (form.price) fd.append('price', String(Number(form.price)));
-      if (form.duration) fd.append('duration', String(Number(form.duration)));
-      if (form.description) fd.append('description', form.description.trim());
-      await dispatch(addHospitalEquipment(fd));
+      const items = draftRows
+        .filter((r) => r.name.trim())
+        .map((r) => ({
+          name: r.name.trim(),
+          category: r.category,
+          price: r.price ? Number(r.price) : undefined,
+          duration: r.duration ? Number(r.duration) : 30,
+          description: r.description.trim() || undefined,
+        }));
+      await dispatch(addHospitalEquipmentBulk(items));
       dispatch(fetchHospitalEquipment());
     }
     setSaving(false);
@@ -289,67 +319,142 @@ export default function HospitalEquipmentPage() {
               <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-foreground/5"><X size={18} /></button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Name *</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g. MRI Scanner"
-                  className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-[15px] focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Category</label>
-                <input
-                  type="text"
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  placeholder="e.g. Imaging"
-                  className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-[15px] focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+            {form.id ? (
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Price (ETB)</label>
+                  <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Name *</label>
                   <input
-                    type="number"
-                    value={form.price}
-                    onChange={(e) => setForm({ ...form, price: e.target.value })}
-                    placeholder="e.g. 250"
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="e.g. MRI Scanner"
                     className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-[15px] focus:outline-none focus:border-primary"
                   />
                 </div>
                 <div>
-                  <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Duration (min)</label>
-                  <input
-                    type="number"
-                    value={form.duration}
-                    onChange={(e) => setForm({ ...form, duration: e.target.value })}
+                  <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Category</label>
+                  <select
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
                     className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-[15px] focus:outline-none focus:border-primary"
+                  >
+                    <option value="">Select category</option>
+                    {CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Price (ETB)</label>
+                    <input
+                      type="number"
+                      value={form.price}
+                      onChange={(e) => setForm({ ...form, price: e.target.value })}
+                      placeholder="e.g. 250"
+                      className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-[15px] focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Duration (min)</label>
+                    <input
+                      type="number"
+                      value={form.duration}
+                      onChange={(e) => setForm({ ...form, duration: e.target.value })}
+                      className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-[15px] focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Description</label>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    rows={3}
+                    className="w-full p-3 rounded-xl border border-border bg-surface text-[14px] focus:outline-none focus:border-primary"
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Description</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={3}
-                  className="w-full p-3 rounded-xl border border-border bg-surface text-[14px] focus:outline-none focus:border-primary"
-                />
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <MedText variant="metadata">Services to add</MedText>
+                  <button
+                    onClick={() => { setDraftRows((rows) => [...rows, emptyDraftRow(nextRowKey)]); setNextRowKey((k) => k + 1); }}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border text-[12px] font-medium text-primary hover:bg-primary/5"
+                  >
+                    <Plus size={13} /> Add Another Service
+                  </button>
+                </div>
+                {draftRows.map((row, i) => (
+                  <div key={row.key} className="rounded-xl border border-border p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <MedText variant="metadata">Service {i + 1}</MedText>
+                      <button
+                        onClick={() => setDraftRows((rows) => rows.filter((r) => r.key !== row.key))}
+                        disabled={draftRows.length === 1}
+                        className="p-1 rounded-lg text-text-secondary hover:bg-error-bg hover:text-error disabled:opacity-30"
+                        title="Remove"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    <div>
+                      <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Name *</label>
+                      <input
+                        type="text"
+                        value={row.name}
+                        onChange={(e) => setDraftRows((rows) => rows.map((r) => r.key === row.key ? { ...r, name: e.target.value } : r))}
+                        placeholder="e.g. X-Ray"
+                        className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-[15px] focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Category</label>
+                      <select
+                        value={row.category}
+                        onChange={(e) => setDraftRows((rows) => rows.map((r) => r.key === row.key ? { ...r, category: e.target.value } : r))}
+                        className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-[15px] focus:outline-none focus:border-primary"
+                      >
+                        {CATEGORIES.map((c) => (
+                          <option key={c.value} value={c.value}>{c.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Price (ETB)</label>
+                        <input
+                          type="number"
+                          value={row.price}
+                          onChange={(e) => setDraftRows((rows) => rows.map((r) => r.key === row.key ? { ...r, price: e.target.value } : r))}
+                          placeholder="e.g. 250"
+                          className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-[15px] focus:outline-none focus:border-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[12px] font-medium text-muted mb-1.5 ml-1">Duration (min)</label>
+                        <input
+                          type="number"
+                          value={row.duration}
+                          onChange={(e) => setDraftRows((rows) => rows.map((r) => r.key === row.key ? { ...r, duration: e.target.value } : r))}
+                          className="w-full h-11 px-3 rounded-xl border border-border bg-surface text-[15px] focus:outline-none focus:border-primary"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
 
             <div className="mt-6">
               <button
                 onClick={handleSubmit}
-                disabled={!form.name.trim() || saving}
+                disabled={saving || (form.id ? !form.name.trim() : !draftRows.some((r) => r.name.trim()))}
                 className="w-full py-3 rounded-xl bg-primary text-white text-[14px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {saving ? <Loader2 size={16} className="animate-spin" /> : null}
-                {form.id ? 'Save Changes' : 'Add Equipment'}
+                {form.id ? 'Save Changes' : 'Add Services'}
               </button>
             </div>
           </div>
