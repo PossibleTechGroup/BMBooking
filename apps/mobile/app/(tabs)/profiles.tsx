@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Linking,
   Modal,
   Pressable,
@@ -20,7 +22,7 @@ import { MedText } from "../../components/medconnect/MedText";
 import { Colors } from "../../constants/theme";
 import { useColorScheme } from "../../hooks/use-color-scheme";
 import { AppDispatch, RootState } from "../../store";
-import { logout } from "../../store/slices/authSlice";
+import { logout, deleteAccount } from "../../store/slices/authSlice";
 import { fetchPatientProfile, submitPatientProfile, clearPatientError } from "../../store/slices/patientSlice";
 import { useTimeFormat } from "../../utils/timeFormat";
 import { formatDate } from "../../utils/ethiopianDate";
@@ -67,6 +69,8 @@ export default function ProfilesScreen() {
   }, [patientProfile]);
 
   const [settingsModal, setSettingsModal] = useState<"profile" | "notifications" | "privacy" | "timeformat" | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
     appointmentReminders: true,
     doctorMessages: true,
@@ -458,6 +462,17 @@ export default function ProfilesScreen() {
     </Modal>
   );
 
+  const handleDeleteAccount = async () => {
+    const result = await dispatch(deleteAccount());
+    setDeleteLoading(false);
+    setShowDeleteModal(false);
+    if (deleteAccount.fulfilled.match(result)) {
+      Alert.alert("Account Deleted", "Your account has been deleted and you have been signed out.");
+    } else {
+      Alert.alert("Delete Failed", "We could not delete your account right now. Please try again later.");
+    }
+  };
+
   return (
     <SafeAreaView edges={["top", "left", "right"]}
       style={[styles.container, { backgroundColor: theme.background }]}
@@ -613,6 +628,21 @@ export default function ProfilesScreen() {
                 <Ionicons name="log-out-outline" size={18} color={theme.danger} />
                 <MedText style={[styles.logoutText, { color: theme.danger }]}>Logout</MedText>
               </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  setDeleteLoading(false);
+                  setShowDeleteModal(true);
+                }}
+                style={({ pressed }) => [
+                  styles.deleteBtn,
+                  { backgroundColor: theme.danger },
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
+                <MedText style={styles.deleteText}>Delete Account</MedText>
+              </Pressable>
             </View>
 
             <View style={styles.versionInfo}>
@@ -621,6 +651,63 @@ export default function ProfilesScreen() {
           </View>
       </ScrollView>
       {renderSettingsModal()}
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <View style={styles.confirmOverlay}>
+          <View style={[styles.confirmModal, { backgroundColor: theme.surface }]}>
+            <View style={[styles.confirmIcon, { backgroundColor: `${theme.danger}15` }]}>
+              <Ionicons name="alert-circle" size={36} color={theme.danger} />
+            </View>
+            <MedText variant="h2" style={{ textAlign: "center", color: theme.text }}>
+              Delete Account?
+            </MedText>
+            <MedText
+              variant="body"
+              style={{ textAlign: "center", color: theme.textSecondary, marginTop: 12 }}
+            >
+              This permanently deletes your BM Booking account and removes your
+              personal data. This action cannot be undone.
+            </MedText>
+            <View style={styles.confirmActions}>
+              <Pressable
+                onPress={() => setShowDeleteModal(false)}
+                style={({ pressed }) => [
+                  styles.confirmCancel,
+                  { borderColor: theme.border, backgroundColor: theme.surface },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <MedText style={{ color: theme.text, fontWeight: "600" }}>Cancel</MedText>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setDeleteLoading(true);
+                  handleDeleteAccount();
+                }}
+                disabled={deleteLoading}
+                style={({ pressed }) => [
+                  styles.confirmDelete,
+                  { backgroundColor: theme.danger },
+                  pressed && { opacity: 0.85 },
+                  deleteLoading && { opacity: 0.7 },
+                ]}
+              >
+                {deleteLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <MedText style={{ color: "#FFFFFF", fontWeight: "600" }}>Delete Account</MedText>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -780,6 +867,61 @@ const styles = StyleSheet.create({
   logoutText: {
     fontWeight: "600",
     fontSize: 15,
+  },
+  deleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  deleteText: {
+    fontWeight: "600",
+    fontSize: 15,
+    color: "#FFFFFF",
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  confirmModal: {
+    width: "100%",
+    maxWidth: 380,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+  },
+  confirmIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  confirmActions: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+    marginTop: 24,
+  },
+  confirmCancel: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+  },
+  confirmDelete: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
   },
   profileHeader: {
     alignItems: "center",

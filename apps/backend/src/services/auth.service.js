@@ -1,4 +1,5 @@
 const bcrypt = require("bcryptjs");
+const { Prisma } = require("@prisma/client");
 const prisma = require("../lib/prisma");
 const User = require("../models/user.model");
 const OTP = require("../models/otp.model");
@@ -457,6 +458,112 @@ const AuthService = {
         hospitalId: hospitalProfile.hospitalId,
       },
     };
+  },
+
+  /**
+   * DELETE account (App Store / Google Play requirement).
+   *
+   * Soft-deletes the account and anonymizes personal data so the user can
+   * never be identified again, while keeping non-identifiable records
+   * (appointments, schedules, reviews) intact for hospitals and reporting.
+   * The phone number is released so it can be re-registered in the future.
+   */
+  deleteAccount: async (userId) => {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        doctorProfile: true,
+        patientProfile: true,
+        hospitalProfile: true,
+        receptionistProfile: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error("Account not found.");
+    }
+
+    if (user.role === "admin") {
+      throw new Error("Admin accounts cannot be deleted.");
+    }
+
+    const deletedAt = new Date();
+
+    await prisma.$transaction([
+      // Release identifying fields so the account can never be used again
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          phone: null,
+          email: null,
+          username: null,
+          password: null,
+          expoPushToken: null,
+          isDeleted: true,
+          deletedAt,
+        },
+      }),
+      // Remove patient personal data
+      ...(user.patientProfile
+        ? [
+            prisma.patientProfile.update({
+              where: { id: user.patientProfile.id },
+              data: {
+                fullName: null,
+                dateOfBirth: null,
+                gender: null,
+                bloodType: null,
+                emergencyContact: null,
+              },
+            }),
+          ]
+        : []),
+      // Remove doctor personal data
+      ...(user.doctorProfile
+        ? [
+            prisma.doctorProfile.update({
+              where: { id: user.doctorProfile.id },
+              data: {
+                fullName: null,
+                profilePicture: null,
+                introVideo: null,
+                specialization: null,
+                specializations: Prisma.JsonNull,
+                licenseNumber: null,
+                experienceYears: null,
+                bio: null,
+                clinicName: null,
+                clinicAddress: null,
+                languages: Prisma.JsonNull,
+                baseHourlyRate: null,
+              },
+            }),
+          ]
+        : []),
+      // Remove hospital/receptionist personal data
+      ...(user.hospitalProfile
+        ? [
+            prisma.hospitalProfile.update({
+              where: { id: user.hospitalProfile.id },
+              data: { rejectionReason: null },
+            }),
+          ]
+        : []),
+      ...(user.receptionistProfile
+        ? [
+            prisma.receptionistProfile.update({
+              where: { id: user.receptionistProfile.id },
+              data: { fullName: null },
+            }),
+          ]
+        : []),
+      // Drop personal notifications
+      prisma.notification.deleteMany({
+        where: { userId },
+      }),
+    ]);
+
+    return { id: userId, deletedAt };
   },
 };
 

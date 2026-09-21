@@ -262,6 +262,23 @@ export const updatePushToken = createAsyncThunk(
   }
 );
 
+export const deleteAccount = createAsyncThunk(
+  'auth/deleteAccount',
+  async (_, { getState, rejectWithValue }) => {
+    const state = getState() as { auth: AuthState };
+    if (!state.auth.token) return rejectWithValue('No auth token');
+
+    try {
+      await api.delete('/api/auth/account', {
+        headers: { Authorization: `Bearer ${state.auth.token}` },
+      });
+      return true;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete account');
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -390,6 +407,30 @@ const authSlice = createSlice({
       })
       .addCase(updatePushToken.rejected, (state, action) => {
         console.error('Failed to sync push token:', action.payload);
+      })
+      .addCase(deleteAccount.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteAccount.fulfilled, (state) => {
+        state.user = null;
+        state.token = null;
+        state.otpSent = false;
+        state.loading = false;
+        state.doctorProfileStatus = 'None';
+        state.patientProfileStatus = 'None';
+        state.rejectionReason = null;
+        if (pollIntervalId) {
+          clearInterval(pollIntervalId);
+          pollIntervalId = null;
+        }
+        storage.removeItem('auth_token');
+        storage.removeItem('user_data');
+        storage.removeItem('user-language');
+      })
+      .addCase(deleteAccount.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });

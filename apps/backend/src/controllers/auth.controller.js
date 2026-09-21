@@ -122,6 +122,20 @@ const AuthController = {
       res.status(500).json({ status: "error", message: err.message });
     }
   },
+
+  deleteAccount: async (req, res) => {
+    try {
+      const result = await AuthService.deleteAccount(req.user.id);
+      console.log(`[ACCOUNT] User ${req.user.id} deleted their account`);
+      res.status(200).json({
+        status: "success",
+        message: "Account deleted successfully",
+        data: result,
+      });
+    } catch (err) {
+      res.status(400).json({ status: "fail", message: err.message });
+    }
+  },
 };
 
 module.exports = AuthController;

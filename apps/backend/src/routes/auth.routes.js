@@ -35,4 +35,7 @@ router.post(
 // Push token registration (requires auth)
 router.post("/push-token", authMiddleware, AuthController.registerPushToken);
 
+// Delete/deactivate account (requires auth)
+router.delete("/account", authMiddleware, AuthController.deleteAccount);
+
 module.exports = router;

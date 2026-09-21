@@ -1,0 +1,177 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Result ΓÇö BM Booking</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F9F7F2;
+      --surface: #FFFFFF;
+      --accent: #1A1A1A;
+      --text-primary: #101828;
+      --text-secondary: #667085;
+      --success: #027A48;
+      --warn: #B54708;
+      --border: #E4E7EC;
+      --font: 'Inter', system-ui, sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      max-width: 400px;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px 28px;
+      text-align: center;
+    }
+    .icon {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 122, 72, 0.08);
+    }
+    .icon.warn { background: rgba(181, 71, 8, 0.08); }
+    .icon svg {
+      width: 36px;
+      height: 36px;
+      stroke: var(--success);
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .icon.warn svg { stroke: var(--warn); }
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+    .btn {
+      display: inline-block;
+      padding: 14px 28px;
+      font-family: var(--font);
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .meta {
+      margin-top: 20px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon" id="statusIcon">
+      <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h1 id="statusTitle">Payment Successful</h1>
+    <p id="successMsg">Your Telebirr payment was completed. Taking you back to the BM Booking Telegram app...</p>
+    <button class="btn" id="returnBtn">Back to Telegram now</button>
+    <p class="meta" id="returnToTelegram" style="display:none;font-size:14px;color:var(--text-secondary);margin-bottom:16px;line-height:1.5">Returning you to the BM Booking Telegram app ΓÇö your appointment is being saved.</p>
+    <p class="meta" id="orderMeta"></p>
+  </div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const order = params.get('out_trade_no') || params.get('merch_order_id') || params.get('trade_no');
+    const status = params.get('trade_status') || params.get('trade_status_desc');
+    const titleEl = document.getElementById('statusTitle');
+    const msgEl = document.getElementById('successMsg');
+    const iconEl = document.getElementById('statusIcon');
+    const btnEl = document.getElementById('returnBtn');
+
+    if (order || status) {
+      document.getElementById('orderMeta').textContent =
+        [order && 'Order: ' + order, status && 'Status: ' + status].filter(Boolean).join(' ┬╖ ');
+    }
+
+    const isOk = !status || /SUCCESS|COMPLETED/.test(status.toUpperCase());
+
+    if (!isOk) {
+      iconEl.classList.add('warn');
+      iconEl.querySelector('path').setAttribute('d', 'M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z');
+      titleEl.textContent = 'Payment Not Completed';
+      msgEl.textContent = 'Telebirr did not confirm a payment. Returning you to Telegram ΓÇö you can try again from the app.';
+    }
+
+    // Always send the user back to the app inside Telegram. This is a direct Mini
+    // App link (bot bmbookingb_bot, short name "Bmbooking") which opens the
+    // app's home page in the chat with zero taps.
+    const TELEGRAM_HOME_URL = 'https://t.me/bmbookingb_bot/Bmbooking?startapp=home';
+    let returned = false;
+    const returnToTelegram = () => {
+      if (returned) return;
+      returned = true;
+      document.getElementById('returnToTelegram').style.display = 'block';
+      msgEl.textContent = isOk
+        ? 'Payment confirmed ΓÇö taking you back to the BM Booking Telegram app. Your appointment is being saved.'
+        : 'Heading back to the BM Booking Telegram app ΓÇö you can retry the payment from there.';
+      btnEl.style.display = 'none';
+      setTimeout(function () { window.location.replace(TELEGRAM_HOME_URL); }, 1000);
+    };
+
+    const recorded = () => {
+      msgEl.textContent = 'Payment confirmed by Telebirr ΓÇö taking you back to the BM Booking Telegram app. Your appointment is being saved.';
+    };
+
+    // Reconcile with the Telebirr paygate directly (the async webhook is
+    // sometimes never delivered). When confirmed, the H5 records the payment
+    // server-side and the app can finish the booking.
+    let reconcileAttempts = 0;
+    const reconcile = () => {
+      if (returned || !order || !/^ORD[A-Za-z0-9]+$/.test(order) || reconcileAttempts >= 30) return;
+      reconcileAttempts++;
+      fetch(window.location.origin + '/order-status?refNo=' + encodeURIComponent(order), { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((j) => {
+          if (j && j.paid) { recorded(); returnToTelegram(); }
+          else setTimeout(reconcile, 2000);
+        })
+        .catch(() => setTimeout(reconcile, 2000));
+    };
+
+    reconcile();
+
+    // Give the reconcile a moment to confirm; then hand back to Telegram.
+    setTimeout(returnToTelegram, 9000);
+
+    // Manual fallback in case a browser blocks the automatic redirect.
+    btnEl.addEventListener('click', function (e) {
+      e.preventDefault();
+      returnToTelegram();
+    });
+  </script>
+</body>
+</html>
+EXITCODE=0

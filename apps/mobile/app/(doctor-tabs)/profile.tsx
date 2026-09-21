@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Image, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, View, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { MedButton } from "../../components/medconnect/MedButton";
@@ -11,7 +11,7 @@ import { YourPerformance } from "../../components/doctor/YourPerformance";
 import { Colors } from "../../constants/theme";
 import { useColorScheme } from "../../hooks/use-color-scheme";
 import { AppDispatch, RootState } from "../../store";
-import { logout } from "../../store/slices/authSlice";
+import { logout, deleteAccount } from "../../store/slices/authSlice";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { BASE_URL, getAssetUrl } from "../../constants/api";
@@ -77,6 +77,8 @@ export default function DoctorProfileScreen() {
   const profile = user?.doctorProfile;
   const { isEthiopian, toggle: toggleTimeFormat, isEthiopianCalendar, toggleCalendar } = useTimeFormat();
   const [showTimeModal, setShowTimeModal] = React.useState(false);
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const [deleteLoading, setDeleteLoading] = React.useState(false);
 
   const [reviews, setReviews] = React.useState<any[]>([]);
   const [loadingReviews, setLoadingReviews] = React.useState(true);
@@ -120,6 +122,17 @@ export default function DoctorProfileScreen() {
       <Ionicons name="chevron-forward" size={16} color={theme.border} />
     </Pressable>
   );
+
+  const handleDeleteAccount = async () => {
+    const result = await dispatch(deleteAccount());
+    setDeleteLoading(false);
+    setShowDeleteModal(false);
+    if (deleteAccount.fulfilled.match(result)) {
+      Alert.alert("Account Deleted", "Your account has been deleted and you have been signed out.");
+    } else {
+      Alert.alert("Delete Failed", "We could not delete your account right now. Please try again later.");
+    }
+  };
 
   // Profile picture or initials
   const hasPhoto = !!profile?.profilePicture;
@@ -194,6 +207,21 @@ export default function DoctorProfileScreen() {
           >
             <Ionicons name="log-out-outline" size={18} color="#D92D20" />
             <MedText style={styles.logoutText}>{t("signOut")}</MedText>
+          </Pressable>
+
+          {/* ── Delete Account ── */}
+          <Pressable
+            onPress={() => {
+              setDeleteLoading(false);
+              setShowDeleteModal(true);
+            }}
+            style={({ pressed }) => [
+              styles.deleteBtn,
+              pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
+            ]}
+          >
+            <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
+            <MedText style={styles.deleteBtnText}>{t("deleteAccount")}</MedText>
           </Pressable>
         </View>
 
@@ -282,6 +310,64 @@ export default function DoctorProfileScreen() {
                 </View>
               </Pressable>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <View style={styles.confirmOverlay}>
+          <View style={[styles.confirmModal, { backgroundColor: theme.surface }]}>
+            <View style={styles.confirmIcon}>
+              <Ionicons name="alert-circle" size={36} color="#D92D20" />
+            </View>
+            <MedText variant="h2" style={{ textAlign: "center", color: theme.text }}>
+              {t("deleteAccountTitle")}
+            </MedText>
+            <MedText
+              variant="body"
+              style={{ textAlign: "center", color: theme.textSecondary, marginTop: 12 }}
+            >
+              {t("deleteAccountWarning")}
+            </MedText>
+            <View style={styles.confirmActions}>
+              <Pressable
+                onPress={() => setShowDeleteModal(false)}
+                style={({ pressed }) => [
+                  styles.confirmCancel,
+                  { borderColor: theme.border, backgroundColor: theme.surface },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <MedText style={{ color: theme.text, fontWeight: "600" }}>{t("cancel")}</MedText>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setDeleteLoading(true);
+                  handleDeleteAccount();
+                }}
+                disabled={deleteLoading}
+                style={({ pressed }) => [
+                  styles.confirmDelete,
+                  { backgroundColor: "#D92D20" },
+                  pressed && { opacity: 0.85 },
+                  deleteLoading && { opacity: 0.7 },
+                ]}
+              >
+                {deleteLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <MedText style={{ color: "#FFFFFF", fontWeight: "600" }}>
+                    {t("deleteAccount")}
+                  </MedText>
+                )}
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
@@ -380,6 +466,63 @@ const styles = StyleSheet.create({
     color: "#D92D20",
     fontWeight: "600",
     fontSize: 15,
+  },
+  deleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#D92D20",
+    padding: 16,
+    borderRadius: 16,
+    gap: 8,
+    marginTop: 12,
+  },
+  deleteBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  confirmModal: {
+    width: "100%",
+    maxWidth: 380,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+  },
+  confirmIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#FCEBEB",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  confirmActions: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+    marginTop: 24,
+  },
+  confirmCancel: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+  },
+  confirmDelete: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
   },
   versionInfo: {
     marginTop: 32,

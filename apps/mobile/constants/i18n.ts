@@ -188,6 +188,10 @@ const resources = {
       feeSchedule: "FEE SCHEDULE BY DURATION",
       update: "Update",
       signOut: "Sign Out Account",
+      deleteAccount: "Delete Account",
+      deleteAccountTitle: "Delete Account?",
+      deleteAccountWarning:
+        "This will permanently delete your BM Booking account and remove your personal data. This action cannot be undone.",
 
       // NEW: Medical Equipment
       medicalTools: "Medical Tools",
@@ -522,6 +526,10 @@ const resources = {
       feeSchedule: "የዋጋ ዝርዝር በጊዜ",
       update: "አድስ",
       signOut: "ከአካውንት ውጣ",
+      deleteAccount: "አካውንት ሰርዝ",
+      deleteAccountTitle: "አካውንት ሰርዝ?",
+      deleteAccountWarning:
+        "ይህ የBM Booking አካውንትዎን ለዘላለም ይሰርዛል እና የግል መረጃዎን ያስወግዳል። ይህ እርምጃ ሊቀለበስ አይችልም።",
 
       // NEW: Medical Equipment (Amharic)
       medicalTools: "የሕክምና መሣሪያዎች",
@@ -868,6 +876,10 @@ const resources = {
       feeSchedule: "Tarreeffama kaffaltii yeroodhaan",
       update: "Haaromsi",
       signOut: "Akaawuntii ba'i",
+      deleteAccount: "Akaawuntii haquu",
+      deleteAccountTitle: "Akaawuntii haquu?",
+      deleteAccountWarning:
+        "Kun akaawuntii BM Booking kee yeroo hundaaf haquu fi odeeffannoo dhuunfaa kee balleessuun dhihaata. Filannoon kun hindeebi'u.",
 
       // NEW: Medical Equipment (Oromo)
       medicalTools: "Meeshaalee Wal'aansaa",
