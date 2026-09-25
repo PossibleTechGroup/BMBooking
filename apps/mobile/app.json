@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.bmbooking.app",
+      "bundleIdentifier": "com.bmbooking",
       "infoPlist": {
         "NSCameraUsageDescription": "BM Booking uses your camera to add or update your profile and professional photos.",
         "NSPhotoLibraryUsageDescription": "BM Booking accesses your photo library so you can pick a profile or referral document image.",

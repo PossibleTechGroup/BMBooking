@@ -12,11 +12,11 @@ workflows:
     environment:
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.bmbooking.app
+        bundle_identifier: com.bmbooking
       vars:
         XCODE_WORKSPACE: "ios/BMBooking.xcworkspace"
         XCODE_SCHEME: "BMBooking"
-        BUNDLE_ID: "com.bmbooking.app"
+        BUNDLE_ID: "com.bmbooking"
         EXPO_PUBLIC_API_URL: "https://bmbookingapi.possibletechplc.com"
       node: 20
       xcode: latest
