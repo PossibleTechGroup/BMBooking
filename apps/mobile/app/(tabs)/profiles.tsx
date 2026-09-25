@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Linking,
   Modal,
   Pressable,
@@ -11,12 +12,14 @@ import {
   TextInput,
   View,
 } from "react-native";
+import axios from "axios";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import * as Haptics from 'expo-haptics';
 import { MedButton } from "../../components/medconnect/MedButton";
 import { MedCard } from "../../components/medconnect/MedCard";
 import { MedText } from "../../components/medconnect/MedText";
+import { MedicalDisclaimer } from "../../components/MedicalDisclaimer";
 import { Colors } from "../../constants/theme";
 import { useColorScheme } from "../../hooks/use-color-scheme";
 import { AppDispatch, RootState } from "../../store";
@@ -41,7 +44,36 @@ export default function ProfilesScreen() {
   const theme = Colors[colorScheme];
 
   const user = useSelector((state: RootState) => state.auth.user);
+  const token = useSelector((state: RootState) => state.auth.token);
   const patientProfile = useSelector((state: RootState) => state.patient.profile);
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you sure you want to permanently delete your account and all associated personal data? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Account",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              if (token) {
+                await axios.delete(`${BASE_URL}/api/patient/account`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+              }
+            } catch (err) {
+              console.error("Failed to delete account:", err);
+            } finally {
+              dispatch(logout());
+              Alert.alert("Account Deleted", "Your account and personal data have been removed.");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const [profileName, setProfileName] = useState('');
   const [profileGender, setProfileGender] = useState('Male');
@@ -600,18 +632,32 @@ export default function ProfilesScreen() {
             )}
 
 
-            {/* Logout Button */}
-            <View style={{ marginTop: 32 }}>
+            {/* Medical Disclaimer */}
+            <MedicalDisclaimer />
+
+            {/* Logout & Delete Account Buttons */}
+            <View style={{ marginTop: 20, gap: 12 }}>
               <Pressable
                 onPress={() => dispatch(logout())}
                 style={({ pressed }) => [
                   styles.logoutBtn,
                   { borderColor: theme.danger },
-                  pressed && { backgroundColor: theme.danger },
+                  pressed && { backgroundColor: `${theme.danger}15` },
                 ]}
               >
                 <Ionicons name="log-out-outline" size={18} color={theme.danger} />
                 <MedText style={[styles.logoutText, { color: theme.danger }]}>Logout</MedText>
+              </Pressable>
+
+              <Pressable
+                onPress={handleDeleteAccount}
+                style={({ pressed }) => [
+                  styles.deleteBtn,
+                  { backgroundColor: theme.danger, opacity: pressed ? 0.85 : 1 },
+                ]}
+              >
+                <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
+                <MedText style={[styles.logoutText, { color: "#FFFFFF" }]}>Delete Account</MedText>
               </Pressable>
             </View>
 
@@ -776,6 +822,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1.5,
+  },
+  deleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
   },
   logoutText: {
     fontWeight: "600",

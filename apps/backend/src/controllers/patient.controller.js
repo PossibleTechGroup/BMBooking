@@ -48,6 +48,16 @@ const PatientController = {
       res.status(500).json({ status: 'error', message: err.message });
     }
   },
+
+  deleteAccount: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      await PatientService.deleteAccount(userId);
+      res.status(200).json({ status: 'success', message: 'Account deleted successfully' });
+    } catch (err) {
+      res.status(500).json({ status: 'error', message: err.message });
+    }
+  },
 };
 
 module.exports = PatientController;

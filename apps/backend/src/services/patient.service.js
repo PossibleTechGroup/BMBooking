@@ -61,6 +61,29 @@ const PatientService = {
       registeredByMe: !!bookedByMe,
     };
   },
+
+  deleteAccount: async (userId) => {
+    // Delete patient profile
+    await prisma.patientProfile.deleteMany({
+      where: { userId },
+    });
+    // Remove or anonymize user record
+    try {
+      await prisma.user.delete({
+        where: { id: userId },
+      });
+    } catch {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          phone: `deleted_${userId}_${Date.now()}`,
+          isLocked: true,
+          expoPushToken: null,
+        },
+      });
+    }
+    return true;
+  },
 };
 
 module.exports = PatientService;

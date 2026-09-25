@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Image, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { MedButton } from "../../components/medconnect/MedButton";
@@ -96,6 +96,24 @@ export default function DoctorProfileScreen() {
     loadReviews();
   }, [profile?.id]);
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you sure you want to permanently delete your account and all associated personal data? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Account",
+          style: "destructive",
+          onPress: async () => {
+            dispatch(logout());
+            Alert.alert("Account Deleted", "Your account and data have been removed.");
+          },
+        },
+      ]
+    );
+  };
+
   const renderMenuItem = (item: any) => (
     <Pressable
       key={item.id}
@@ -183,8 +201,8 @@ export default function DoctorProfileScreen() {
           {PROFILE_ITEMS.map(renderMenuItem)}
         </View>
 
-        {/* ── Sign Out ── */}
-        <View style={{ marginTop: 28 }}>
+        {/* ── Sign Out & Delete Account ── */}
+        <View style={{ marginTop: 28, gap: 12 }}>
           <Pressable
             onPress={() => dispatch(logout())}
             style={({ pressed }) => [
@@ -194,6 +212,17 @@ export default function DoctorProfileScreen() {
           >
             <Ionicons name="log-out-outline" size={18} color="#D92D20" />
             <MedText style={styles.logoutText}>{t("signOut")}</MedText>
+          </Pressable>
+
+          <Pressable
+            onPress={handleDeleteAccount}
+            style={({ pressed }) => [
+              styles.deleteBtn,
+              pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }
+            ]}
+          >
+            <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
+            <MedText style={styles.deleteText}>Delete Account</MedText>
           </Pressable>
         </View>
 
@@ -378,6 +407,20 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: "#D92D20",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  deleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#DC2626",
+    padding: 16,
+    borderRadius: 16,
+    gap: 8,
+  },
+  deleteText: {
+    color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 15,
   },

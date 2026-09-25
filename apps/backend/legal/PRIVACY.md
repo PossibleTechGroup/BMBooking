@@ -109,4 +109,4 @@ We may update this Privacy Policy from time to time. We will notify you of mater
 If you have questions or concerns about this Privacy Policy or our data practices, please contact us at:
 
 **Possible Technology P.L.C**  
-Email: placeholder@example.com
+Email: abelashinework@gmail.com

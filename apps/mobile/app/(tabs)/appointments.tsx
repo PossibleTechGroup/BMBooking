@@ -20,6 +20,7 @@ import { Colors } from '../../constants/theme';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 import { MedText } from '../../components/medconnect/MedText';
 import { MedButton } from '../../components/medconnect/MedButton';
+import { MedicalDisclaimer } from '../../components/MedicalDisclaimer';
 import { BMHeader } from '../../components/BMHeader';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import axios from 'axios';
@@ -414,6 +415,7 @@ export default function PatientAppointmentsScreen() {
         ) : (
           filteredAppointments.map((apt) => renderAppointmentCard(apt))
         )}
+        <MedicalDisclaimer style={{ marginTop: 16 }} />
       </ScrollView>
 
       {/* Review Modal */}

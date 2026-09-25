@@ -1,0 +1,91 @@
+# Codemagic CI/CD configuration for BM Booking (Monorepo Expo / React Native iOS)
+# Place this file in the root folder of the repository.
+
+workflows:
+  ios-app-store:
+    name: iOS App Store Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    working_directory: apps/mobile
+    environment:
+      groups:
+        # Configure these in Codemagic Web UI -> Team / Application Settings -> Environment variables:
+        # - APP_STORE_CONNECT_PRIVATE_KEY (App Store Connect API Key .p8 content)
+        # - APP_STORE_CONNECT_KEY_IDENTIFIER (Key ID, e.g. 2X9R427NDG)
+        # - APP_STORE_CONNECT_ISSUER_ID (Issuer ID UUID from App Store Connect)
+        - app_store_credentials
+      vars:
+        XCODE_WORKSPACE: "ios/BMBooking.xcworkspace"
+        XCODE_SCHEME: "BMBooking"
+        BUNDLE_ID: "com.bmbooking.app"
+        EXPO_PUBLIC_API_URL: "https://bmbookingapi.possibletechplc.com"
+      node: 20
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install --legacy-peer-deps
+      - name: Expo Prebuild (Generate native iOS project)
+        script: |
+          npx expo prebuild --platform ios --no-install
+      - name: Install CocoaPods
+        script: |
+          cd ios && pod install
+      - name: Set up code signing settings on Xcode project
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+      - name: Build IPA for App Store
+        script: |
+          xcode-project build-ipa \
+            --workspace "ios/BMBooking.xcworkspace" \
+            --scheme "BMBooking"
+    artifacts:
+      - apps/mobile/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+      email:
+        recipients:
+          - abelashinework@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  ios-simulator:
+    name: iOS Simulator Build (Testing)
+    max_build_duration: 45
+    instance_type: mac_mini_m2
+    working_directory: apps/mobile
+    environment:
+      vars:
+        EXPO_PUBLIC_API_URL: "https://bmbookingapi.possibletechplc.com"
+      node: 20
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install --legacy-peer-deps
+      - name: Expo Prebuild
+        script: |
+          npx expo prebuild --platform ios --no-install
+      - name: Install CocoaPods
+        script: |
+          cd ios && pod install
+      - name: Build Simulator app
+        script: |
+          xcodebuild -workspace ios/BMBooking.xcworkspace \
+            -scheme BMBooking \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build
+    artifacts:
+      - apps/mobile/build/Build/Products/Debug-iphonesimulator/*.app
