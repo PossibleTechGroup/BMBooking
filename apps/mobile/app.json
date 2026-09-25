@@ -9,12 +9,11 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.bmbooking.app",
       "infoPlist": {
         "NSCameraUsageDescription": "BM Booking uses your camera to add or update your profile and professional photos.",
         "NSPhotoLibraryUsageDescription": "BM Booking accesses your photo library so you can pick a profile or referral document image.",
-        "NSMicrophoneUsageDescription": "BM Booking may access the microphone when recording video with the camera.",
         "NSLocationWhenInUseUsageDescription": "BM Booking uses your location to find hospitals near you."
       }
     },
