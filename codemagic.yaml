@@ -46,11 +46,14 @@ workflows:
             --workspace "ios/BMBooking.xcworkspace" \
             --scheme "BMBooking"
     artifacts:
+      - build/ios/ipa/*.ipa
       - apps/mobile/build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
     publishing:
       app_store_connect:
-        auth: integration
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
       email:
         recipients:
@@ -88,4 +91,5 @@ workflows:
             -sdk iphonesimulator \
             -derivedDataPath build
     artifacts:
+      - build/Build/Products/Debug-iphonesimulator/*.app
       - apps/mobile/build/Build/Products/Debug-iphonesimulator/*.app
