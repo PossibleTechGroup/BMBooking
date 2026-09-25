@@ -7,13 +7,12 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
     working_directory: apps/mobile
+    integrations:
+      app_store_connect: "BMStock Codemagic"
     environment:
-      groups:
-        # Configure these in Codemagic Web UI -> Team / Application Settings -> Environment variables:
-        # - APP_STORE_CONNECT_PRIVATE_KEY (App Store Connect API Key .p8 content)
-        # - APP_STORE_CONNECT_KEY_IDENTIFIER (Key ID, e.g. 2X9R427NDG)
-        # - APP_STORE_CONNECT_ISSUER_ID (Issuer ID UUID from App Store Connect)
-        - app_store_credentials
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.bmbooking.app
       vars:
         XCODE_WORKSPACE: "ios/BMBooking.xcworkspace"
         XCODE_SCHEME: "BMBooking"
@@ -34,11 +33,6 @@ workflows:
           cd ios && pod install
       - name: Set up code signing settings on Xcode project
         script: |
-          keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --create
-          keychain add-certificates
           xcode-project use-profiles --project "ios/BMBooking.xcodeproj"
       - name: Build IPA for App Store
         script: |
@@ -51,9 +45,7 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
     publishing:
       app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        auth: integration
         submit_to_testflight: true
       email:
         recipients:
