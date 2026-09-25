@@ -39,7 +39,7 @@ workflows:
             --type IOS_APP_STORE \
             --create
           keychain add-certificates
-          xcode-project use-profiles
+          xcode-project use-profiles --project "ios/BMBooking.xcodeproj"
       - name: Build IPA for App Store
         script: |
           xcode-project build-ipa \
