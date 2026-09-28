@@ -1,5 +1,9 @@
 # Codemagic CI/CD configuration for BM Booking (Monorepo Expo / React Native iOS)
 # Place this file in the root folder of the repository.
+#
+# Requirements in Codemagic (BMBooking app -> Environment variables):
+#   - Variable: CERTIFICATE_PRIVATE_KEY (Secure), assigned to group "signing"
+#   - Developer Portal integration named "Bm BOok" (team Settings -> Integrations)
 
 workflows:
   ios-app-store:
@@ -11,7 +15,7 @@ workflows:
       app_store_connect: "Bm BOok"
     environment:
       groups:
-        - signing # CHANGE to the group name that holds CERTIFICATE_PRIVATE_KEY
+        - signing
       vars:
         XCODE_WORKSPACE: "ios/BMBooking.xcworkspace"
         XCODE_SCHEME: "BMBooking"
@@ -21,6 +25,13 @@ workflows:
       xcode: latest
       cocoapods: default
     scripts:
+      - name: Check signing variables
+        script: |
+          if [ -z "$CERTIFICATE_PRIVATE_KEY" ]; then
+            echo "ERROR: CERTIFICATE_PRIVATE_KEY is not set."
+            echo "Add it in the app's Environment variables, assign it to group 'signing', and tick Secure."
+            exit 1
+          fi
       - name: Install dependencies
         script: |
           npm install --legacy-peer-deps
