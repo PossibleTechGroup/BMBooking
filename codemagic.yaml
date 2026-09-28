@@ -8,11 +8,10 @@ workflows:
     instance_type: mac_mini_m2
     working_directory: apps/mobile
     integrations:
-      app_store_connect: "BMStock Codemagic"
+      app_store_connect: "Bm BOok"
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.bmbooking
+      groups:
+        - signing # CHANGE to the group name that holds CERTIFICATE_PRIVATE_KEY
       vars:
         XCODE_WORKSPACE: "ios/BMBooking.xcworkspace"
         XCODE_SCHEME: "BMBooking"
@@ -31,6 +30,14 @@ workflows:
       - name: Install CocoaPods
         script: |
           cd ios && pod install
+      - name: Fetch signing files
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create \
+            --certificate-key @env:CERTIFICATE_PRIVATE_KEY
+          keychain add-certificates
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles --project "ios/BMBooking.xcodeproj"
