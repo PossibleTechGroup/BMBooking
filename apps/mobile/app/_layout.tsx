@@ -64,7 +64,7 @@ function AppContent() {
 
   // Navigation Logic
   useEffect(() => {
-    if (isCheckingAuth || segments.length === 0) return;
+    if (isCheckingAuth || segments.length < 1) return;
 
     // Navigation Logic
     const currentSegment = String(segments[0]);

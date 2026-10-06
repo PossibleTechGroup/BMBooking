@@ -23,6 +23,8 @@ export const SPRING_CONFIG = {
   damping: 14.0,
 };
 
+export const SPRING_DURATION = 300;
+
 export const SPRING_SNAPPY = {
   mass: 0.8,
   stiffness: 250,
@@ -111,14 +113,14 @@ export function usePulseAnimation(intensity = 1.05, period = 3000) {
   return { scale, startPulse, stopPulse };
 }
 
-export const ReanimatedLayout = Layout.springify(SPRING_CONFIG);
+export const ReanimatedLayout = Layout.springify(SPRING_DURATION);
 
-export const FadeInDownSpring = FadeInDown.springify(SPRING_CONFIG);
-export const FadeInUpSpring = FadeInUp.springify(SPRING_CONFIG);
-export const SlideInDownSpring = SlideInDown.springify(SPRING_CONFIG);
-export const SlideInLeftSpring = SlideInLeft.springify(SPRING_CONFIG);
-export const SlideInRightSpring = SlideInRight.springify(SPRING_CONFIG);
+export const FadeInDownSpring = FadeInDown.springify(SPRING_DURATION);
+export const FadeInUpSpring = FadeInUp.springify(SPRING_DURATION);
+export const SlideInDownSpring = SlideInDown.springify(SPRING_DURATION);
+export const SlideInLeftSpring = SlideInLeft.springify(SPRING_DURATION);
+export const SlideInRightSpring = SlideInRight.springify(SPRING_DURATION);
 
 export const FadeOutFast = FadeOut.duration(150);
 export const SlideOutLeftFast = SlideOutLeft.duration(200);
-export const SlideOutDownSpring = SlideOutDown.springify(SPRING_CONFIG);
+export const SlideOutDownSpring = SlideOutDown.springify(SPRING_DURATION);
