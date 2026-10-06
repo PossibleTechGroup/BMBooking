@@ -112,6 +112,7 @@ function EquipmentPage() {
     const fd = new FormData();
     fd.append('name', form.name);
     fd.append('category', form.category);
+    if (form.doctorName) fd.append('doctorName', form.doctorName);
     fd.append('duration', String(form.duration));
     if (form.price != null) fd.append('price', String(form.price));
     if (form.description) fd.append('description', form.description);

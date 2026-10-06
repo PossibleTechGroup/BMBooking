@@ -431,6 +431,7 @@ model MedicalEquipment {
   id            Int               @id @default(autoincrement())
   name          String
   category      EquipmentCategory
+  doctorName    String?           @map("doctor_name")
   price  Decimal?          @db.Decimal(10, 2) @map("price")
   hospitalId    Int               @map("hospital_id")
   hospital      Hospital          @relation(fields: [hospitalId], references: [id], onDelete: Cascade)

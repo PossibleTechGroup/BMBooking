@@ -29,6 +29,11 @@ export default function EquipmentStatusCards({ equipment, loading, togglingId, d
             <div style={statusCardStyles.cardBody}>
               <div style={statusCardStyles.cardName}>{eq.name}</div>
               <div style={statusCardStyles.cardCategory}>{eq.category}</div>
+              {eq.doctorName && (
+                <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  Dr. {eq.doctorName}
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 500, color: eq.price != null ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                   {eq.price != null ? `${eq.price} ETB` : 'Free'}

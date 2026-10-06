@@ -59,6 +59,7 @@ export interface HospitalEquipment {
   id: number;
   name: string;
   category: string;
+  doctorName?: string | null;
   isOperational: boolean;
   duration: number;
   price: number | null;

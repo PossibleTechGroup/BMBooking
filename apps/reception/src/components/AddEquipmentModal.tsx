@@ -6,6 +6,7 @@ import './Modal.css';
 export interface AddEquipmentForm {
   name: string;
   category: string;
+  doctorName: string;
   duration: number;
   price: number | null;
   description: string;
@@ -45,20 +46,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   DEFIBRILLATOR: 'Defibrillator',
   OTHER: 'Other',
 };
-
-function detectCategoryFromName(name: string): string {
-  const tokens = name.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  if (tokens.includes('mammography') || tokens.includes('mammograph') || tokens.includes('mammogram')) return 'MAMMOGRAPHY';
-  if (tokens.includes('defibrillator') || tokens.includes('defib') || tokens.includes('aed')) return 'DEFIBRILLATOR';
-  if (tokens.includes('ventilator') || tokens.includes('vent')) return 'VENTILATOR';
-  if (tokens.includes('dialysis') || tokens.includes('dialyzer')) return 'DIALYSIS';
-  if (tokens.includes('ultrasound') || tokens.includes('ultrasonography') || tokens.includes('sonograph') || tokens.includes('echo')) return 'ULTRASOUND';
-  if (tokens.includes('ctscan') || tokens.includes('catscan') || tokens.includes('ct')) return 'CT_SCAN';
-  if (tokens.includes('xray') || (tokens.includes('x') && tokens.includes('ray'))) return 'XRAY';
-  if (tokens.includes('ecg') || tokens.includes('ekg') || tokens.includes('electrocardiogram')) return 'ECG';
-  if (tokens.includes('mri') || (tokens.includes('magnetic') && tokens.includes('resonance'))) return 'MRI';
-  return 'OTHER';
-}
 
 function DayRow({ day, enabled, start, end, duration, onToggle, onUpdate, toggleStyle, toggleKnob }: {
   day: string; enabled: boolean; start: string; end: string; duration: number;
@@ -114,7 +101,8 @@ function DayRow({ day, enabled, start, end, duration, onToggle, onUpdate, toggle
 }
 
 export default function AddEquipmentModal({ open, onClose, onConfirm }: AddEquipmentModalProps) {
-  const [name, setName] = useState('');
+  const [category, setCategory] = useState('');
+  const [doctorName, setDoctorName] = useState('');
   const [duration, setDuration] = useState('30');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
@@ -122,7 +110,6 @@ export default function AddEquipmentModal({ open, onClose, onConfirm }: AddEquip
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [hoursExpanded, setHoursExpanded] = useState(false);
   const [hours, setHours] = useState<OperatingHours>(buildDefaultHours());
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -162,26 +149,27 @@ export default function AddEquipmentModal({ open, onClose, onConfirm }: AddEquip
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!category) return;
     setSaving(true);
     setError('');
     try {
       await onConfirm({
-        name: name.trim(),
-        category: detectCategoryFromName(name.trim()),
+        name: CATEGORY_LABELS[category],
+        category,
+        doctorName: doctorName.trim(),
         duration: parseInt(duration) || 30,
         price: price ? parseFloat(price) : null,
         description: description.trim(),
         photo,
-        operatingHours: hoursExpanded ? hours : null,
+        operatingHours: hours,
       });
-      setName('');
+      setCategory('');
+      setDoctorName('');
       setDuration('30');
       setPrice('');
       setDescription('');
       setPhoto(null);
       setPhotoPreview(null);
-      setHoursExpanded(false);
       setHours(buildDefaultHours());
       onClose();
     } catch (err) {
@@ -206,13 +194,18 @@ export default function AddEquipmentModal({ open, onClose, onConfirm }: AddEquip
           {error && <div className="modal-error">{error}</div>}
 
           <div className="modal-form-group">
-            <label className="modal-label">Equipment Name <span className="modal-required">*</span></label>
-            <input className="modal-input" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. MRI Scanner" />
-            {name.trim() && (
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: 6 }}>
-                Category: <strong>{CATEGORY_LABELS[detectCategoryFromName(name.trim())]}</strong> (detected from name)
-              </div>
-            )}
+            <label className="modal-label">Category <span className="modal-required">*</span></label>
+            <select className="modal-select" value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="">Select category</option>
+              {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="modal-form-group">
+            <label className="modal-label">Doctor Name</label>
+            <input className="modal-input" type="text" value={doctorName} onChange={(e) => setDoctorName(e.target.value)} placeholder="e.g. Dr. Alemu Bekele" />
           </div>
 
           <div className="modal-form-group">
@@ -221,39 +214,24 @@ export default function AddEquipmentModal({ open, onClose, onConfirm }: AddEquip
           </div>
 
           <div className="modal-form-group">
-            <div
-              onClick={() => setHoursExpanded(v => !v)}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none' }}
-            >
-              <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                {hoursExpanded ? '▼' : '▶'}
-              </span>
-              <label className="modal-label" style={{ margin: 0, cursor: 'pointer' }}>
-                Operating Hours
-              </label>
-              {!hoursExpanded && (
-                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>(optional)</span>
-              )}
+            <label className="modal-label">Working Hours</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+              {WEEKDAYS.map(day => (
+                <DayRow key={day} day={day} enabled={hours[day].enabled}
+                  start={hours[day].start} end={hours[day].end} duration={hours[day].duration ?? 30}
+                  onToggle={() => toggleDay(day)} onUpdate={(patch) => updateDay(day, patch)}
+                  toggleStyle={toggleStyle} toggleKnob={toggleKnob}
+                />
+              ))}
+              <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+              {WEEKEND.map(day => (
+                <DayRow key={day} day={day} enabled={hours[day].enabled}
+                  start={hours[day].start} end={hours[day].end} duration={hours[day].duration ?? 30}
+                  onToggle={() => toggleDay(day)} onUpdate={(patch) => updateDay(day, patch)}
+                  toggleStyle={toggleStyle} toggleKnob={toggleKnob}
+                />
+              ))}
             </div>
-            {hoursExpanded && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                {WEEKDAYS.map(day => (
-                  <DayRow key={day} day={day} enabled={hours[day].enabled}
-                    start={hours[day].start} end={hours[day].end} duration={hours[day].duration ?? 30}
-                    onToggle={() => toggleDay(day)} onUpdate={(patch) => updateDay(day, patch)}
-                    toggleStyle={toggleStyle} toggleKnob={toggleKnob}
-                  />
-                ))}
-                <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-                {WEEKEND.map(day => (
-                  <DayRow key={day} day={day} enabled={hours[day].enabled}
-                    start={hours[day].start} end={hours[day].end} duration={hours[day].duration ?? 30}
-                    onToggle={() => toggleDay(day)} onUpdate={(patch) => updateDay(day, patch)}
-                    toggleStyle={toggleStyle} toggleKnob={toggleKnob}
-                  />
-                ))}
-              </div>
-            )}
           </div>
 
           <div className="modal-form-group">
@@ -283,7 +261,7 @@ export default function AddEquipmentModal({ open, onClose, onConfirm }: AddEquip
 
           <div className="modal-footer">
             <button type="button" onClick={onClose} className="modal-btn modal-btn-cancel">Cancel</button>
-            <button type="submit" disabled={saving || !name.trim()} className="modal-btn modal-btn-confirm">
+            <button type="submit" disabled={saving || !category} className="modal-btn modal-btn-confirm">
               {saving ? 'Adding...' : 'Add Equipment'}
             </button>
           </div>

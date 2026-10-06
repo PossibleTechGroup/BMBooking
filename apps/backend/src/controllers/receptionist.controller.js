@@ -221,7 +221,7 @@ const ReceptionistController = {
     try {
       const equipment = await prisma.medicalEquipment.findMany({
         where: { hospitalId: req.receptionistProfile.hospitalId },
-        select: { id: true, name: true, category: true, isOperational: true, duration: true, price: true, operatingHours: true },
+        select: { id: true, name: true, category: true, doctorName: true, isOperational: true, duration: true, price: true, operatingHours: true },
         orderBy: { name: "asc" },
       });
       res.status(200).json({ status: "success", data: equipment });

@@ -820,6 +820,7 @@ const ReceptionistService = {
       data: {
         name: data.name,
         category: data.category,
+        doctorName: data.doctorName || null,
         hospitalId: data.hospitalId,
         price: data.price !== undefined ? Number(data.price) : undefined,
         operatingHours: data.operatingHours || undefined,
