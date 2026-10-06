@@ -8,7 +8,7 @@ def run(cmd, timeout=30):
     stdin, stdout, stderr = ssh.exec_command(cmd, timeout=timeout)
     out = stdout.read().decode('utf-8', errors='replace')
     err = stderr.read().decode('utf-8', errors='replace')
-    print(f">>> {cmd}")
+    print(f">>> {cmd}") 
     if out.strip():
         print(out.strip())
     if err.strip():
