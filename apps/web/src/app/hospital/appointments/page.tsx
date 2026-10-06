@@ -874,23 +874,21 @@ export default function HospitalAppointmentsPage() {
             </button>
           ))}
         </div>
-        {activeTab === 'all' && (
-          <div className="flex gap-1.5 ml-auto">
-            {([
-              { key: 'list', label: 'List', icon: List },
-              { key: 'calendar', label: 'Calendar', icon: Grid3x3 },
-              { key: 'reorder', label: 'Reorder', icon: ArrowUpDown },
-            ] as const).map((v) => (
-              <button
-                key={v.key}
-                onClick={() => setViewMode(v.key)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-[13px] font-medium ${viewMode === v.key ? 'bg-foreground/10 text-text' : 'bg-surface text-text-secondary border border-border'}`}
-              >
-                <v.icon size={14} /> {v.label}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex gap-1.5 ml-auto">
+          {([
+            { key: 'list', label: 'List', icon: List },
+            { key: 'calendar', label: 'Calendar', icon: Grid3x3 },
+            { key: 'reorder', label: 'Reorder', icon: ArrowUpDown },
+          ] as const).map((v) => (
+            <button
+              key={v.key}
+              onClick={() => setViewMode(v.key)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-[13px] font-medium ${viewMode === v.key ? 'bg-foreground/10 text-text' : 'bg-surface text-text-secondary border border-border'}`}
+            >
+              <v.icon size={14} /> {v.label}
+            </button>
+          ))}
+        </div>
         {activeTab === 'upcoming' && (
           <div className="ml-auto flex gap-3">
             {[

@@ -6,7 +6,7 @@ import DenyModal from '../components/DenyModal';
 import RescheduleModal from '../components/RescheduleModal';
 import AppointmentNotesModal from '../components/AppointmentNotesModal';
 import CreateAppointmentModal from '../components/CreateAppointmentModal';
-import { fetchAppointments, approveAppointment, denyAppointment, cancelAppointment, rescheduleAppointment, updateAppointmentNotes, createFollowUpAppointment, reorderAppointments } from '../store/slices/appointmentSlice';
+import { fetchAppointments, fetchUpcomingAppointments, approveAppointment, denyAppointment, cancelAppointment, rescheduleAppointment, updateAppointmentNotes, createFollowUpAppointment, reorderAppointments } from '../store/slices/appointmentSlice';
 import { fetchScheduleDoctors } from '../store/slices/scheduleSlice';
 import { pageStyles } from './AppointmentsPage.styles';
 import AppointmentsListView from '../components/appointments/AppointmentsListView';
@@ -98,7 +98,9 @@ function AppointmentsPage() {
     return map;
   }, [allDoctors]);
 
-  const filtered = appointments.filter((a) => {
+  const list = activeTab === 'upcoming' ? upcomingAppointments : appointments;
+
+  const filtered = list.filter((a) => {
     if (statusFilter !== 'all' && a.status !== statusFilter) return false;
     if (doctorFilter && a.doctorId !== doctorFilter) return false;
     if (!matchesPaymentTypeFilter(a.paymentMethod, paymentFilter)) return false;
@@ -128,6 +130,10 @@ function AppointmentsPage() {
 
   // Initial fetch when not searching by code
   useEffect(() => {
+    if (activeTab === 'upcoming') {
+      dispatch(fetchUpcomingAppointments({ doctorId: doctorFilter === '' ? undefined : Number(doctorFilter) }));
+      return;
+    }
     if (codeSearch) return;
     if (viewMode === 'list') {
       dispatch(fetchAppointments(dateFilter ? { date: dateFilter } : {}));
@@ -138,7 +144,7 @@ function AppointmentsPage() {
       const to = new Date(weekDays[6].getFullYear(), weekDays[6].getMonth(), weekDays[6].getDate(), 23, 59, 59).toISOString();
       dispatch(fetchAppointments({ from, to }));
     }
-  }, [dispatch, dateFilter, viewMode, weekDays, codeSearch, reorderDate]);
+  }, [dispatch, activeTab, doctorFilter, dateFilter, viewMode, weekDays, codeSearch, reorderDate]);
 
   const handleApprove = async (appointment: Appointment) => {
     if (!window.confirm(`Approve this appointment for ${appointment.patient.patientProfile?.fullName || 'patient'}?`)) return;
@@ -216,6 +222,10 @@ function AppointmentsPage() {
   };
 
   const refetchAppointments = () => {
+    if (activeTab === 'upcoming') {
+      dispatch(fetchUpcomingAppointments({ doctorId: doctorFilter === '' ? undefined : Number(doctorFilter) }));
+      return;
+    }
     if (codeSearch) {
       dispatch(fetchAppointments({ confirmationCode: codeSearch }));
     } else if (viewMode === 'list') {
@@ -284,40 +294,36 @@ function AppointmentsPage() {
             >
               <Calendar size={16} /> Upcoming
             </button>
-            {activeTab === 'all' && (
-              <>
-                <button
-                  onClick={() => setViewMode('list')}
-                  style={{
-                    ...pageStyles.viewToggleButton,
-                    background: viewMode === 'list' ? '#E8E4D9' : '#FFF',
-                    color: viewMode === 'list' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  }}
-                >
-                  <List size={16} /> List
-                </button>
-                <button
-                  onClick={() => setViewMode('calendar')}
-                  style={{
-                    ...pageStyles.viewToggleButton,
-                    background: viewMode === 'calendar' ? '#E8E4D9' : '#FFF',
-                    color: viewMode === 'calendar' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  }}
-                >
-                  <Grid3x3 size={16} /> Calendar
-                </button>
-                <button
-                  onClick={() => setViewMode('reorder')}
-                  style={{
-                    ...pageStyles.viewToggleButton,
-                    background: viewMode === 'reorder' ? '#E8E4D9' : '#FFF',
-                    color: viewMode === 'reorder' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  }}
-                >
-                  <ArrowUpDown size={16} /> Reorder
-                </button>
-              </>
-            )}
+            <button
+              onClick={() => setViewMode('list')}
+              style={{
+                ...pageStyles.viewToggleButton,
+                background: viewMode === 'list' ? '#E8E4D9' : '#FFF',
+                color: viewMode === 'list' ? 'var(--text-primary)' : 'var(--text-secondary)',
+              }}
+            >
+              <List size={16} /> List
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              style={{
+                ...pageStyles.viewToggleButton,
+                background: viewMode === 'calendar' ? '#E8E4D9' : '#FFF',
+                color: viewMode === 'calendar' ? 'var(--text-primary)' : 'var(--text-secondary)',
+              }}
+            >
+              <Grid3x3 size={16} /> Calendar
+            </button>
+            <button
+              onClick={() => setViewMode('reorder')}
+              style={{
+                ...pageStyles.viewToggleButton,
+                background: viewMode === 'reorder' ? '#E8E4D9' : '#FFF',
+                color: viewMode === 'reorder' ? 'var(--text-primary)' : 'var(--text-secondary)',
+              }}
+            >
+              <ArrowUpDown size={16} /> Reorder
+            </button>
           </div>
           <button onClick={() => setShowCreateModal(true)} style={pageStyles.newAppointmentBtn}>
             <Plus size={18} /> New Appointment

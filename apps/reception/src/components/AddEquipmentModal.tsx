@@ -33,18 +33,32 @@ interface AddEquipmentModalProps {
   onConfirm: (data: AddEquipmentForm) => Promise<void>;
 }
 
-const CATEGORIES = [
-  { value: 'MRI', label: 'MRI' },
-  { value: 'CT_SCAN', label: 'CT Scan' },
-  { value: 'DIALYSIS', label: 'Dialysis' },
-  { value: 'ULTRASOUND', label: 'Ultrasound' },
-  { value: 'XRAY', label: 'X-Ray' },
-  { value: 'VENTILATOR', label: 'Ventilator' },
-  { value: 'ECG', label: 'ECG' },
-  { value: 'MAMMOGRAPHY', label: 'Mammography' },
-  { value: 'DEFIBRILLATOR', label: 'Defibrillator' },
-  { value: 'OTHER', label: 'Other' },
-];
+const CATEGORY_LABELS: Record<string, string> = {
+  MRI: 'MRI',
+  CT_SCAN: 'CT Scan',
+  DIALYSIS: 'Dialysis',
+  ULTRASOUND: 'Ultrasound',
+  XRAY: 'X-Ray',
+  VENTILATOR: 'Ventilator',
+  ECG: 'ECG',
+  MAMMOGRAPHY: 'Mammography',
+  DEFIBRILLATOR: 'Defibrillator',
+  OTHER: 'Other',
+};
+
+function detectCategoryFromName(name: string): string {
+  const tokens = name.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  if (tokens.includes('mammography') || tokens.includes('mammograph') || tokens.includes('mammogram')) return 'MAMMOGRAPHY';
+  if (tokens.includes('defibrillator') || tokens.includes('defib') || tokens.includes('aed')) return 'DEFIBRILLATOR';
+  if (tokens.includes('ventilator') || tokens.includes('vent')) return 'VENTILATOR';
+  if (tokens.includes('dialysis') || tokens.includes('dialyzer')) return 'DIALYSIS';
+  if (tokens.includes('ultrasound') || tokens.includes('ultrasonography') || tokens.includes('sonograph') || tokens.includes('echo')) return 'ULTRASOUND';
+  if (tokens.includes('ctscan') || tokens.includes('catscan') || tokens.includes('ct')) return 'CT_SCAN';
+  if (tokens.includes('xray') || (tokens.includes('x') && tokens.includes('ray'))) return 'XRAY';
+  if (tokens.includes('ecg') || tokens.includes('ekg') || tokens.includes('electrocardiogram')) return 'ECG';
+  if (tokens.includes('mri') || (tokens.includes('magnetic') && tokens.includes('resonance'))) return 'MRI';
+  return 'OTHER';
+}
 
 function DayRow({ day, enabled, start, end, duration, onToggle, onUpdate, toggleStyle, toggleKnob }: {
   day: string; enabled: boolean; start: string; end: string; duration: number;
@@ -101,7 +115,6 @@ function DayRow({ day, enabled, start, end, duration, onToggle, onUpdate, toggle
 
 export default function AddEquipmentModal({ open, onClose, onConfirm }: AddEquipmentModalProps) {
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
   const [duration, setDuration] = useState('30');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
@@ -149,13 +162,13 @@ export default function AddEquipmentModal({ open, onClose, onConfirm }: AddEquip
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !category.trim()) return;
+    if (!name.trim()) return;
     setSaving(true);
     setError('');
     try {
       await onConfirm({
         name: name.trim(),
-        category: category.trim(),
+        category: detectCategoryFromName(name.trim()),
         duration: parseInt(duration) || 30,
         price: price ? parseFloat(price) : null,
         description: description.trim(),
@@ -163,7 +176,6 @@ export default function AddEquipmentModal({ open, onClose, onConfirm }: AddEquip
         operatingHours: hoursExpanded ? hours : null,
       });
       setName('');
-      setCategory('');
       setDuration('30');
       setPrice('');
       setDescription('');
@@ -194,18 +206,13 @@ export default function AddEquipmentModal({ open, onClose, onConfirm }: AddEquip
           {error && <div className="modal-error">{error}</div>}
 
           <div className="modal-form-group">
-            <label className="modal-label">Name <span className="modal-required">*</span></label>
+            <label className="modal-label">Equipment Name <span className="modal-required">*</span></label>
             <input className="modal-input" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. MRI Scanner" />
-          </div>
-
-          <div className="modal-form-group">
-            <label className="modal-label">Category <span className="modal-required">*</span></label>
-            <select className="modal-select" value={category} onChange={(e) => setCategory(e.target.value)}>
-              <option value="">Select category...</option>
-              {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
+            {name.trim() && (
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: 6 }}>
+                Category: <strong>{CATEGORY_LABELS[detectCategoryFromName(name.trim())]}</strong> (detected from name)
+              </div>
+            )}
           </div>
 
           <div className="modal-form-group">
@@ -276,7 +283,7 @@ export default function AddEquipmentModal({ open, onClose, onConfirm }: AddEquip
 
           <div className="modal-footer">
             <button type="button" onClick={onClose} className="modal-btn modal-btn-cancel">Cancel</button>
-            <button type="submit" disabled={saving || !name.trim() || !category.trim()} className="modal-btn modal-btn-confirm">
+            <button type="submit" disabled={saving || !name.trim()} className="modal-btn modal-btn-confirm">
               {saving ? 'Adding...' : 'Add Equipment'}
             </button>
           </div>
