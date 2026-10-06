@@ -17,6 +17,7 @@ import { MedText } from '../components/medconnect/MedText';
 import { MedCard } from '../components/medconnect/MedCard';
 import { MedButton } from '../components/medconnect/MedButton';
 import { DoctorAvatar } from '../components/doctor/DoctorAvatar';
+import { MedicalDisclaimer } from '../components/MedicalDisclaimer';
 import { Colors } from '../constants/theme';
 import { useColorScheme } from '../hooks/use-color-scheme';
 import { AppDispatch, RootState } from '../store';
@@ -297,6 +298,8 @@ export default function HospitalDetailScreen() {
               No reviews yet. Complete an appointment here to leave a review.
             </MedText>
           )}
+
+          <MedicalDisclaimer />
         </View>
 
         <View style={{ height: 40 }} />

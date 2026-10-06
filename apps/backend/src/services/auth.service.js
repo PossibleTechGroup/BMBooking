@@ -20,8 +20,24 @@ const normalizePhone = (identifier) => {
   return `+251${digits}`;
 };
 
+const isDemoReviewerPhone = (phone) => {
+  return phone === "+251912345678" || phone === "+251900000000";
+};
+
 const AuthService = {
   requestOTP: async (phone, role, isRegistration) => {
+    // Reviewer demo account: always succeed without SMS
+    if (isDemoReviewerPhone(phone)) {
+      const demoCode = "123456";
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await OTP.create(phone, demoCode, expiresAt);
+      return {
+        status: "success",
+        message: "OTP sent successfully",
+        mockCode: demoCode,
+      };
+    }
+
     // Check if user already exists
     const existingUser = await User.findByPhone(phone);
 
@@ -137,6 +153,51 @@ const AuthService = {
   },
 
   verifyOTP: async (phone, code, role, isRegistration) => {
+    // Reviewer demo account: any OTP works, always verify as patient
+    if (isDemoReviewerPhone(phone)) {
+      let demoUser = await User.findByPhone(phone);
+      if (!demoUser) {
+        demoUser = await User.create(phone, "patient");
+      } else if (demoUser.role !== "patient") {
+        await prisma.user.update({
+          where: { id: demoUser.id },
+          data: { role: "patient", isLocked: false, lockedUntil: null },
+        });
+        demoUser.role = "patient";
+      }
+
+      let profile = await prisma.patientProfile.findUnique({
+        where: { userId: demoUser.id },
+      });
+      if (!profile) {
+        profile = await prisma.patientProfile.create({
+          data: {
+            userId: demoUser.id,
+            fullName: "App Reviewer",
+            gender: "Male",
+            dateOfBirth: new Date("1995-01-01"),
+            bloodType: "O+",
+          },
+        });
+      }
+
+      const token = signToken({
+        id: demoUser.id,
+        phone: demoUser.phone,
+        role: demoUser.role,
+      });
+
+      return {
+        token,
+        user: {
+          id: demoUser.id,
+          phone: demoUser.phone,
+          role: demoUser.role,
+          patientProfile: profile,
+        },
+      };
+    }
+
     // Get or create user
     let user = await User.findByPhone(phone);
 

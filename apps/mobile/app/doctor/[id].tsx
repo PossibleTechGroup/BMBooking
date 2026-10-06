@@ -19,6 +19,7 @@ import { MedButton } from "../../components/medconnect/MedButton";
 import { MedText } from "../../components/medconnect/MedText";
 import { DoctorAvatar } from "../../components/doctor/DoctorAvatar";
 import { BMHeader } from "../../components/BMHeader";
+import { MedicalDisclaimer } from "../../components/MedicalDisclaimer";
 import { Colors } from "../../constants/theme";
 import { useColorScheme } from "../../hooks/use-color-scheme";
 import { RootState, AppDispatch } from "../../store";
@@ -386,6 +387,9 @@ export default function DoctorProfileScreen() {
             <MedText style={[styles.feeValue, { color: theme.text }]}>{cardPrice}</MedText>
           </View>
         </View>
+
+        {/* Medical Disclaimer */}
+        <MedicalDisclaimer />
 
         {/* Action Button */}
         <Pressable

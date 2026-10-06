@@ -21,6 +21,7 @@ import { Colors } from '../constants/theme';
 import { useColorScheme } from '../hooks/use-color-scheme';
 import { MedText } from '../components/medconnect/MedText';
 import { MedButton } from '../components/medconnect/MedButton';
+import { MedicalDisclaimer } from '../components/MedicalDisclaimer';
 import { AppDispatch, RootState } from '../store';
 import { BASE_URL, TELEBIRR_URL } from '../constants/api';
 import {
@@ -584,6 +585,9 @@ export default function BookingModal() {
             </View>
           )}
 
+          {/* Medical Disclaimer */}
+          <MedicalDisclaimer />
+
           {/* Bottom Action Button */}
           <Pressable
             style={[styles.continueButton, { backgroundColor: '#1E56A0' }]}
@@ -704,6 +708,8 @@ export default function BookingModal() {
               </MedText>
             </View>
           </View>
+
+          <MedicalDisclaimer />
 
           <MedButton
             title={paymentLoading ? "Processing..." : `Pay ${totalPayable.toFixed(2)} ETB & Confirm`}

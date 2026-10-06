@@ -1,0 +1,105 @@
+# Codemagic CI/CD configuration for BM Booking (Monorepo Expo / React Native iOS)
+# Place this file in the root folder of the repository.
+#
+# Requirements in Codemagic (BMBooking app -> Environment variables):
+#   - Variable: CERTIFICATE_PRIVATE_KEY (Secure), assigned to group "signing"
+#   - Developer Portal integration named "Bm BOok" (team Settings -> Integrations)
+
+workflows:
+  ios-app-store:
+    name: iOS App Store Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    working_directory: apps/mobile
+    integrations:
+      app_store_connect: "Bm BOok"
+    environment:
+      groups:
+        - signing
+      vars:
+        XCODE_WORKSPACE: "ios/BMBooking.xcworkspace"
+        XCODE_SCHEME: "BMBooking"
+        BUNDLE_ID: "com.bmbooking"
+        EXPO_PUBLIC_API_URL: "https://bmbookingapi.possibletechplc.com"
+      node: 20
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Check signing variables
+        script: |
+          if [ -z "$CERTIFICATE_PRIVATE_KEY" ]; then
+            echo "ERROR: CERTIFICATE_PRIVATE_KEY is not set."
+            echo "Add it in the app's Environment variables, assign it to group 'signing', and tick Secure."
+            exit 1
+          fi
+      - name: Install dependencies
+        script: |
+          npm install --legacy-peer-deps
+      - name: Expo Prebuild (Generate native iOS project)
+        script: |
+          npx expo prebuild --platform ios --no-install
+      - name: Install CocoaPods
+        script: |
+          cd ios && pod install
+      - name: Fetch signing files
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create \
+            --certificate-key @env:CERTIFICATE_PRIVATE_KEY
+          keychain add-certificates
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles --project "ios/BMBooking.xcodeproj"
+      - name: Build IPA for App Store
+        script: |
+          xcode-project build-ipa \
+            --workspace "ios/BMBooking.xcworkspace" \
+            --scheme "BMBooking"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - apps/mobile/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+      email:
+        recipients:
+          - abelashinework@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  ios-simulator:
+    name: iOS Simulator Build (Testing)
+    max_build_duration: 45
+    instance_type: mac_mini_m2
+    working_directory: apps/mobile
+    environment:
+      vars:
+        EXPO_PUBLIC_API_URL: "https://bmbookingapi.possibletechplc.com"
+      node: 20
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install --legacy-peer-deps
+      - name: Expo Prebuild
+        script: |
+          npx expo prebuild --platform ios --no-install
+      - name: Install CocoaPods
+        script: |
+          cd ios && pod install
+      - name: Build Simulator app
+        script: |
+          xcodebuild -workspace ios/BMBooking.xcworkspace \
+            -scheme BMBooking \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build
+    artifacts:
+      - build/Build/Products/Debug-iphonesimulator/*.app
+      - apps/mobile/build/Build/Products/Debug-iphonesimulator/*.app

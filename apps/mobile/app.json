@@ -9,7 +9,14 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.bmbooking",
+      "infoPlist": {
+        "NSCameraUsageDescription": "BM Booking uses your camera to add or update your profile and professional photos.",
+        "NSPhotoLibraryUsageDescription": "BM Booking accesses your photo library so you can pick a profile or referral document image.",
+        "NSLocationWhenInUseUsageDescription": "BM Booking uses your location to find hospitals near you.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.bmbooking",
@@ -68,9 +75,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "81f5c76c-172a-44aa-a6ed-1e7766802fcf"
+        "projectId": "b5c8b3ba-1908-4591-95a4-0b93fcc328d8"
       }
     },
-    "owner": "mekdlawitworku"
+    "owner": "abelashine"
   }
 }

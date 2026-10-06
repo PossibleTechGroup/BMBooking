@@ -19,6 +19,7 @@ import * as Haptics from 'expo-haptics';
 import { MedButton } from "../../components/medconnect/MedButton";
 import { MedCard } from "../../components/medconnect/MedCard";
 import { MedText } from "../../components/medconnect/MedText";
+import { MedicalDisclaimer } from "../../components/MedicalDisclaimer";
 import { Colors } from "../../constants/theme";
 import { useColorScheme } from "../../hooks/use-color-scheme";
 import { AppDispatch, RootState } from "../../store";
@@ -615,14 +616,17 @@ export default function ProfilesScreen() {
             )}
 
 
-            {/* Logout Button */}
-            <View style={{ marginTop: 32 }}>
+            {/* Medical Disclaimer */}
+            <MedicalDisclaimer />
+
+            {/* Logout & Delete Account Buttons */}
+            <View style={{ marginTop: 20, gap: 12 }}>
               <Pressable
                 onPress={() => dispatch(logout())}
                 style={({ pressed }) => [
                   styles.logoutBtn,
                   { borderColor: theme.danger },
-                  pressed && { backgroundColor: theme.danger },
+                  pressed && { backgroundColor: `${theme.danger}15` },
                 ]}
               >
                 <Ionicons name="log-out-outline" size={18} color={theme.danger} />
@@ -863,6 +867,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1.5,
+  },
+  deleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
   },
   logoutText: {
     fontWeight: "600",

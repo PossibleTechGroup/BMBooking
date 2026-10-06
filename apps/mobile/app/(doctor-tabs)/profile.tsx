@@ -196,8 +196,8 @@ export default function DoctorProfileScreen() {
           {PROFILE_ITEMS.map(renderMenuItem)}
         </View>
 
-        {/* ── Sign Out ── */}
-        <View style={{ marginTop: 28 }}>
+        {/* ── Sign Out & Delete Account ── */}
+        <View style={{ marginTop: 28, gap: 12 }}>
           <Pressable
             onPress={() => dispatch(logout())}
             style={({ pressed }) => [

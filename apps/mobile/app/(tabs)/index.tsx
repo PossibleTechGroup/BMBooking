@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LanguagePicker } from "../../components/LanguagePicker";
 import { BMHeader } from "../../components/BMHeader";
 import { MedText } from "../../components/medconnect/MedText";
+import { MedicalDisclaimer } from "../../components/MedicalDisclaimer";
 import { Colors } from "../../constants/theme";
 import { useColorScheme } from "../../hooks/use-color-scheme";
 
@@ -402,6 +403,7 @@ export default function HomeScreen() {
             </>);
           })
         )}
+        <MedicalDisclaimer style={{ marginTop: 20 }} />
       </ScrollView>
     </SafeAreaView>
   );
