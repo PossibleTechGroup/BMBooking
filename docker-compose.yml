@@ -15,8 +15,6 @@ services:
       POSTGRES_DB: ${DB_NAME:-bm_booking_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "${DB_EXTERNAL_PORT:-5433}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgresbmbooking} -d ${DB_NAME:-bm_booking_db}"]
       interval: 5s
