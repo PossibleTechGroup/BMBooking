@@ -213,7 +213,9 @@ const AdminController = {
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
       const skip = (page - 1) * limit;
       const status = req.query.status;
-      let where = {};
+      const search = String(req.query.search || '').trim();
+      const filters = [];
+
       if (status === 'active' || status === 'inactive') {
         const activeUserIds = await prisma.appointment.groupBy({
           by: ['patientId'],
@@ -221,11 +223,24 @@ const AdminController = {
         });
         const ids = activeUserIds.map(a => a.patientId);
         if (status === 'active') {
-          where = { userId: { in: ids } };
+          filters.push({ userId: { in: ids } });
         } else {
-          where = { userId: { notIn: ids } };
+          filters.push({ userId: { notIn: ids } });
         }
       }
+
+      if (search.length >= 2) {
+        const numeric = Number.isInteger(Number(search)) ? parseInt(search, 10) : null;
+        const searchOr = [
+          { user: { phone: { contains: search, mode: 'insensitive' } } },
+          { fullName: { contains: search, mode: 'insensitive' } },
+          { user: { patientAppointments: { some: { confirmationCode: { contains: search, mode: 'insensitive' } } } } },
+        ];
+        if (numeric) searchOr.push({ user: { id: numeric } }, { id: numeric });
+        filters.push({ OR: searchOr });
+      }
+
+      const where = filters.length > 1 ? { AND: filters } : (filters[0] || {});
       const [patients, total] = await Promise.all([
         prisma.patientProfile.findMany({
           skip,
@@ -774,12 +789,13 @@ const AdminController = {
 
   createDoctorSchedule: async (req, res) => {
     try {
-      const { doctorId, date, startTime, endTime, slotDuration, maxPatientsPerSlot, clinicRoom, notes, hospitalId } = req.body;
+      const { doctorId, date, startTime, endTime, slotDuration, maxPatientsPerSlot, clinicRoom, notes, hospitalId, repeatWeeks, daysOfWeek, repeatEndDate, isActive } = req.body;
       if (!doctorId || !date || !startTime || !endTime) {
         return res.status(400).json({ status: 'fail', message: 'doctorId, date, startTime, and endTime are required' });
       }
 
       const ReceptionistService = require('../services/receptionist.service');
+      const finalHospitalId = hospitalId || (await prisma.doctorProfile.findUnique({ where: { id: parseInt(doctorId) } }))?.hospitalId || null;
       const schedule = await ReceptionistService.createDoctorSchedule({
         doctorId: parseInt(doctorId),
         date,
@@ -789,7 +805,11 @@ const AdminController = {
         maxPatientsPerSlot: maxPatientsPerSlot || 1,
         clinicRoom,
         notes,
-      }, hospitalId || null);
+        repeatWeeks,
+        daysOfWeek,
+        repeatEndDate,
+        isActive,
+      }, finalHospitalId);
 
       res.status(201).json({ status: 'success', data: schedule });
     } catch (err) {

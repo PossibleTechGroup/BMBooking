@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { fetchPendingDoctors, fetchAllDoctors, reviewDoctor, deleteDoctor, assignHospitalToDoctor, createDoctor, createSchedule, updateDoctor, deleteDoctorSchedule } from '@/lib/store/slices/adminDoctorSlice';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { api } from '@/lib/api/client';
@@ -134,21 +134,22 @@ export default function AdminDoctorsPage() {
     setDeleteModal(false);
   };
 
-  useEffect(() => {
-    if (selectedDoctor?.id) {
-      setSchedulesLoading(true);
-      const loadSchedules = async () => {
-        try {
-          const { data } = await api.get(`/admin/doctors/${selectedDoctor.id}/schedules`);
-          setDoctorSchedules(data.data || []);
-        } catch { setDoctorSchedules([]); }
-        setSchedulesLoading(false);
-      };
-      loadSchedules();
-    } else {
+  const loadSchedules = useCallback(async () => {
+    if (!selectedDoctor?.id) {
       setDoctorSchedules([]);
+      return;
     }
+    setSchedulesLoading(true);
+    try {
+      const { data } = await api.get(`/admin/doctors/${selectedDoctor.id}/schedules`);
+      setDoctorSchedules(data.data || []);
+    } catch { setDoctorSchedules([]); }
+    setSchedulesLoading(false);
   }, [selectedDoctor?.id]);
+
+  useEffect(() => {
+    loadSchedules();
+  }, [loadSchedules]);
 
   const handleUpdateDoctor = async () => {
     setEditDoctorError('');
@@ -255,6 +256,7 @@ export default function AdminDoctorsPage() {
       }
       await dispatch(createSchedule(payload)).unwrap();
       setScheduleSuccess('Schedule created successfully');
+      loadSchedules();
       setScheduleForm({ date: '', startTime: '', endTime: '', slotDuration: '30', maxPatientsPerSlot: '1', clinicRoom: '', notes: '', repeatPattern: 'none', repeatEndDate: '', daysOfWeek: [] });
       setTimeout(() => setScheduleSuccess(''), 3000);
     } catch (err: any) {

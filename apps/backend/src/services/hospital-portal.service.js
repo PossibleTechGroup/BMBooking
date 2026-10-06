@@ -463,10 +463,15 @@ const HospitalPortalService = {
   listPatients: async (hospitalId, { search } = {}) => {
     const where = { patientAppointments: { some: { doctor: { hospitalId } } } };
     if (search) {
-      where.OR = [
-        { phone: { contains: search, mode: 'insensitive' } },
-        { patientProfile: { fullName: { contains: search, mode: 'insensitive' } } },
+      const q = String(search).trim();
+      const numeric = Number.isInteger(Number(q)) ? parseInt(q, 10) : null;
+      const or = [
+        { phone: { contains: q, mode: 'insensitive' } },
+        { patientProfile: { fullName: { contains: q, mode: 'insensitive' } } },
+        { patientAppointments: { some: { doctor: { hospitalId }, confirmationCode: { contains: q, mode: 'insensitive' } } } },
       ];
+      if (numeric) or.push({ id: numeric });
+      where.OR = or;
     }
 
     const patients = await prisma.user.findMany({

@@ -1023,13 +1023,18 @@ const ReceptionistService = {
 
   searchPatients: async (query) => {
     if (!query || query.trim().length < 2) return [];
+    const q = query.trim();
+    const numeric = Number.isInteger(Number(q)) ? parseInt(q, 10) : null;
+    const or = [
+      { phone: { contains: q } },
+      { patientProfile: { fullName: { contains: q, mode: "insensitive" } } },
+      { patientAppointments: { some: { confirmationCode: { contains: q, mode: "insensitive" } } } },
+    ];
+    if (numeric) or.push({ id: numeric });
     return await prisma.user.findMany({
       where: {
         role: "patient",
-        OR: [
-          { phone: { contains: query } },
-          { patientProfile: { fullName: { contains: query, mode: "insensitive" } } },
-        ],
+        OR: or,
       },
       select: {
         id: true,

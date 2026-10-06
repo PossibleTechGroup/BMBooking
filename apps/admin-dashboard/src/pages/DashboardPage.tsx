@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPendingDoctors, fetchAllDoctors, reviewDoctor, deleteDoctor, assignHospitalToDoctor, createDoctor, createSchedule, updateDoctor, deleteDoctorSchedule } from '../store/slices/doctorSlice';
@@ -136,22 +136,23 @@ const DashboardPage = () => {
     setDeleteModal(false);
   };
 
-  useEffect(() => {
-    if (selectedDoctor?.id) {
-      setSchedulesLoading(true);
-      const loadSchedules = async () => {
-        try {
-          const { default: apiClient } = await import('../api/client');
-          const { data } = await apiClient.get(`/admin/doctors/${selectedDoctor.id}/schedules`);
-          setDoctorSchedules(data.data || []);
-        } catch { setDoctorSchedules([]); }
-        setSchedulesLoading(false);
-      };
-      loadSchedules();
-    } else {
+  const loadSchedules = useCallback(async () => {
+    if (!selectedDoctor?.id) {
       setDoctorSchedules([]);
+      return;
     }
+    setSchedulesLoading(true);
+    try {
+      const { default: apiClient } = await import('../api/client');
+      const { data } = await apiClient.get(`/admin/doctors/${selectedDoctor.id}/schedules`);
+      setDoctorSchedules(data.data || []);
+    } catch { setDoctorSchedules([]); }
+    setSchedulesLoading(false);
   }, [selectedDoctor?.id]);
+
+  useEffect(() => {
+    loadSchedules();
+  }, [loadSchedules]);
 
   const handleUpdateDoctor = async () => {
     setEditDoctorError('');
@@ -258,6 +259,7 @@ const DashboardPage = () => {
       }
       await dispatch(createSchedule(payload)).unwrap();
       setScheduleSuccess('Schedule created successfully');
+      loadSchedules();
       setScheduleForm({ date: '', startTime: '', endTime: '', slotDuration: '30', maxPatientsPerSlot: '1', clinicRoom: '', notes: '', repeatPattern: 'none', repeatEndDate: '', daysOfWeek: [] });
       setTimeout(() => setScheduleSuccess(''), 3000);
     } catch (err: any) {
