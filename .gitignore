@@ -17,6 +17,7 @@ app-example
 
 # Native
 .kotlin/
+*.apk
 *.orig.*
 *.jks
 *.p8
