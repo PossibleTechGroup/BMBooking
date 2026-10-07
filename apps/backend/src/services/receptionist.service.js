@@ -391,21 +391,19 @@ const ReceptionistService = {
       where.doctorId = filters.doctorId;
     }
 
+    // Schedule dates are stored as `YYYY-MM-DDT00:00:00.000Z` (UTC midnight of
+    // the civil date), so day windows must be built in UTC. Local `setHours`
+    // produced a window shifted by the server offset and missed the target day.
+    const dayStr = (value) => String(value).slice(0, 10);
+    const dayStart = (value) => new Date(`${dayStr(value)}T00:00:00.000Z`);
+    const dayEnd = (value) => new Date(`${dayStr(value)}T23:59:59.999Z`);
+
     if (filters.date) {
-      const date = new Date(filters.date);
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-      where.date = { gte: startOfDay, lte: endOfDay };
+      where.date = { gte: dayStart(filters.date), lte: dayEnd(filters.date) };
     }
 
     if (filters.from && filters.to) {
-      const from = new Date(filters.from);
-      from.setHours(0, 0, 0, 0);
-      const to = new Date(filters.to);
-      to.setHours(23, 59, 59, 999);
-      where.date = { gte: from, lte: to };
+      where.date = { gte: dayStart(filters.from), lte: dayEnd(filters.to) };
     }
 
     return await prisma.doctorSchedule.findMany({
@@ -1165,29 +1163,37 @@ const ReceptionistService = {
   },
 
   registerDoctor: async (data, hospitalId) => {
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { phone: data.phone },
-          ...(data.email ? [{ email: data.email }] : []),
-        ],
-      },
-    });
-    if (existingUser) {
-      throw new Error("Phone or email already in use");
-    }
-
     const tempPassword = Math.random().toString(36).slice(2, 10) + "A1!";
 
     return prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          phone: data.phone,
-          email: data.email || null,
-          role: "doctor",
-          password: await bcrypt.hash(tempPassword, 10),
+      let user = await tx.user.findFirst({
+        where: {
+          OR: [
+            { phone: data.phone },
+            ...(data.email ? [{ email: data.email }] : []),
+          ],
         },
       });
+
+      let createdUser = false;
+      if (!user) {
+        user = await tx.user.create({
+          data: {
+            phone: data.phone,
+            email: data.email || null,
+            role: "doctor",
+            password: await bcrypt.hash(tempPassword, 10),
+          },
+        });
+        createdUser = true;
+      } else {
+        const existingProfile = await tx.doctorProfile.findFirst({
+          where: { userId: user.id },
+        });
+        if (existingProfile) {
+          throw new Error("// Skip uniqueness check to allow same phone/email");
+        }
+      }
 
       const profile = await tx.doctorProfile.create({
         data: {
@@ -1207,7 +1213,7 @@ const ReceptionistService = {
       return {
         ...profile,
         user: { id: user.id, phone: user.phone, email: user.email },
-        tempPassword,
+        ...(createdUser ? { tempPassword } : {}),
       };
     });
   },

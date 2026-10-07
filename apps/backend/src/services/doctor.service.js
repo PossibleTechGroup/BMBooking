@@ -10,8 +10,8 @@ const DAY_NAME_TO_NUM = {
 async function computeAvailability(doctorIds) {
   if (!Array.isArray(doctorIds) || doctorIds.length === 0) return {};
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Dates are stored as UTC midnight of the civil date — compare in UTC too
+  const today = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
 
   const schedules = await prisma.doctorSchedule.findMany({
     where: {
@@ -294,9 +294,13 @@ const DoctorService = {
       return d;
     };
 
-    // Only return future schedules by default
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Only return future schedules by default.
+    // Schedule dates are stored as UTC midnight of the civil date
+    // (e.g. `2026-10-07T00:00:00.000Z`), so the lower bound must also be
+    // UTC midnight. Using local `setHours(0,0,0,0)` on a non-UTC server
+    // shifts the bound (e.g. +7h) and silently drops today's schedule,
+    // which made the app show "No available slots".
+    const today = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
 
     if (filters.date) {
       where.date = {

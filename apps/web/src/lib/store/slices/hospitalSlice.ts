@@ -1024,6 +1024,9 @@ const hospitalSlice = createSlice({
         state.doctors = state.doctors.map((d) => (d.id === updated.id ? { ...d, status: updated.status, rejectionReason: updated.rejectionReason } : d));
       })
       .addCase(updateDoctorStatus.rejected, (state, action) => { state.error = action.payload as string; })
+      .addCase(registerHospitalDoctor.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(registerHospitalDoctor.fulfilled, (state, action) => { state.loading = false; state.error = null; })
+      .addCase(registerHospitalDoctor.rejected, (state, action) => { state.loading = false; state.error = (action.payload as string) || 'Failed to register doctor'; })
       .addCase(fetchHospitalReceptionists.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(fetchHospitalReceptionists.fulfilled, (state, action) => { state.loading = false; state.receptionists = action.payload; })
       .addCase(fetchHospitalReceptionists.rejected, (state, action) => { state.loading = false; state.error = action.payload as string; })

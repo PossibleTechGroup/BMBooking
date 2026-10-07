@@ -200,7 +200,16 @@ const HospitalController = {
               },
             },
             schedules: {
-              where: { isActive: true, date: { gte: new Date() } },
+              where: {
+                isActive: true,
+                // dates stored as UTC midnight of the civil date; `new Date()`
+                // (an instant) excluded today's schedule for most of the day
+                date: {
+                  gte: new Date(
+                    `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`
+                  ),
+                },
+              },
               select: { id: true, date: true },
               orderBy: { date: "asc" },
             },

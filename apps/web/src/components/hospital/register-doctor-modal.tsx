@@ -79,7 +79,12 @@ export default function RegisterDoctorModal({
       dispatch(fetchHospitalDoctors());
       onRegistered?.();
     } else {
-      setError((res.payload as any)?.message || 'Failed to register doctor');
+      const payload = res.payload as any;
+      setError(
+        typeof payload === 'string'
+          ? payload
+          : payload?.message || payload?.error || 'Failed to register doctor'
+      );
     }
     setSaving(false);
   };
