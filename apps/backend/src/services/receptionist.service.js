@@ -23,10 +23,14 @@ const ReceptionistService = {
     }
 
     const startTime = new Date(data.startTime);
-    const endTime = new Date(data.endTime);
+    let endTime = new Date(data.endTime);
 
-    if (startTime >= endTime) {
-      throw new Error("startTime must be before endTime");
+    // If end time is on same calendar day but before or equal to start time,
+    // assume it's end of day (e.g., 00:00 means end of day midnight-next-day semantics)
+    if (endTime <= startTime) {
+      endTime = new Date(startTime);
+      endTime.setDate(endTime.getDate() + 1);
+      endTime.setHours(0, 0, 0, 0);
     }
 
     const slotDuration = data.slotDuration || 30;
@@ -37,10 +41,15 @@ const ReceptionistService = {
     const baseDate = new Date(data.date);
 
     const createSingleSchedule = async (tx, dateStr) => {
-      // dateStr is always a plain "YYYY-MM-DD" string — no timezone ambiguity
-      const schedStart = new Date(`${dateStr}T${startTime.toISOString().split("T")[1]}`);
-      const schedEnd   = new Date(`${dateStr}T${endTime.toISOString().split("T")[1]}`);
-      const dateObj    = new Date(`${dateStr}T00:00:00.000Z`);
+        // dateStr is always a plain "YYYY-MM-DD" string — no timezone ambiguity
+        let schedStart = new Date(`${dateStr}T${startTime.toISOString().split("T")[1]}`);
+        let schedEnd   = new Date(`${dateStr}T${endTime.toISOString().split("T")[1]}`);
+        if (schedEnd <= schedStart) {
+          schedEnd = new Date(schedStart);
+          schedEnd.setUTCDate(schedEnd.getUTCDate() + 1);
+          schedEnd.setUTCHours(0, 0, 0, 0);
+        }
+        const dateObj    = new Date(`${dateStr}T00:00:00.000Z`);
 
       const overlap = await tx.doctorSchedule.findFirst({
         where: {
@@ -208,16 +217,23 @@ const ReceptionistService = {
     if (data.clinicRoom !== undefined) updateData.clinicRoom = data.clinicRoom;
     if (data.notes !== undefined) updateData.notes = data.notes;
 
-    const finalStart = updateData.startTime || existing.startTime;
-    const finalEnd = updateData.endTime || existing.endTime;
-    if (finalStart >= finalEnd) {
-      throw new Error("startTime must be before endTime");
+    let finalStart = updateData.startTime || existing.startTime;
+    let finalEnd = updateData.endTime || existing.endTime;
+    if (finalEnd <= finalStart) {
+      finalEnd = new Date(finalStart);
+      finalEnd.setDate(finalEnd.getDate() + 1);
+      finalEnd.setHours(0, 0, 0, 0);
     }
 
     const finalDate = updateData.date || existing.date;
     const dayStr = new Date(finalDate).toISOString().split("T")[0];
-    const schedStart = new Date(`${dayStr}T${new Date(finalStart).toISOString().split("T")[1]}`);
-    const schedEnd = new Date(`${dayStr}T${new Date(finalEnd).toISOString().split("T")[1]}`);
+    let schedStart = new Date(`${dayStr}T${new Date(finalStart).toISOString().split("T")[1]}`);
+    let schedEnd = new Date(`${dayStr}T${new Date(finalEnd).toISOString().split("T")[1]}`);
+    if (schedEnd <= schedStart) {
+      schedEnd = new Date(schedStart);
+      schedEnd.setUTCDate(schedEnd.getUTCDate() + 1);
+      schedEnd.setUTCHours(0, 0, 0, 0);
+    }
 
     const overlap = await prisma.doctorSchedule.findFirst({
       where: {
@@ -1191,7 +1207,7 @@ const ReceptionistService = {
           where: { userId: user.id },
         });
         if (existingProfile) {
-          throw new Error("// Skip uniqueness check to allow same phone/email");
+          // allow reuse
         }
       }
 
