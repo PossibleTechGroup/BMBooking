@@ -25,7 +25,7 @@ const BookingView = (() => {
         if (r?.data?.paid) {
           stopPaymentPoll();
           state.paymentDone = true;
-          state.step = 4;
+          state.step = 3;
           renderConfirm(container);
           showStep(container);
         }
@@ -39,9 +39,6 @@ const BookingView = (() => {
     doctorId: null,
     bookingFor: 'myself',
     otherPatient: { fullName: '', phone: '', gender: 'male', dateOfBirth: '', bloodType: '' },
-    categories: [],
-    selectedCategory: null,
-    recommendations: null,
     schedules: [],
     scheduleDates: [],
     selectedDateId: '',
@@ -57,7 +54,7 @@ const BookingView = (() => {
     createdAppointment: null,
   };
 
-  const STEPS = ['sponsor', 'category', 'datetime', 'payment', 'confirm', 'success'];
+  const STEPS = ['sponsor', 'datetime', 'payment', 'confirm', 'success'];
 
   function t(key) { return I18n.t(key); }
 
@@ -74,9 +71,6 @@ const BookingView = (() => {
       doctorId: null,
       bookingFor: 'myself',
       otherPatient: { fullName: '', phone: '', gender: 'male', dateOfBirth: '', bloodType: '' },
-      categories: [],
-      selectedCategory: null,
-      recommendations: null,
       schedules: [],
       scheduleDates: [],
       selectedDateId: '',
@@ -119,8 +113,6 @@ const BookingView = (() => {
         doctorId: state.doctorId,
         bookingFor: state.bookingFor,
         otherPatient: state.otherPatient,
-        selectedCategory: state.selectedCategory,
-        categories: state.categories,
         selectedDateId: state.selectedDateId,
         selectedSlot: state.selectedSlot,
         totalPayable: state.totalPayable,
@@ -177,7 +169,6 @@ const BookingView = (() => {
       <div id="booking-error"></div>
 
       <div id="step-sponsor" class="booking-step"></div>
-      <div id="step-category" class="booking-step"></div>
       <div id="step-datetime" class="booking-step"></div>
       <div id="step-payment" class="booking-step"></div>
       <div id="step-confirm" class="booking-step"></div>
@@ -185,7 +176,7 @@ const BookingView = (() => {
     `;
 
     container.querySelector('#booking-back').addEventListener('click', () => {
-      if (state.step > 0 && state.step < 5) {
+      if (state.step > 0 && state.step < 4) {
         state.step--;
         showStep(container);
       } else {
@@ -220,14 +211,12 @@ const BookingView = (() => {
     state.doctorId = pending.doctorId || params.doctorId;
     state.bookingFor = pending.bookingFor || 'myself';
     state.otherPatient = pending.otherPatient || { fullName: '', phone: '', gender: 'male', dateOfBirth: '', bloodType: '' };
-    state.selectedCategory = pending.selectedCategory || null;
-    state.categories = pending.categories || [];
     state.selectedDateId = pending.selectedDateId || '';
     state.selectedSlot = pending.selectedSlot || null;
     state.totalPayable = pending.totalPayable || 0;
     state.cardFee = pending.cardFee || 0;
     state.includeCardFee = pending.includeCardFee || false;
-    state.step = 4;
+    state.step = 3;
 
     try {
       state.doctor = params.doctor || await API.getDoctorDetail(state.doctorId);
@@ -239,7 +228,7 @@ const BookingView = (() => {
       const r = await API.verifyTelebirr(state.totalPayable);
       if (r?.data?.paid) {
         state.paymentDone = true;
-        state.step = 4;
+        state.step = 3;
         renderConfirm(container);
         showStep(container);
         return true;
@@ -248,7 +237,7 @@ const BookingView = (() => {
 
     state.paymentDone = false;
     state.loading = false;
-    state.step = 3;
+    state.step = 2;
     renderPaymentWaiting(container);
     showStep(container);
     return true;
@@ -280,7 +269,7 @@ const BookingView = (() => {
         if (r?.data?.paid) {
           stopPaymentPoll();
           state.paymentDone = true;
-          state.step = 4;
+          state.step = 3;
           renderConfirm(container);
           showStep(container);
         } else {
@@ -393,81 +382,11 @@ const BookingView = (() => {
       state.error = null;
       showError(container);
       state.step = 1;
-      loadCategories(container);
-    });
-  }
-
-  // ─── Step 1: Category ───
-  async function loadCategories(container) {
-    state.loading = true;
-    const el = container.querySelector('#step-category');
-    el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-    showStep(container);
-
-    try {
-      state.categories = await API.getCategories();
-      state.loading = false;
-      renderCategories(container);
-    } catch (err) {
-      state.loading = false;
-      el.innerHTML = `<div class="alert alert-error">${esc(err.message)}</div>`;
-    }
-  }
-
-  function renderCategories(container) {
-    const el = container.querySelector('#step-category');
-    el.innerHTML = `
-      <h3 style="margin-bottom:16px">${t('selectIssueCategory')}</h3>
-      <div class="chip-group" id="category-chips">
-        ${state.categories.map(c =>
-          `<div class="chip ${state.selectedCategory === c.key ? 'selected' : ''}" data-cat="${c.key}">${esc(c.label)}</div>`
-        ).join('')}
-      </div>
-      <div id="recommendations-box"></div>
-      <button class="btn btn-primary mt-16" id="category-next">${t('continue')}</button>
-    `;
-
-    el.querySelector('#category-chips').addEventListener('click', (e) => {
-      const chip = e.target.closest('[data-cat]');
-      if (!chip) return;
-      state.selectedCategory = chip.dataset.cat;
-      el.querySelectorAll('[data-cat]').forEach(c => c.classList.remove('selected'));
-      chip.classList.add('selected');
-      loadRecs(container);
-    });
-
-    el.querySelector('#category-next').addEventListener('click', () => {
-      if (!state.selectedCategory) {
-        state.error = t('selectIssueCategory');
-        showError(container);
-        return;
-      }
-      state.error = null;
-      showError(container);
       renderDateTime(container);
     });
-
-    if (state.selectedCategory) loadRecs(container);
   }
 
-  async function loadRecs(container) {
-    try {
-      state.recommendations = await API.getRecommendations(state.selectedCategory);
-      const box = container.querySelector('#recommendations-box');
-      if (state.recommendations?.documents?.length > 0) {
-        box.innerHTML = `
-          <div class="card mt-16">
-            <p class="text-hint" style="font-size:13px;margin-bottom:8px"><strong>Recommended documents:</strong></p>
-            <ul style="padding-left:16px;font-size:13px;color:var(--hint)">
-              ${state.recommendations.documents.map(d => `<li>${esc(d.label)}</li>`).join('')}
-            </ul>
-          </div>
-        `;
-      }
-    } catch {}
-  }
-
-  // ─── Step 2: Date/Time ───
+  // ─── Step 1: Date/Time ───
   // Mirrors fetchDoctorScheduleSlots in apps/mobile/store/slices/appointmentSlice.ts:
   // GET /api/doctors/:id/schedules (14-day window first, then unbounded like the APK),
   // each schedule carries its concrete `slots` (ScheduleSlot rows with _count.bookings).
@@ -539,7 +458,7 @@ const BookingView = (() => {
 
   function renderDateTime(container) {
     const el = container.querySelector('#step-datetime');
-    state.step = 2;
+    state.step = 1;
     state.loading = true;
     el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
     showStep(container);
@@ -607,7 +526,7 @@ const BookingView = (() => {
       }
       state.error = null;
       showError(container);
-      state.step = 3;
+      state.step = 2;
       renderPayment(container);
       showStep(container);
     });
@@ -665,10 +584,10 @@ const BookingView = (() => {
     });
   }
 
-  // ─── Step 3: Payment ───
+  // ─── Step 2: Payment ───
   function renderPayment(container) {
     const el = container.querySelector('#step-payment');
-    state.step = 3;
+    state.step = 2;
     recomputeTotals();
     const serviceFee = serviceFeeAmount();
 
@@ -716,7 +635,7 @@ const BookingView = (() => {
   async function handlePayment(container) {
     if (state.totalPayable === 0) {
       state.paymentDone = true;
-      state.step = 4;
+      state.step = 3;
       renderConfirm(container);
       showStep(container);
       return;
@@ -738,10 +657,10 @@ const BookingView = (() => {
     return TimeUtils.formatTime(new Date(state.selectedSlot.startTime));
   }
 
-  // ─── Step 4: Confirm ───
+  // ─── Step 3: Confirm ───
   function renderConfirm(container) {
     const el = container.querySelector('#step-confirm');
-    state.step = 4;
+    state.step = 3;
 
     const dateStr = selectedDateLabel() || t('date');
     const timeStr = selectedTimeLabel();
@@ -761,11 +680,6 @@ const BookingView = (() => {
           <span class="text-hint">${t('time')}</span>
           <span>${esc(timeStr)}</span>
         </div>
-        ${state.selectedCategory ? `
-        <div class="card-row">
-          <span class="text-hint">${t('category')}</span>
-          <span>${esc(state.categories.find(c => c.key === state.selectedCategory)?.label || state.selectedCategory)}</span>
-        </div>` : ''}
         <div class="card-row">
           <span class="text-hint">${t('bookingFor')}</span>
           <span>${esc(state.bookingFor === 'myself' ? t('myself') : state.otherPatient.fullName)}</span>
@@ -814,7 +728,6 @@ const BookingView = (() => {
         doctorId: state.doctorId,
         dateTime,
         fee: state.totalPayable,
-        issueCategory: state.selectedCategory,
         slotId: state.selectedSlot.id,
         paymentMethod: state.includeCardFee ? 'card' : 'service_fee',
         paidCardFee: state.includeCardFee,
@@ -837,7 +750,7 @@ const BookingView = (() => {
       state.loading = false;
       state.error = null;
       showError(container);
-      state.step = 5;
+      state.step = 4;
       renderSuccess(container);
       showStep(container);
     } catch (err) {
@@ -848,7 +761,7 @@ const BookingView = (() => {
     }
   }
 
-  // ─── Step 5: Success ───
+  // ─── Step 4: Success ───
   function renderSuccess(container) {
     const el = container.querySelector('#step-success');
     const dateStr = selectedDateLabel();

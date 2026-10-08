@@ -8,7 +8,7 @@ Patient portal built as a Telegram Mini App. Opens inside Telegram via the WebAp
 - **Patient Setup** — Full name, DOB, gender, blood type, emergency contact
 - **Home** — Quick actions + featured doctors
 - **Doctor Search** — Search by name/specialty, view detail/schedules
-- **Booking** — 6-step flow: Sponsor → Category → Date/Time → Telebirr Payment → Confirm → Success
+- **Booking** — 5-step flow: Sponsor → Date/Time → Telebirr Payment → Confirm → Success
 - **Appointments** — Status-filtered list (All, Pending, Accepted, Completed, Declined)
 - **Profile** — View info, logout
 

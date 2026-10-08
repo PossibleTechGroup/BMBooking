@@ -1664,8 +1664,9 @@ html.dark .chip-warning {
 .home-near-me{flex-shrink:0;display:flex;align-items:center;gap:6px}
 .home-near-active{display:flex;flex-direction:row;align-items:center;justify-content:space-between;margin-bottom:12px}
 .home-show-all{color:var(--primary);font-weight:600;font-size:13px}
-.home-services{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px}
-.home-service-tile{width:72px;align-items:center;display:flex;flex-direction:column;gap:6px}
+.home-services{display:flex;flex-wrap:nowrap;gap:12px;margin-bottom:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.home-services::-webkit-scrollbar{display:none}
+.home-service-tile{width:72px;flex:0 0 72px;align-items:center;display:flex;flex-direction:column;gap:6px}
 .home-service-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:var(--secondary-bg);color:var(--text-secondary)}
 .home-service-label{font-size:12px;text-align:center;color:var(--text)}
 .home-hospital-card{display:flex;flex-direction:row;align-items:center;gap:12px}
