@@ -88,8 +88,8 @@ export default function DoctorListScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (doctors.length === 0) dispatch(fetchDoctors());
-    }, [doctors.length, dispatch]),
+      dispatch(fetchDoctors());
+    }, [dispatch]),
   );
 
   // Get real doctors for current category

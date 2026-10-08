@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -25,6 +25,7 @@ import { useColorScheme } from "../../hooks/use-color-scheme";
 import { RootState, AppDispatch } from "../../store";
 import { getAssetUrl } from "../../constants/api";
 import { fetchDoctorScheduleSlots } from "../../store/slices/appointmentSlice";
+import { fetchDoctors } from "../../store/slices/doctorSlice";
 import { formatDate } from "../../utils/ethiopianDate";
 import { computeAvailability } from "../../utils/availability";
 import { useUserLocation } from "../../hooks/useUserLocation";
@@ -38,8 +39,20 @@ export default function DoctorProfileScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const theme = Colors[colorScheme];
 
-  const { doctors } = useSelector((state: RootState) => state.doctors);
+  const { doctors, loading: doctorsLoading } = useSelector(
+    (state: RootState) => state.doctors
+  );
   const doctor = useMemo(() => doctors.find((d) => d.id.toString() === id), [doctors, id]);
+
+  const doctorId = id ? parseInt(id as string) : null;
+  const refreshedRef = useRef(false);
+
+  useEffect(() => {
+    if (doctorId && !doctor && !doctorsLoading && !refreshedRef.current) {
+      refreshedRef.current = true;
+      dispatch(fetchDoctors());
+    }
+  }, [doctorId, doctor, doctorsLoading, dispatch]);
 
   const { latitude, longitude } = useUserLocation();
 
@@ -69,8 +82,6 @@ export default function DoctorProfileScreen() {
 
   const [schedules, setSchedules] = useState<any[]>([]);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
-
-  const doctorId = id ? parseInt(id as string) : null;
 
   useEffect(() => {
     if (doctorId) {
@@ -181,7 +192,11 @@ export default function DoctorProfileScreen() {
   if (!doctor) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <MedText variant="h2">{t('doctorNotFound') || "Doctor not found"}</MedText>
+        {doctorsLoading ? (
+          <ActivityIndicator size="large" color={theme.primary} />
+        ) : (
+          <MedText variant="h2">{t('doctorNotFound') || "Doctor not found"}</MedText>
+        )}
         <MedButton title={t('goBack') || "Go Back"} onPress={() => router.back()} style={{ marginTop: 20 }} />
       </SafeAreaView>
     );

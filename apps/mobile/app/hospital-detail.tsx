@@ -47,8 +47,8 @@ export default function HospitalDetailScreen() {
   }, [dispatch, id]);
 
   useEffect(() => {
-    if (allDoctors.length === 0) dispatch(fetchDoctors());
-  }, [dispatch, allDoctors.length]);
+    dispatch(fetchDoctors());
+  }, [dispatch]);
 
   const hospitalEquipment = useMemo(
     () => equipmentHospitals.find((h: any) => String(h.id) === String(id))?.equipment || [],
