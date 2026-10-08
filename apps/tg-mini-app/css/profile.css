@@ -1,0 +1,220 @@
+﻿/* Profile screen styles (APK parity). */
+
+/* ─── Loading (spinner + label) ─── */
+.pf-loading {
+  gap: 10px;
+}
+
+.pf-loading span {
+  font-size: 14px;
+  color: var(--hint);
+}
+
+/* ─── Navigation rows (Edit profile, language) ─── */
+.pf-nav-row {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  border: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.pf-nav-row:last-child {
+  border-bottom: none;
+}
+
+.pf-nav-row:active {
+  opacity: 0.7;
+}
+
+.pf-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--text-primary);
+}
+
+.pf-nav-left > svg {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.pf-nav-row > svg {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.pf-nav-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pf-nav-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.pf-nav-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Language dropdown (right-aligned inside card) ─── */
+.pf-lang-row {
+  position: relative;
+}
+
+.pf-lang-row .lang-wrapper {
+  flex-shrink: 0;
+}
+
+.pf-lang-row .lang-dropdown {
+  left: auto;
+  right: 0;
+  top: 38px;
+}
+
+/* ─── Switch rows (notifications / privacy) ─── */
+.pf-switch-row {
+  gap: 16px;
+}
+
+.pf-switch-text {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.pf-switch-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.pf-switch-sub {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.pf-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 46px;
+  height: 28px;
+  border: none;
+  border-radius: 14px;
+  background: var(--border, #D8E3F0);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s;
+}
+
+.pf-switch.on {
+  background: #A6F4C5;
+}
+
+.pf-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s, background 0.2s;
+}
+
+.pf-switch.on .pf-switch-thumb {
+  background: var(--success, #027A48);
+  transform: translateX(18px);
+}
+
+html.dark .pf-switch.on {
+  background: rgba(95, 203, 119, 0.35);
+}
+
+/* ─── Medical disclaimer (APK MedicalDisclaimer) ─── */
+.pf-disclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  margin: 12px 0;
+  border-radius: 10px;
+  border: 1px solid var(--border, #E2E8F0);
+  background: var(--secondary-bg, #F8FAFC);
+}
+
+.pf-disclaimer-icon {
+  display: flex;
+  color: var(--accent, #1565C0);
+  margin-top: 1px;
+}
+
+.pf-disclaimer-content {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.pf-disclaimer-title {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.pf-disclaimer-body {
+  display: block;
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--text-secondary);
+}
+
+/* ─── Account actions card ─── */
+.pf-account-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pf-account-card .btn-logout {
+  margin-top: 0;
+}
+
+.pf-btn-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pf-btn-disabled:active {
+  transform: none;
+}
+
+/* ─── Version footer ─── */
+.pf-version {
+  text-align: center;
+  font-size: 12px;
+  color: var(--hint);
+  opacity: 0.6;
+  margin: 32px 0 12px;
+}

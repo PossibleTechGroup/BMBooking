@@ -28,6 +28,8 @@
   --surface: #FFFFFF;
   --primary-dark: #1565C0;
   --secondary-accent: #1E5A8A;
+  --tab-active: #1565C0;
+  --tab-inactive: #8CA3BD;
 }
 
 html {
@@ -86,6 +88,8 @@ html.dark {
   --text-primary: #F5F5F5;
   --text-secondary: #8E8E93;
   --primary-dark: #ECECEC;
+  --tab-active: #5AA9E6;
+  --tab-inactive: #8E8E93;
 }
 
 #app {
@@ -1527,3 +1531,153 @@ html.dark .glass-bottom-bar {
   -webkit-backdrop-filter: blur(20px) saturate(140%);
   border-top: 1px solid rgba(255,255,255,0.07);
 }
+
+/* ─── Bottom tab bar (mirrors the APK tab bar) ─── */
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none;
+  align-items: stretch;
+  gap: 2px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 6px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+  z-index: 95;
+}
+
+body.has-tab-bar .tab-bar {
+  display: flex;
+}
+
+body.has-tab-bar #app {
+  padding-bottom: 92px;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 5px 2px;
+  background: none;
+  color: var(--tab-inactive);
+}
+
+.tab-item .tab-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.tab-item .tab-icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+.tab-item .tab-label {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.1px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-item.active {
+  color: var(--tab-active);
+}
+
+.tab-item:active {
+  opacity: 0.7;
+}
+
+/* ─── BM brand header + screen title (mirrors APK BMHeader/h1) ─── */
+.bm-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bm-brand img {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: contain;
+  display: block;
+}
+
+.bm-brand-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #1E56A0;
+}
+
+html.dark .bm-brand-title {
+  color: var(--accent);
+}
+
+.view-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.screen-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text-primary);
+  margin: 2px 0 14px;
+}
+
+/* ─── Availability chip variants (APK Available/Busy badge) ─── */
+.chip-success {
+  background: rgba(2, 122, 72, 0.12);
+  color: var(--success);
+  border-color: rgba(2, 122, 72, 0.35);
+}
+
+.chip-warning {
+  background: rgba(90, 107, 128, 0.14);
+  color: var(--text-secondary);
+  border-color: rgba(90, 107, 128, 0.3);
+}
+
+html.dark .chip-success {
+  background: rgba(95, 203, 119, 0.14);
+}
+
+html.dark .chip-warning {
+  background: rgba(142, 142, 147, 0.16);
+}
+
+/* home screen */
+.home-search-section{display:flex;flex-direction:row;gap:10px;align-items:center;margin-bottom:12px}
+.home-near-me{flex-shrink:0;display:flex;align-items:center;gap:6px}
+.home-near-active{display:flex;flex-direction:row;align-items:center;justify-content:space-between;margin-bottom:12px}
+.home-show-all{color:var(--primary);font-weight:600;font-size:13px}
+.home-services{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px}
+.home-service-tile{width:72px;align-items:center;display:flex;flex-direction:column;gap:6px}
+.home-service-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:var(--secondary-bg);color:var(--text-secondary)}
+.home-service-label{font-size:12px;text-align:center;color:var(--text)}
+.home-hospital-card{display:flex;flex-direction:row;align-items:center;gap:12px}
+.home-hospital-avatar{width:56px;height:56px;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--secondary-bg);border:1px solid var(--border);flex-shrink:0}
+.home-hospital-avatar img{width:100%;height:100%;object-fit:cover}
+
+/* doctors screen */
+.docs-sort-row{display:flex;flex-direction:row;gap:10px;margin:10px 0}
+.docs-sort-chip{display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text-secondary);font-size:13px;font-weight:600}
+.docs-sort-chip.active{background:#1E56A0;color:#fff;border-color:#1E56A0}
+.docs-chips-row{margin-bottom:10px}
+.docs-chips{display:flex;flex-direction:row;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.docs-chips::-webkit-scrollbar{display:none}
+.docs-chip{padding:7px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text-secondary);font-size:13px;font-weight:500;white-space:nowrap}
+.docs-chip.active{background:rgba(21,101,192,0.12);border-color:var(--primary);color:var(--primary)}

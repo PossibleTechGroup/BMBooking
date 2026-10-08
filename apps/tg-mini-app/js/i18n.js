@@ -240,7 +240,7 @@ const I18n = (() => {
       openingTelebirr: 'Telebirr banamaa jira...',
       waitingPayment: 'Kaffaltii eeggachaa jira. Irra deebii yaali.',
       verifyPaymentAgain: 'Kaffaltii Irra Deebii Mirkaneessi',
-      autoCheckPayment: 'Kaffaltiin daandii yeroon xumurameen ofumaan mirkanaa'ama.',
+      autoCheckPayment: "Kaffaltiin daandii yeroon xumurameen ofumaan mirkanaa'ama.",
       confirmAppointment: 'Beellama Mirkaneessi',
       doctor: 'Ogeessa Fayyaa',
       date: 'Guyyaa',
@@ -289,6 +289,10 @@ const I18n = (() => {
       || key;
   }
 
+  function add(lang, keys) {
+    if (translations[lang] && keys) Object.assign(translations[lang], keys);
+  }
+
   function setLanguage(lang) {
     if (translations[lang]) {
       currentLang = lang;
@@ -308,5 +312,5 @@ const I18n = (() => {
     ];
   }
 
-  return { t, setLanguage, getLanguage, getLanguages };
+  return { t, setLanguage, getLanguage, getLanguages, add };
 })();

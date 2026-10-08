@@ -4,7 +4,7 @@ const API = (() => {
   })();
 
   const TELEBIRR = (() => {
-    return 'http://77.42.25.202:53402';
+    return 'https://bmtelebirr.possibletechplc.com';
   })();
 
   function getToken() {
@@ -74,8 +74,8 @@ const API = (() => {
     },
 
     // ─── Doctors ───
-    async getAllDoctors() {
-      const res = await request('GET', '/api/doctors/all');
+    async getAllDoctors(qs) {
+      const res = await request('GET', '/api/doctors/all' + (qs || ''));
       return res.data;
     },
 
@@ -110,6 +110,16 @@ const API = (() => {
 
     async getMyAppointments() {
       const res = await request('GET', '/api/appointments/my');
+      return res.data;
+    },
+
+    async cancelAppointment(id) {
+      const res = await request('PATCH', `/api/appointments/${id}/cancel`);
+      return res.data;
+    },
+
+    async createReview(data) {
+      const res = await request('POST', '/api/reviews', data);
       return res.data;
     },
 
@@ -167,6 +177,12 @@ const API = (() => {
 
     async cancelEquipmentBooking(bookingId) {
       const res = await request('PATCH', `/api/equipment/bookings/${bookingId}/cancel`);
+      return res.data;
+    },
+
+    // ─── Hospitals ───
+    async getAllHospitals() {
+      const res = await request('GET', '/api/hospitals');
       return res.data;
     },
 

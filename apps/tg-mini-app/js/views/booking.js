@@ -2,6 +2,14 @@ const BookingView = (() => {
   const PENDING_KEY = 'bk_pending_payment';
   let paymentPollTimer = null;
 
+  const ICON = {
+    arrowLeft: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>',
+    calendar: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>',
+    clock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    pin: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+    card: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>',
+  };
+
   function stopPaymentPoll() {
     if (paymentPollTimer) {
       clearInterval(paymentPollTimer);
@@ -34,9 +42,11 @@ const BookingView = (() => {
     categories: [],
     selectedCategory: null,
     recommendations: null,
-    selectedSchedule: null,
+    schedules: [],
+    scheduleDates: [],
+    selectedDateId: '',
+    slotsForDate: [],
     selectedSlot: null,
-    date: '',
     referralUrls: [],
     totalPayable: 0,
     cardFee: 0,
@@ -51,6 +61,12 @@ const BookingView = (() => {
 
   function t(key) { return I18n.t(key); }
 
+  function esc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  }
+
   function reset() {
     state = {
       step: 0,
@@ -61,9 +77,11 @@ const BookingView = (() => {
       categories: [],
       selectedCategory: null,
       recommendations: null,
-      selectedSchedule: null,
+      schedules: [],
+      scheduleDates: [],
+      selectedDateId: '',
+      slotsForDate: [],
       selectedSlot: null,
-      date: '',
       referralUrls: [],
       totalPayable: 0,
       cardFee: 0,
@@ -75,6 +93,26 @@ const BookingView = (() => {
     };
   }
 
+  // Fee math — mirrors apps/mobile/app/modal.tsx:
+  // serviceFeeAmount from hospital.serviceFee.amount (default 1.0),
+  // cardFeeAmount from hospital.cardPrice (default 0.0).
+  function serviceFeeAmount() {
+    const amount = state.doctor?.hospital?.serviceFee?.amount;
+    if (amount) return parseFloat(amount);
+    return 1.0;
+  }
+
+  function cardFeeAmount() {
+    const price = state.doctor?.hospital?.cardPrice;
+    if (price) return parseFloat(price);
+    return 0.0;
+  }
+
+  function recomputeTotals() {
+    state.cardFee = cardFeeAmount();
+    state.totalPayable = serviceFeeAmount() + (state.includeCardFee ? state.cardFee : 0);
+  }
+
   function savePending() {
     try {
       localStorage.setItem(PENDING_KEY, JSON.stringify({
@@ -83,7 +121,8 @@ const BookingView = (() => {
         otherPatient: state.otherPatient,
         selectedCategory: state.selectedCategory,
         categories: state.categories,
-        selectedSchedule: state.selectedSchedule,
+        selectedDateId: state.selectedDateId,
+        selectedSlot: state.selectedSlot,
         totalPayable: state.totalPayable,
         cardFee: state.cardFee,
         includeCardFee: state.includeCardFee,
@@ -130,7 +169,7 @@ const BookingView = (() => {
   function buildSkeleton(container) {
     container.innerHTML = `
       <div class="header">
-        <div class="header-back" id="booking-back">&larr; ${t('cancel')}</div>
+        <div class="header-back" id="booking-back">${ICON.arrowLeft} ${t('cancel')}</div>
         <h1>${t('bookAppointment')}</h1>
         <div></div>
       </div>
@@ -146,7 +185,7 @@ const BookingView = (() => {
     `;
 
     container.querySelector('#booking-back').addEventListener('click', () => {
-      if (state.step > 0) {
+      if (state.step > 0 && state.step < 5) {
         state.step--;
         showStep(container);
       } else {
@@ -183,7 +222,8 @@ const BookingView = (() => {
     state.otherPatient = pending.otherPatient || { fullName: '', phone: '', gender: 'male', dateOfBirth: '', bloodType: '' };
     state.selectedCategory = pending.selectedCategory || null;
     state.categories = pending.categories || [];
-    state.selectedSchedule = pending.selectedSchedule || null;
+    state.selectedDateId = pending.selectedDateId || '';
+    state.selectedSlot = pending.selectedSlot || null;
     state.totalPayable = pending.totalPayable || 0;
     state.cardFee = pending.cardFee || 0;
     state.includeCardFee = pending.includeCardFee || false;
@@ -278,14 +318,14 @@ const BookingView = (() => {
         <div class="input-group">
           <label>${t('fullName')} *</label>
           <div class="input-field">
-            <input type="text" id="other-name" placeholder="${t('fullName')}" value="${state.otherPatient.fullName}" />
+            <input type="text" id="other-name" placeholder="${t('fullName')}" value="${esc(state.otherPatient.fullName)}" />
           </div>
         </div>
         <div class="input-group">
           <label>${t('phone')} *</label>
           <div class="input-field">
             <span class="prefix">+251</span>
-            <input type="tel" id="other-phone" placeholder="912 345 678" maxlength="9" value="${state.otherPatient.phone}" />
+            <input type="tel" id="other-phone" placeholder="912 345 678" maxlength="9" value="${esc(state.otherPatient.phone)}" />
           </div>
         </div>
         <div class="input-group">
@@ -299,12 +339,12 @@ const BookingView = (() => {
         <div class="input-group">
           <label>${t('dateOfBirth')}</label>
           <div class="input-field">
-            <input type="date" id="other-dob" value="${state.otherPatient.dateOfBirth}" />
+            <input type="date" id="other-dob" value="${esc(state.otherPatient.dateOfBirth)}" />
           </div>
           ${state.otherPatient.dateOfBirth && TimeUtils.getCalendarFormat() === 'ethiopian' ? `
           <div id="other-dob-eth-hint" style="display:flex;align-items:center;gap:5px;margin-top:4px;font-size:12px;color:var(--hint,#888);">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
-            <span>${TimeUtils.formatEthiopianCalendarDate(new Date(state.otherPatient.dateOfBirth + 'T12:00:00'), 'medium')}</span>
+            ${ICON.calendar}
+            <span>${esc(TimeUtils.formatEthiopianCalendarDate(new Date(state.otherPatient.dateOfBirth + 'T12:00:00'), 'medium'))}</span>
           </div>` : '<div id="other-dob-eth-hint"></div>'}
         </div>
       </div>
@@ -336,7 +376,7 @@ const BookingView = (() => {
         const hintEl = container.querySelector('#other-dob-eth-hint');
         if (hintEl && state.otherPatient.dateOfBirth && TimeUtils.getCalendarFormat() === 'ethiopian') {
           const ethStr = TimeUtils.formatEthiopianCalendarDate(new Date(state.otherPatient.dateOfBirth + 'T12:00:00'), 'medium');
-          hintEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg><span>${ethStr}</span>`;
+          hintEl.innerHTML = `${ICON.calendar}<span>${esc(ethStr)}</span>`;
           hintEl.style.display = 'flex';
         } else if (hintEl) {
           hintEl.innerHTML = '';
@@ -345,12 +385,13 @@ const BookingView = (() => {
     }
 
     container.querySelector('#sponsor-next').addEventListener('click', () => {
-      if (state.bookingFor === 'someone_else' && !state.otherPatient.fullName) {
-        state.error = t('pleaseFillName');
+      if (state.bookingFor === 'someone_else' && (!state.otherPatient.fullName || !state.otherPatient.phone)) {
+        state.error = t('missingPatientInfo');
         showError(container);
         return;
       }
       state.error = null;
+      showError(container);
       state.step = 1;
       loadCategories(container);
     });
@@ -369,7 +410,7 @@ const BookingView = (() => {
       renderCategories(container);
     } catch (err) {
       state.loading = false;
-      el.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      el.innerHTML = `<div class="alert alert-error">${esc(err.message)}</div>`;
     }
   }
 
@@ -379,7 +420,7 @@ const BookingView = (() => {
       <h3 style="margin-bottom:16px">${t('selectIssueCategory')}</h3>
       <div class="chip-group" id="category-chips">
         ${state.categories.map(c =>
-          `<div class="chip ${state.selectedCategory === c.key ? 'selected' : ''}" data-cat="${c.key}">${c.label}</div>`
+          `<div class="chip ${state.selectedCategory === c.key ? 'selected' : ''}" data-cat="${c.key}">${esc(c.label)}</div>`
         ).join('')}
       </div>
       <div id="recommendations-box"></div>
@@ -402,6 +443,7 @@ const BookingView = (() => {
         return;
       }
       state.error = null;
+      showError(container);
       renderDateTime(container);
     });
 
@@ -417,7 +459,7 @@ const BookingView = (() => {
           <div class="card mt-16">
             <p class="text-hint" style="font-size:13px;margin-bottom:8px"><strong>Recommended documents:</strong></p>
             <ul style="padding-left:16px;font-size:13px;color:var(--hint)">
-              ${state.recommendations.documents.map(d => `<li>${d.label}</li>`).join('')}
+              ${state.recommendations.documents.map(d => `<li>${esc(d.label)}</li>`).join('')}
             </ul>
           </div>
         `;
@@ -426,6 +468,75 @@ const BookingView = (() => {
   }
 
   // ─── Step 2: Date/Time ───
+  // Mirrors fetchDoctorScheduleSlots in apps/mobile/store/slices/appointmentSlice.ts:
+  // GET /api/doctors/:id/schedules (14-day window first, then unbounded like the APK),
+  // each schedule carries its concrete `slots` (ScheduleSlot rows with _count.bookings).
+  function dateIdOf(value) {
+    return new Date(value).toISOString().slice(0, 10);
+  }
+
+  function isPastDate(dateId) {
+    if (!dateId) return false;
+    return new Date(`${dateId}T23:59:59.999`).getTime() < Date.now();
+  }
+
+  function buildScheduleDates(schedules) {
+    const raw = (schedules || []).map(s => {
+      const d = new Date(s.date);
+      return { id: dateIdOf(d), label: TimeUtils.formatDate(d), date: d };
+    });
+    return raw.filter((d, i, arr) => arr.findIndex(x => x.id === d.id) === i);
+  }
+
+  function buildFallbackDates() {
+    // APK fallback: next 7 days when the doctor has no slot table.
+    const out = [];
+    for (let i = 1; i <= 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      out.push({ id: dateIdOf(d), label: TimeUtils.formatDate(d), date: d });
+    }
+    return out;
+  }
+
+  function slotsForDateId(dateId) {
+    const daySchedules = state.schedules.filter(s => s.date && dateIdOf(s.date) === dateId);
+    const all = daySchedules.flatMap(s => (Array.isArray(s.slots) ? s.slots : []));
+    all.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    return all;
+  }
+
+  function slotIsPast(slot) {
+    const start = new Date(slot.startTime).getTime();
+    return !isNaN(start) && start <= Date.now();
+  }
+
+  function slotIsFull(slot) {
+    const maxPatients = slot.maxPatients;
+    const booked = slot._count?.bookings ?? 0;
+    return typeof maxPatients === 'number' && maxPatients > 0 && booked >= maxPatients;
+  }
+
+  async function fetchSchedules() {
+    try {
+      const from = new Date();
+      const to = new Date();
+      to.setDate(to.getDate() + 14);
+      const windowed = await API.getDoctorSchedules(
+        state.doctorId,
+        dateIdOf(from),
+        dateIdOf(to),
+      );
+      if (Array.isArray(windowed) && windowed.length > 0) return windowed;
+    } catch {}
+    try {
+      // APK parity: fetchDoctorScheduleSlots without a range (all future schedules).
+      return await API.getDoctorSchedules(state.doctorId);
+    } catch (err) {
+      throw err;
+    }
+  }
+
   function renderDateTime(container) {
     const el = container.querySelector('#step-datetime');
     state.step = 2;
@@ -433,83 +544,159 @@ const BookingView = (() => {
     el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
     showStep(container);
 
-    API.getDoctorSchedules(state.doctorId)
+    fetchSchedules()
       .then(schedules => {
         state.loading = false;
-        const activeSchedules = schedules.filter(s => s.isActive !== false);
-        el.innerHTML = `
-          <h3 style="margin-bottom:16px">${t('selectDateTime')}</h3>
-          ${activeSchedules.length === 0
-            ? `<p class="text-hint">${t('noSchedules')}</p>`
-            : activeSchedules.map(s => `
-              <div class="card" data-schedule-id="${s.id}" style="cursor:pointer;${state.selectedSchedule?.id === s.id ? 'border-color:var(--link)' : ''}">
-                <div class="flex-between">
-                  <span><strong>${s.date ? TimeUtils.formatDate(new Date(s.date)) : ''}</strong></span>
-                  <span class="text-hint">${s.startTime?.slice(0,5) || ''} - ${s.endTime?.slice(0,5) || ''}</span>
-                </div>
-                ${s.clinicRoom ? `<div class="text-hint mt-8" style="display:flex;align-items:center;gap:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${t('room')} ${s.clinicRoom}</div>` : ''}
-              </div>
-            `).join('')}
-          <button class="btn btn-primary mt-16" id="datetime-next" ${!state.selectedSchedule ? 'disabled' : ''}>
-            ${t('continue')}
-          </button>
-        `;
+        state.schedules = (schedules || []).filter(s => s.isActive !== false);
+        state.scheduleDates = buildScheduleDates(state.schedules);
+        if (state.scheduleDates.length === 0) state.scheduleDates = buildFallbackDates();
 
-        el.querySelectorAll('[data-schedule-id]').forEach(card => {
-          card.addEventListener('click', () => {
-            const id = parseInt(card.dataset.scheduleId);
-            state.selectedSchedule = activeSchedules.find(s => s.id === id);
-            el.querySelectorAll('[data-schedule-id]').forEach(c => c.style.borderColor = '');
-            card.style.borderColor = 'var(--link)';
-            el.querySelector('#datetime-next').disabled = false;
-          });
-        });
-
-        el.querySelector('#datetime-next').addEventListener('click', () => {
-          state.step = 3;
-          renderPayment(container);
-          showStep(container);
-        });
+        if (!state.scheduleDates.some(d => d.id === state.selectedDateId)) {
+          const firstUsable = state.scheduleDates.find(d => !isPastDate(d.id)) || state.scheduleDates[0];
+          state.selectedDateId = firstUsable ? firstUsable.id : '';
+        }
+        state.selectedSlot = null;
+        renderDateTimeBody(container);
       })
       .catch(err => {
         state.loading = false;
-        el.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+        el.innerHTML = `<div class="alert alert-error">${esc(err.message)}</div>`;
       });
+  }
+
+  function renderDateTimeBody(container) {
+    const el = container.querySelector('#step-datetime');
+    el.innerHTML = `
+      <h3 style="margin-bottom:16px">${t('selectDateTime')}</h3>
+      <p class="bk-label">${t('date')}</p>
+      <div class="bk-date-row" id="date-row">
+        ${state.scheduleDates.map(d => {
+          const past = isPastDate(d.id);
+          return `<div class="chip ${state.selectedDateId === d.id ? 'selected' : ''} ${past ? 'bk-disabled' : ''}" data-date-id="${d.id}">${esc(d.label)}</div>`;
+        }).join('')}
+      </div>
+      <p class="bk-label mt-16">${t('availableSlots')}</p>
+      <div id="slots-box"></div>
+      <button class="btn btn-primary mt-16" id="datetime-next" ${state.selectedSlot ? '' : 'disabled'}>
+        ${t('continue')}
+      </button>
+    `;
+
+    el.querySelectorAll('[data-date-id]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        if (chip.classList.contains('bk-disabled')) return;
+        state.selectedDateId = chip.dataset.dateId;
+        state.selectedSlot = null;
+        el.querySelectorAll('[data-date-id]').forEach(c => c.classList.remove('selected'));
+        chip.classList.add('selected');
+        el.querySelector('#datetime-next').disabled = true;
+        renderSlotsBox(container);
+      });
+    });
+
+    el.querySelector('#datetime-next').addEventListener('click', () => {
+      if (!state.selectedDateId) {
+        state.error = t('missingDate');
+        showError(container);
+        return;
+      }
+      if (!state.selectedSlot) {
+        state.error = t('selectSlot');
+        showError(container);
+        return;
+      }
+      state.error = null;
+      showError(container);
+      state.step = 3;
+      renderPayment(container);
+      showStep(container);
+    });
+
+    renderSlotsBox(container);
+  }
+
+  function renderSlotsBox(container) {
+    const el = container.querySelector('#step-datetime');
+    const box = el.querySelector('#slots-box');
+    if (!box) return;
+
+    const slots = state.selectedDateId && state.schedules.length
+      ? slotsForDateId(state.selectedDateId)
+      : [];
+    state.slotsForDate = slots;
+
+    if (slots.length === 0) {
+      box.innerHTML = `<div class="empty-state bk-empty"><p>${t('noAvailableSlots')}</p></div>`;
+      return;
+    }
+
+    box.innerHTML = `<div class="slot-grid">${slots.map(slot => {
+      const full = slotIsFull(slot);
+      const past = slotIsPast(slot);
+      const disabled = full || past;
+      const selected = state.selectedSlot && state.selectedSlot.id === slot.id;
+      const booked = slot._count?.bookings ?? 0;
+      const max = slot.maxPatients;
+      let meta = '';
+      if (full) {
+        meta = t('slotFull');
+      } else if (!past && typeof max === 'number' && max > 0) {
+        meta = t('slotLeft').replace('{{n}}', String(Math.max(0, max - booked)));
+      }
+      return `
+        <div class="slot-chip ${selected ? 'selected' : ''} ${disabled ? 'full' : ''}" data-slot-id="${slot.id}" role="button" aria-disabled="${disabled}">
+          <span class="slot-time">${esc(TimeUtils.formatTime(new Date(slot.startTime)))}</span>
+          ${meta ? `<span class="slot-meta">${esc(meta)}</span>` : ''}
+        </div>
+      `;
+    }).join('')}</div>`;
+
+    box.querySelectorAll('[data-slot-id]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        if (chip.classList.contains('full')) return;
+        const id = Number(chip.dataset.slotId);
+        const slot = slots.find(s => s.id === id);
+        if (!slot || slotIsFull(slot) || slotIsPast(slot)) return;
+        state.selectedSlot = slot;
+        box.querySelectorAll('.slot-chip').forEach(c => c.classList.remove('selected'));
+        chip.classList.add('selected');
+        el.querySelector('#datetime-next').disabled = false;
+      });
+    });
   }
 
   // ─── Step 3: Payment ───
   function renderPayment(container) {
     const el = container.querySelector('#step-payment');
     state.step = 3;
-    state.cardFee = state.doctor?.hospital?.cardPrice ? parseFloat(state.doctor.hospital.cardPrice) : 0;
-    const consultationFee = state.doctor?.baseHourlyRate ? parseFloat(state.doctor.baseHourlyRate) : 0;
-    state.totalPayable = consultationFee + (state.includeCardFee ? state.cardFee : 0);
+    recomputeTotals();
+    const serviceFee = serviceFeeAmount();
 
     el.innerHTML = `
       <h3 style="margin-bottom:16px">${t('payment')}</h3>
       <div class="card">
         <div class="payment-row">
-          <span>${t('consultationFee')}</span>
-          <span>${consultationFee} ${t('etb')}</span>
+          <span>${t('appServiceFee')}</span>
+          <span>${serviceFee.toFixed(2)} ${t('etb')}</span>
         </div>
         ${state.cardFee > 0 ? `
         <div class="payment-row">
-          <span>${t('hospitalCardFee')}</span>
+          <span>${t('hospitalCardPrice')}</span>
           <span>
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
               <input type="checkbox" id="card-fee-toggle" ${state.includeCardFee ? 'checked' : ''} />
-              ${state.cardFee} ${t('etb')}
+              ${state.cardFee.toFixed(2)} ${t('etb')}
             </label>
           </span>
         </div>` : ''}
         <div class="payment-row total">
-          <span>${t('total')}</span>
-          <span id="total-amount">${state.totalPayable} ${t('etb')}</span>
+          <span>${t('totalAmount')}</span>
+          <span id="total-amount">${state.totalPayable.toFixed(2)} ${t('etb')}</span>
         </div>
       </div>
       <p class="text-hint mt-8" style="font-size:13px">${t('youWillBeRedirected')}</p>
       <button class="btn btn-primary mt-16" id="payment-pay-btn">
-        Pay ${state.totalPayable} ${t('etb')}
+        ${esc(t('payAndConfirm').replace('{{amount}}', state.totalPayable.toFixed(2)))}
       </button>
     `;
 
@@ -517,10 +704,9 @@ const BookingView = (() => {
     if (toggle) {
       toggle.addEventListener('change', () => {
         state.includeCardFee = toggle.checked;
-        const consultFee = state.doctor?.baseHourlyRate ? parseFloat(state.doctor.baseHourlyRate) : 0;
-        state.totalPayable = consultFee + (state.includeCardFee ? state.cardFee : 0);
-        el.querySelector('#total-amount').textContent = `${state.totalPayable} ${t('etb')}`;
-        el.querySelector('#payment-pay-btn').textContent = `Pay ${state.totalPayable} ${t('etb')}`;
+        recomputeTotals();
+        el.querySelector('#total-amount').textContent = `${state.totalPayable.toFixed(2)} ${t('etb')}`;
+        el.querySelector('#payment-pay-btn').textContent = t('payAndConfirm').replace('{{amount}}', state.totalPayable.toFixed(2));
       });
     }
 
@@ -542,41 +728,47 @@ const BookingView = (() => {
     renderPaymentWaiting(container);
   }
 
+  function selectedDateLabel() {
+    if (!state.selectedDateId) return '';
+    return TimeUtils.formatDate(new Date(`${state.selectedDateId}T12:00:00`));
+  }
+
+  function selectedTimeLabel() {
+    if (!state.selectedSlot?.startTime) return '';
+    return TimeUtils.formatTime(new Date(state.selectedSlot.startTime));
+  }
+
   // ─── Step 4: Confirm ───
   function renderConfirm(container) {
     const el = container.querySelector('#step-confirm');
     state.step = 4;
 
-    const dateStr = state.selectedSchedule?.date
-      ? new Date(state.selectedSchedule.date).toLocaleDateString('en-US')
-      : 'Selected date';
-    const timeStr = state.selectedSchedule?.startTime
-      ? state.selectedSchedule.startTime.slice(0, 5)
-      : '';
+    const dateStr = selectedDateLabel() || t('date');
+    const timeStr = selectedTimeLabel();
 
     el.innerHTML = `
       <h3 style="margin-bottom:16px">${t('confirmAppointment')}</h3>
       <div class="card">
         <div class="card-row">
           <span class="text-hint">${t('doctor')}</span>
-          <span><strong>${state.doctor?.fullName || ''}</strong></span>
+          <span><strong>${esc(state.doctor?.fullName || '')}</strong></span>
         </div>
         <div class="card-row">
           <span class="text-hint">${t('date')}</span>
-          <span>${dateStr}</span>
+          <span>${esc(dateStr)}</span>
         </div>
         <div class="card-row">
           <span class="text-hint">${t('time')}</span>
-          <span>${timeStr}</span>
+          <span>${esc(timeStr)}</span>
         </div>
         ${state.selectedCategory ? `
         <div class="card-row">
           <span class="text-hint">${t('category')}</span>
-          <span>${state.categories.find(c => c.key === state.selectedCategory)?.label || state.selectedCategory}</span>
+          <span>${esc(state.categories.find(c => c.key === state.selectedCategory)?.label || state.selectedCategory)}</span>
         </div>` : ''}
         <div class="card-row">
           <span class="text-hint">${t('bookingFor')}</span>
-          <span>${state.bookingFor === 'myself' ? t('myself') : state.otherPatient.fullName}</span>
+          <span>${esc(state.bookingFor === 'myself' ? t('myself') : state.otherPatient.fullName)}</span>
         </div>
         <div class="card-row">
           <span class="text-hint">${t('payment')}</span>
@@ -598,23 +790,35 @@ const BookingView = (() => {
   }
 
   async function submitBooking(container) {
+    if (!state.selectedDateId || !state.selectedSlot) {
+      state.error = state.selectedDateId ? t('selectSlot') : t('missingDate');
+      showError(container);
+      return;
+    }
+
     state.loading = true;
     const btn = container.querySelector('#confirm-submit-btn');
     if (btn) btn.textContent = t('booking');
 
     try {
-      const scheduleDate = state.selectedSchedule?.date || new Date().toISOString().split('T')[0];
-      const startTime = state.selectedSchedule?.startTime || '00:00';
-      const timePart = startTime.includes('T') ? startTime.split('T')[1] : `${startTime}:00.000Z`;
-      const dateTime = startTime.includes('T') ? startTime : `${scheduleDate}T${timePart}`;
+      // Same dateTime construction as modal.tsx: date chip id + HH:MM from the slot.
+      const timePart = state.selectedSlot.startTime?.slice(11, 16);
+      const dateTime = timePart
+        ? `${state.selectedDateId}T${timePart}:00.000Z`
+        : `${state.selectedDateId}T09:00:00.000Z`;
 
+      // Payload parity with apps/mobile/app/modal.tsx handlePayAndConfirm:
+      // isPaid after Telebirr verification, paidCardFee flag, paymentMethod
+      // derived from the card option, slotId is a ScheduleSlot id.
       const payload = {
         doctorId: state.doctorId,
         dateTime,
-        issueCategory: state.selectedCategory,
         fee: state.totalPayable,
-        slotId: state.selectedSchedule?.id || undefined,
-        paymentMethod: 'service_fee',
+        issueCategory: state.selectedCategory,
+        slotId: state.selectedSlot.id,
+        paymentMethod: state.includeCardFee ? 'card' : 'service_fee',
+        paidCardFee: state.includeCardFee,
+        isPaid: true,
       };
 
       if (state.bookingFor === 'someone_else' && state.otherPatient.fullName) {
@@ -628,8 +832,11 @@ const BookingView = (() => {
       }
 
       const appointment = await API.createAppointment(payload);
+      clearPending();
       state.createdAppointment = appointment;
       state.loading = false;
+      state.error = null;
+      showError(container);
       state.step = 5;
       renderSuccess(container);
       showStep(container);
@@ -644,6 +851,8 @@ const BookingView = (() => {
   // ─── Step 5: Success ───
   function renderSuccess(container) {
     const el = container.querySelector('#step-success');
+    const dateStr = selectedDateLabel();
+    const timeStr = selectedTimeLabel();
     el.innerHTML = `
       <div class="success-screen">
         <div class="check-icon">&check;</div>
@@ -651,9 +860,9 @@ const BookingView = (() => {
         <p>${t('appointmentSubmitted')}</p>
         <div class="card text-center">
           ${state.createdAppointment ? `
-            <p>${t('appointmentId')}: <strong>#${state.createdAppointment.id}</strong></p>
-            <p class="text-hint mt-8">${state.doctor?.fullName || ''}</p>
-            ${state.selectedSchedule?.date ? `<p class="text-hint">${new Date(state.selectedSchedule.date).toLocaleDateString('en-US')} at ${state.selectedSchedule.startTime?.slice(0,5) || ''}</p>` : ''}
+            <p>${t('appointmentId')}: <strong>#${esc(state.createdAppointment.id ?? state.createdAppointment.appointment?.id ?? '')}</strong></p>
+            <p class="text-hint mt-8">${esc(state.doctor?.fullName || '')}</p>
+            ${dateStr ? `<p class="text-hint">${esc(dateStr)}${timeStr ? ' ' + esc(timeStr) : ''}</p>` : ''}
           ` : ''}
         </div>
         <button class="btn btn-primary mt-16" id="success-home-btn">${t('backToHome')}</button>
@@ -667,8 +876,8 @@ const BookingView = (() => {
 
   function showError(container) {
     const el = container.querySelector('#booking-error');
-    if (el && state.error) {
-      el.innerHTML = `<div class="alert alert-error">${state.error}</div>`;
+    if (el) {
+      el.innerHTML = state.error ? `<div class="alert alert-error">${esc(state.error)}</div>` : '';
     }
   }
 
