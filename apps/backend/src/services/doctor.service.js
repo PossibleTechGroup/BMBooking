@@ -87,7 +87,13 @@ async function generateSchedulesFromAvailability(profileId, hospitalId, availabi
       for (const dateStr of dates) {
         const dateObj = new Date(`${dateStr}T00:00:00.000Z`);
         const schedStart = new Date(`${dateStr}T${entry.startTime}:00+03:00`);
-        const schedEnd = new Date(`${dateStr}T${entry.endTime}:00+03:00`);
+        let schedEnd = new Date(`${dateStr}T${entry.endTime}:00+03:00`);
+        // end <= start means end of day (midnight-next-day), same as createDoctorSchedule
+        if (schedEnd <= schedStart) {
+          schedEnd = new Date(schedStart);
+          schedEnd.setUTCDate(schedEnd.getUTCDate() + 1);
+          schedEnd.setUTCHours(0, 0, 0, 0);
+        }
 
         const schedule = await tx.doctorSchedule.create({
           data: {

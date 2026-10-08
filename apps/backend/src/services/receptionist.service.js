@@ -1207,7 +1207,7 @@ const ReceptionistService = {
           where: { userId: user.id },
         });
         if (existingProfile) {
-          // allow reuse
+          throw new Error("Phone or email already in use by a doctor");
         }
       }
 
