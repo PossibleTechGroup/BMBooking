@@ -3,6 +3,7 @@ const DoctorsView = (() => {
   let filteredDoctors = [];
   let searchQuery = '';
   let activeService = null;
+  let activeHospital = null;
   let sortBy = 'rating';
   let userLocation = null;
 
@@ -50,8 +51,32 @@ const DoctorsView = (() => {
     if (params && params.service) {
       activeService = params.service;
     }
+    if (params && params.hospitalId) {
+      activeHospital = { id: Number(params.hospitalId), name: params.hospitalName || '' };
+      activeService = null;
+      searchQuery = '';
+    } else {
+      activeHospital = null;
+    }
 
     container.innerHTML = '\n      <div class="view-header">\n        <div class="bm-brand"><img src="/bm-booking.png" alt="BM" /><span class="bm-brand-title">BM</span></div>\n        <button class="view-header-icon" id="doctors-profile-btn">\n          ' + ICON.user + '\n        </button>\n      </div>\n      <h1 class="screen-title">' + (I18n.t('doctors') || 'Doctors') + '</h1>\n      <div class="search-bar glass-surface">\n        ' + ICON.search + '\n        <input type="text" id="doctor-search" placeholder="' + (I18n.t('search') || 'Search') + '" value="' + searchQuery + '" />\n      </div>\n      <div class="docs-sort-row">\n        <button class="docs-sort-chip' + (sortBy === 'rating' ? ' active' : '') + '" data-sort="rating">' + ICON.star + ' Top Rated</button>\n        <button class="docs-sort-chip' + (sortBy === 'az' ? ' active' : '') + '" data-sort="az">A-Z</button>\n      </div>\n      <div class="docs-chips-row">\n        <div class="docs-chips">\n          <button class="docs-chip' + (!activeService ? ' active' : '') + '" data-service="all">' + (I18n.t('all') || 'All') + '</button>\n          ' + SERVICES.map(s => '\n            <button class="docs-chip' + (activeService === s.label ? ' active' : '') + '" data-service="' + s.label + '">' + s.label + '</button>\n          ').join('') + '\n        </div>\n      </div>\n      <div id="doctors-list">\n        <div class="loading"><div class="spinner"></div></div>\n      </div>\n    ';
+
+    if (activeHospital) {
+      container.querySelector('.screen-title').insertAdjacentHTML('afterend',
+        '<div class="docs-hospital-bar">' +
+          '<span class="docs-hospital-label">' + I18n.t('doctorsAt') + ' <strong>' + esc(activeHospital.name || ('#' + activeHospital.id)) + '</strong></span>' +
+          '<button class="docs-hospital-clear" id="clear-hospital">' + I18n.t('allHospitals') + '</button>' +
+        '</div>');
+      var clearHospital = container.querySelector('#clear-hospital');
+      if (clearHospital) {
+        clearHospital.addEventListener('click', function() {
+          activeHospital = null;
+          var bar = container.querySelector('.docs-hospital-bar');
+          if (bar) bar.parentNode.removeChild(bar);
+          filterAndRender(container);
+        });
+      }
+    }
 
     container.querySelector('#doctors-profile-btn').addEventListener('click', function() { Router.navigate('profile'); });
 
@@ -108,6 +133,11 @@ const DoctorsView = (() => {
   function filterAndRender(container) {
     var query = searchQuery.toLowerCase().trim();
     filteredDoctors = allDoctors.slice();
+    if (activeHospital) {
+      filteredDoctors = filteredDoctors.filter(function(d) {
+        return d.hospital && d.hospital.id === activeHospital.id;
+      });
+    }
     if (query) {
       filteredDoctors = filteredDoctors.filter(function(d) {
         var specs = (d.specialization || (d.specializations || []).join(', ') || '').toLowerCase();
@@ -133,7 +163,7 @@ const DoctorsView = (() => {
 
     var list = container.querySelector('#doctors-list');
     if (filteredDoctors.length === 0) {
-      list.innerHTML = '\n        <div class="empty-state">\n          <div class="empty-state-icon">' + ICON.stethoscope + '</div>\n          <h3>' + (I18n.t('noDoctorsFound') || 'No doctors found') + '</h3>\n          <p>' + (I18n.t('tryDifferentSearch') || 'Try a different search term or browse all available doctors.') + '</p>\n        </div>';
+      list.innerHTML = '\n        <div class="empty-state">\n          <div class="empty-state-icon">' + ICON.stethoscope + '</div>\n          <h3>' + (activeHospital ? I18n.t('noDoctorsAtHospital') : (I18n.t('noDoctorsFound') || 'No doctors found')) + '</h3>\n          <p>' + (I18n.t('tryDifferentSearch') || 'Try a different search term or browse all available doctors.') + '</p>\n        </div>';
       return;
     }
 

@@ -186,7 +186,14 @@ const HomeView = (() => {
     }).join('');
 
     el.querySelectorAll('.home-hospital-card').forEach(function(card) {
-      card.addEventListener('click', function() { Router.navigate('doctors'); });
+      card.addEventListener('click', function() {
+        var hid = parseInt(card.getAttribute('data-id'), 10);
+        var hosp = null;
+        for (var i = 0; i < list.length; i++) {
+          if (list[i].id === hid) { hosp = list[i]; break; }
+        }
+        Router.navigate('doctors', { hospitalId: hid, hospitalName: hosp ? hosp.name : '' });
+      });
     });
   }
 

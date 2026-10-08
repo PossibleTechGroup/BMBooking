@@ -27,6 +27,9 @@ if (typeof I18n !== 'undefined' && I18n.add) {
     call: 'Call',
     directions: 'Directions',
     kmAway: 'km away',
+    doctorsAt: 'Doctors at',
+    allHospitals: 'All hospitals',
+    noDoctorsAtHospital: 'No doctors registered at this hospital yet',
   });
 
   I18n.add('am', {
@@ -56,6 +59,9 @@ if (typeof I18n !== 'undefined' && I18n.add) {
     call: 'ጥሪ',
     directions: 'አቅጣጫ',
     kmAway: 'ኪ.ሜ ይርቀዋል',
+    doctorsAt: 'ዶክተሮች በ',
+    allHospitals: 'ሁሉም ሆስፒታሎች',
+    noDoctorsAtHospital: 'በዚህ ሆስፒታል የተመዘገቡ ዶክተሮች የሉም',
   });
 
   I18n.add('om', {
@@ -85,5 +91,8 @@ if (typeof I18n !== 'undefined' && I18n.add) {
     call: 'Bilbili',
     directions: 'Karaa',
     kmAway: 'km birraa',
+    doctorsAt: 'Ogeeyyii',
+    allHospitals: 'Hospitaalota hunda',
+    noDoctorsAtHospital: 'Hospitaal kana keessa ogeessii galmeefame hin jiru',
   });
 }
